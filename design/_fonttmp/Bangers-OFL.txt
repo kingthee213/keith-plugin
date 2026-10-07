@@ -1,0 +1,4 @@
+SIL Open Font License 1.1 — Bangers
+Source: https://github.com/googlefonts/bangers
+Embedded in design/editor-prototype.html for offline prototype use.
+Composer lane: embed the TTF from design/_fonttmp/Bangers-Regular.ttf in the plugin binary and keep OFL notice in license notes.

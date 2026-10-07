@@ -1,0 +1,4 @@
+SIL Open Font License 1.1 — Space Mono
+Source: https://github.com/googlefonts/spacemono
+Embedded in design/editor-prototype.html for offline prototype use.
+Composer lane: embed SpaceMono-Regular.ttf and SpaceMono-Bold.ttf from design/_fonttmp/ in the plugin binary and keep OFL notice in license notes.
