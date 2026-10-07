@@ -1,7 +1,7 @@
 # Keith — UNIT PLAN (phase 1)
 
 Written by Sam, 2026-10-06, before any dispatch. This is the first artifact of the run, posted rather
-than waited on. Locked spec: `BRIEF.md`. Run rules: `preferences.md`.
+than waited on. Locked spec: `BRIEF.md`. Run rules: `C:/Users/noaha/.agents/orchestrate/keith-plugin/preferences.md`.
 
 ## What phase 1 has to produce
 
