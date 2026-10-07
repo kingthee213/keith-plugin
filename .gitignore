@@ -1,0 +1,15 @@
+# build output
+build/
+dist/
+build-*/
+out/
+*.o
+*.obj
+*.dSYM/
+.DS_Store
+# vendored SDK checkouts pulled by the build (never committed as our own)
+third_party/iPlug2/
+third_party/Airwindows/
+# scratch
+.sam-*
+*.prompt.txt
