@@ -188,7 +188,9 @@ Voice allocator: 16 voices shared across parts (exact voice budget TBD in implem
 4. **Then:** Modulation matrix / LFO destinations.
 5. **U10 (landed):** Two patch inserts plus one master effect, with preset serialization and the
    material-free `07 FX` page.
-6. **Then:** Part routing, drum engine, and data-driven Family-01 chain assignments from bank lists.
+6. **U11 (landed):** 16-voice synthesized percussion engine, contiguous MIDI map and live pad
+   editor. No sample content entered the repository.
+7. **Then:** Part routing and data-driven Family-01 chain assignments from bank lists.
 
 ---
 
@@ -228,10 +230,38 @@ Off defaults.
 
 ---
 
-## 8. Licence audit checklist (engine)
+## 8. Synthesized percussion engine (U11)
+
+The drum section contains no audio files and has no sample loader. `src/drums/DrumSynth.h`
+generates 16 distinct voices from sine partials, deterministic noise, exponential one-shot
+envelopes, a low-pass filter and soft clipping.
+
+MIDI notes 36-51 go only to the drum engine. Notes outside that range go only to the synth voice
+allocator. This fixed split prevents a drum hit from taking, retriggering or releasing a synth
+voice. The drum engine keeps one preallocated voice per slot and a fixed 128-event MIDI queue.
+Neither `ProcessBlock` nor the per-sample drum path allocates memory.
+
+Each slot stores level, pan, tune, decay, filter, drive, mute and solo. Any soloed slot suppresses
+all non-soloed slots. Muted slots and slots at `-inf` level produce exact silence while their
+one-shot state continues to advance. Velocity controls level and one of three transient/brightness
+bands. Fixed pitch, decay and noise-seed alternates provide deterministic round-robin variation.
+
+The drum bus is stereo. Constant-power pan runs per slot, then the kit level and a bounded bus
+stage feed the existing Insert 1 -> Insert 2 -> tape -> Master FX chain. All 16 slots at maximum
+settings remain finite.
+
+Host IDs 75-84 expose the ten parameters named by the U11 table. The brief's "11 appends" count is
+inconsistent with its ten-row table. Swing is not an ID because this instrument has no sequencer,
+and pads are MIDI events rather than automatable parameters. Complete per-slot records are stored
+in versioned plugin state chunks. Pre-U11 75-parameter chunks load with default drum records.
+
+---
+
+## 9. Licence audit checklist (engine)
 
 - [x] No Freakshow / Mishby code or assets
 - [x] No Surge or OB-Xf source in tree
 - [x] Airwindows attribution recorded
 - [x] No paid DSP libraries
 - [x] No Korg, Splice, Gorillaz, or Green Lantern strings in parameter names
+- [x] Drum voices are original synthesis code; no sample assets or sample playback

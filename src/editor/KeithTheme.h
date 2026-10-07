@@ -219,10 +219,12 @@ inline IVStyle ChipStyle(bool active, float labelSize = 13.f)
 // ---------------------------------------------------------------------------
 inline const char* const* DrumSlotNames()
 {
-  static const char* const kNames[16] = {"KICK",  "SNARE", "RIM",   "CLAP",  "CH",
-                                         "OH",    "PH",    "TOM L", "TOM M", "TOM H",
-                                         "RIDE",  "CRASH", "PERC1", "PERC2", "PERC3",
-                                         "PERC4"};
+  static const char* const kNames[16] = {
+    "KICK", "SNARE", "SNARE ALT", "CLAP",
+    "CLOSED HAT", "OPEN HAT", "PEDAL HAT", "TOM LO",
+    "TOM MID", "TOM HI", "RIDE", "CRASH",
+    "PERC 1", "PERC 2", "PERC 3", "PERC 4"
+  };
   return kNames;
 }
 

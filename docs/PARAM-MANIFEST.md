@@ -3,8 +3,9 @@
 Contract between the editor lane and the composer / engine lane.
 **Stable ids.** The engine and host automation read these names; do not rename casually.
 
-Reconciled **U10 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
-U1/U4 host IDs **0–8** (Gain + tape bus), U7 IDs **9–42**, and U9 IDs **43–55** are preserved. U10 appends IDs **56–74**.
+Reconciled **U11 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
+U1/U4 host IDs **0-8**, U7 IDs **9-42**, U9 IDs **43-55** and U10 IDs **56-74**
+are preserved. U11 appends IDs **75-84**.
 
 Column meanings:
 
@@ -18,7 +19,7 @@ Column meanings:
 | `group` | `drum` / `synth` / `fx` / `preset` / `master` |
 | `automatable` | MIDI/host-automatable parameter name (VST3/AU) |
 | `status` | Taste / lock state: `locked` (from BRIEF) or `proposed` (not decided) |
-| `impl` | Engine wiring: `live` / `not yet implemented` / `live - added U#` |
+| `impl` | Engine wiring: `live` / `not yet implemented` / `not applicable` / `live - added U#` |
 
 ---
 
@@ -35,33 +36,33 @@ Column meanings:
 | `preset_save` | Save | switch | moment | - | preset | Preset Save | proposed | not yet implemented |
 | `preset_init` | Init | switch | moment | - | preset | Preset Init | proposed | not yet implemented |
 | `preset_favorite` | Fav | switch | off/on | off | preset | Preset Favorite | proposed | not yet implemented |
-| `drum_pad_01` | Pad 01 | pad | trigger / select | - | drum | Drum Pad 01 | proposed | not yet implemented |
-| `drum_pad_02` | Pad 02 | pad | trigger / select | - | drum | Drum Pad 02 | proposed | not yet implemented |
-| `drum_pad_03` | Pad 03 | pad | trigger / select | - | drum | Drum Pad 03 | proposed | not yet implemented |
-| `drum_pad_04` | Pad 04 | pad | trigger / select | - | drum | Drum Pad 04 | proposed | not yet implemented |
-| `drum_pad_05` | Pad 05 | pad | trigger / select | - | drum | Drum Pad 05 | proposed | not yet implemented |
-| `drum_pad_06` | Pad 06 | pad | trigger / select | - | drum | Drum Pad 06 | proposed | not yet implemented |
-| `drum_pad_07` | Pad 07 | pad | trigger / select | - | drum | Drum Pad 07 | proposed | not yet implemented |
-| `drum_pad_08` | Pad 08 | pad | trigger / select | - | drum | Drum Pad 08 | proposed | not yet implemented |
-| `drum_pad_09` | Pad 09 | pad | trigger / select | - | drum | Drum Pad 09 | proposed | not yet implemented |
-| `drum_pad_10` | Pad 10 | pad | trigger / select | - | drum | Drum Pad 10 | proposed | not yet implemented |
-| `drum_pad_11` | Pad 11 | pad | trigger / select | - | drum | Drum Pad 11 | proposed | not yet implemented |
-| `drum_pad_12` | Pad 12 | pad | trigger / select | - | drum | Drum Pad 12 | proposed | not yet implemented |
-| `drum_pad_13` | Pad 13 | pad | trigger / select | - | drum | Drum Pad 13 | proposed | not yet implemented |
-| `drum_pad_14` | Pad 14 | pad | trigger / select | - | drum | Drum Pad 14 | proposed | not yet implemented |
-| `drum_pad_15` | Pad 15 | pad | trigger / select | - | drum | Drum Pad 15 | proposed | not yet implemented |
-| `drum_pad_16` | Pad 16 | pad | trigger / select | - | drum | Drum Pad 16 | proposed | not yet implemented |
-| `drum_slot_select` | Slot | list | 1-16 | 1 | drum | Drum Slot Select | proposed | not yet implemented |
-| `drum_slot_level` | Level | knob | -inf-+6 dB | 0 dB | drum | Drum Slot Level | proposed | not yet implemented |
-| `drum_slot_pan` | Pan | knob | L100-R100 | C | drum | Drum Slot Pan | proposed | not yet implemented |
-| `drum_slot_tune` | Tune | knob | -12-+12 st | 0 st | drum | Drum Slot Tune | proposed | not yet implemented |
-| `drum_slot_decay` | Decay | knob | 0-100 % | 70 % | drum | Drum Slot Decay | proposed | not yet implemented |
-| `drum_slot_filter` | Filter | knob | 20 Hz-20 kHz | 12 kHz | drum | Drum Slot Filter | proposed | not yet implemented |
-| `drum_slot_drive` | Drive | knob | 0-100 % | 0 % | drum | Drum Slot Drive | proposed | not yet implemented |
-| `drum_slot_mute` | Mute | switch | off/on | off | drum | Drum Slot Mute | proposed | not yet implemented |
-| `drum_slot_solo` | Solo | switch | off/on | off | drum | Drum Slot Solo | proposed | not yet implemented |
-| `drum_kit_level` | Kit Level | knob | -inf-+6 dB | 0 dB | drum | Drum Kit Level | proposed | not yet implemented |
-| `drum_kit_swing` | Swing | knob | 0-100 % | 0 % | drum | Drum Kit Swing | proposed | not yet implemented |
+| `drum_pad_01` | Kick | pad | MIDI 36 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_02` | Snare | pad | MIDI 37 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_03` | Snare Alt / Rim | pad | MIDI 38 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_04` | Clap | pad | MIDI 39 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_05` | Closed Hat | pad | MIDI 40 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_06` | Open Hat | pad | MIDI 41 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_07` | Pedal Hat | pad | MIDI 42 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_08` | Tom Lo | pad | MIDI 43 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_09` | Tom Mid | pad | MIDI 44 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_10` | Tom Hi | pad | MIDI 45 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_11` | Ride | pad | MIDI 46 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_12` | Crash | pad | MIDI 47 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_13` | Perc 1 | pad | MIDI 48 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_14` | Perc 2 | pad | MIDI 49 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_15` | Perc 3 | pad | MIDI 50 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_pad_16` | Perc 4 | pad | MIDI 51 / select | - | drum | not automatable | locked | live - MIDI trigger / editor select U11 |
+| `drum_slot_select` | Slot | list | 1-16 | 1 | drum | Drum Slot Select | locked | live - added U11 |
+| `drum_slot_level` | Slot Level | knob | -inf-+6 dB | 0 dB | drum | Drum Slot Level | locked | live - added U11 |
+| `drum_slot_pan` | Slot Pan | knob | L100-R100 | C | drum | Drum Slot Pan | locked | live - added U11 |
+| `drum_slot_tune` | Slot Tune | knob | -12-+12 st | 0 st | drum | Drum Slot Tune | locked | live - added U11 |
+| `drum_slot_decay` | Slot Decay | knob | 0-100 % | 70 % | drum | Drum Slot Decay | locked | live - added U11 |
+| `drum_slot_filter` | Slot Filter | knob | 20 Hz-20 kHz | 12 kHz | drum | Drum Slot Filter | locked | live - added U11 |
+| `drum_slot_drive` | Slot Drive | knob | 0-100 % | 0 % | drum | Drum Slot Drive | locked | live - added U11 |
+| `drum_slot_mute` | Slot Mute | switch | off/on | off | drum | Drum Slot Mute | locked | live - added U11 |
+| `drum_slot_solo` | Slot Solo | switch | off/on | off | drum | Drum Slot Solo | locked | live - added U11 |
+| `drum_kit_level` | Kit Level | knob | -inf-+6 dB | 0 dB | drum | Drum Kit Level | locked | live - added U11 |
+| `drum_kit_swing` | Swing | knob | not applicable | - | drum | not applicable | locked | not applicable - instrument has no sequencer |
 | `synth_engine` | Engine | switch | Hybrid / Analog | Hybrid | synth | Synth Engine | proposed | live - added U7 |
 | `synth_part` | Part | list | 1-4 | 1 | synth | Synth Part | proposed | not yet implemented |
 | `synth_poly_mode` | Poly | switch | Poly / Mono | Poly | synth | Synth Poly Mode | proposed | live - added U7 |
@@ -231,22 +232,54 @@ preset chunk. `src/editor/EditorialLayout.h` exposes the material-free `07 FX` p
 
 ---
 
-## Row counts (U10 reconcile)
+## U11 code surface (source of truth for `live`)
+
+Appended after ID 74. The slot controls edit the slot selected by `kParamDrumSlotSelect`. All 16
+slot records are saved in the plugin state chunk.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---:|---|---|---|
+| `kParamDrumSlotSelect` | 75 | Drum Slot Select | `drum_slot_select` | 1 |
+| `kParamDrumSlotLevel` | 76 | Drum Slot Level | `drum_slot_level` | 0 dB |
+| `kParamDrumSlotPan` | 77 | Drum Slot Pan | `drum_slot_pan` | C |
+| `kParamDrumSlotTune` | 78 | Drum Slot Tune | `drum_slot_tune` | 0 st |
+| `kParamDrumSlotDecay` | 79 | Drum Slot Decay | `drum_slot_decay` | 70 % |
+| `kParamDrumSlotFilter` | 80 | Drum Slot Filter | `drum_slot_filter` | 12 kHz |
+| `kParamDrumSlotDrive` | 81 | Drum Slot Drive | `drum_slot_drive` | 0 % |
+| `kParamDrumSlotMute` | 82 | Drum Slot Mute | `drum_slot_mute` | off |
+| `kParamDrumSlotSolo` | 83 | Drum Slot Solo | `drum_slot_solo` | off |
+| `kParamDrumKitLevel` | 84 | Drum Kit Level | `drum_kit_level` | 0 dB |
+
+`src/drums/DrumSynth.h` owns the 16 synthesized voices and deterministic round-robin state.
+`src/Keith_DSP.h` owns MIDI splitting and sums the stereo drum bus before patch effects.
+`src/editor/EditorialLayout.h` exposes the live grid and all ten host parameters.
+
+The brief says "11 appends" but lists ten host parameters. Swing is explicitly not implemented and
+pads are MIDI events, not parameters. The code therefore appends the ten named parameters and does
+not invent an eleventh ID.
+
+`kNumParams` = **85**.
+
+---
+
+## Row counts (U11 reconcile)
 
 | Metric | Count |
 |---|---|
 | Total rows | **111** |
-| Real parameters (`kNumParams`, IDs 0–74) | **75** |
+| Real parameters (`kNumParams`, IDs 0-84) | **85** |
 | Host preset action, not a parameter (`preset_family`) | **1** |
-| Rows `not yet implemented` | **35** |
-| Rows added this pass (new ids) | **19** (`fx_ins1_*`, `fx_ins2_*`, `fx_mst_*`, `fx_out_level`) |
-| Rows flipped to `live` this pass | **19** |
+| MIDI pad rows, live but not parameters | **16** |
+| Rows `not yet implemented` | **8** |
+| Rows `not applicable` | **1** (`drum_kit_swing`) |
+| Rows added this pass (new ids) | **10** (`drum_slot_*`, `drum_kit_level`) |
+| Rows flipped to `live` this pass | **26** (16 pads + 10 parameters) |
 
 ---
 
 ## Notes for the editor lane
 
-1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0–74. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-84. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
 2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
-3. Deferred intentionally: `synth_part`, all `drum_*`, all remaining `preset_*`, and the drum engine. One LFO and CC1 shipped in U9. A modulation matrix did not.
+3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. One LFO and CC1 shipped in U9. A modulation matrix did not.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.

@@ -577,58 +577,72 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// Drum kit pad grid: honest preview of the documented map (docs/DRUM-MAP.md).
-// No drum engine and no drum parameters exist yet, so the pads are drawn inert
-// and hatched rather than faking triggers.
+// Live synthesized-drum pad grid. A pad click selects its slot. MIDI notes 36-51
+// trigger sound, so selecting a pad never pretends to audition it.
 // ---------------------------------------------------------------------------
 class KeithPadGridControl : public IControl
 {
 public:
-  KeithPadGridControl(const IRECT& bounds, bool live)
-  : IControl(bounds)
-  , mLive(live)
+  KeithPadGridControl(const IRECT& bounds, int selectParam)
+  : IControl(bounds, selectParam)
   {
-    mIgnoreMouse = true;
   }
 
   void Draw(IGraphics& g) override
   {
     const float gap = 4.f;
     const IRECT grid = mRECT;
+    const int selected = std::clamp(static_cast<int>(std::lround(GetValue(0) * 15.)), 0, 15);
+    const auto* plugin = dynamic_cast<const Keith*>(GetDelegate());
 
     for (int i = 0; i < 16; ++i)
     {
       const int col = i % 4;
       const int row = 3 - (i / 4); // slot 01 bottom-left, like the documented map
       const IRECT cell = RowCell(ColCell(grid, col, 4, gap), row, 4, gap).GetPadded(-1.f);
+      const bool muted = plugin && plugin->DrumSlotMuted(i);
+      const bool soloed = plugin && plugin->DrumSlotSoloed(i);
+      const bool active = i == selected;
 
-      g.FillRect(mLive ? kPanelAlt : kPanel, cell);
-      g.DrawRect(kLine, cell, nullptr, 3.f);
-
-      if (!mLive)
-        DrawHatch(g, cell);
+      IColor fill = kPanelAlt;
+      if (muted)
+        fill = kMuteRed.WithOpacity(0.55f);
+      if (soloed)
+        fill = kGold;
+      if (active)
+        fill = kGreen;
+      g.FillRect(fill, cell);
+      g.DrawRect(active ? kPaper : kLine, cell, nullptr, active ? 4.f : 3.f);
 
       const IRECT nameBounds(cell.L, cell.T + 2.f, cell.R, cell.MH() + 2.f);
       const IRECT noteBounds(cell.L, cell.MH() + 2.f, cell.R, cell.B - 2.f);
+      const IColor ink = (active || soloed) ? kInk : kPaper;
 
-      g.DrawText(Mono(13.f, kPaper.WithOpacity(0.85f), EAlign::Center),
+      g.DrawText(MonoBold(12.f, ink, EAlign::Center),
                  DrumSlotNames()[i], nameBounds);
-      g.DrawText(Mono(9.f, kCyan.WithOpacity(0.7f), EAlign::Center), DrumNoteNames()[i], noteBounds);
+      g.DrawText(Mono(9.f, active ? kInk : kCyan, EAlign::Center), DrumNoteNames()[i], noteBounds);
+      if (muted)
+        g.DrawText(MonoBold(9.f, kPaper, EAlign::Near), "M", cell.GetPadded(-5.f));
+      if (soloed)
+        g.DrawText(MonoBold(9.f, kInk, EAlign::Far), "S", cell.GetPadded(-5.f));
     }
   }
 
-private:
-  static void DrawHatch(IGraphics& g, const IRECT& cell)
+  void OnMouseDown(float x, float y, const IMouseMod&) override
   {
-    const IColor hatch = kMuteRed.WithOpacity(0.30f);
-
-    g.PathClipRegion(cell);
-    for (float x = cell.L - cell.H(); x < cell.R; x += 11.f)
-      g.DrawLine(hatch, x, cell.B, x + cell.H(), cell.T, nullptr, 2.f);
-    g.PathClipRegion(IRECT());
+    const float gap = 4.f;
+    for (int i = 0; i < 16; ++i)
+    {
+      const int col = i % 4;
+      const int row = 3 - (i / 4);
+      const IRECT cell = RowCell(ColCell(mRECT, col, 4, gap), row, 4, gap).GetPadded(-1.f);
+      if (cell.Contains(x, y))
+      {
+        SetValueFromUserInput(static_cast<double>(i) / 15., 0);
+        return;
+      }
+    }
   }
-
-  bool mLive;
 };
 
 } // namespace ui

@@ -8,6 +8,9 @@
 
 namespace
 {
+constexpr uint32_t kDrumStateMagic = 0x4B445231u; // "KDR1"
+constexpr uint32_t kDrumStateVersion = 1u;
+
 // ---------------------------------------------------------------------------
 // Baked factory presets.
 //
@@ -188,6 +191,167 @@ int FamilyForPreset(int presetIdx)
 }
 } // namespace keith
 
+void Keith::SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit)
+{
+  const uint32_t magic = kDrumStateMagic;
+  const uint32_t version = kDrumStateVersion;
+  chunk.Put(&magic);
+  chunk.Put(&version);
+  chunk.Put(&kit.levelDb);
+
+  for (const auto& slot : kit.slot)
+  {
+    chunk.Put(&slot.levelDb);
+    chunk.Put(&slot.pan);
+    chunk.Put(&slot.tuneSemitones);
+    chunk.Put(&slot.decay);
+    chunk.Put(&slot.filterHz);
+    chunk.Put(&slot.drive);
+    const uint8_t mute = slot.mute ? 1u : 0u;
+    const uint8_t solo = slot.solo ? 1u : 0u;
+    chunk.Put(&mute);
+    chunk.Put(&solo);
+  }
+}
+
+int Keith::UnserializeDrumKit(const IByteChunk& chunk, int startPos,
+                             keith::drums::KitParams& kit)
+{
+  uint32_t magic = 0;
+  uint32_t version = 0;
+  int pos = chunk.Get(&magic, startPos);
+  pos = pos >= 0 ? chunk.Get(&version, pos) : -1;
+  if (pos < 0 || magic != kDrumStateMagic || version != kDrumStateVersion)
+    return -1;
+
+  keith::drums::KitParams restored = keith::drums::DefaultKitParams();
+  pos = chunk.Get(&restored.levelDb, pos);
+  for (int i = 0; i < keith::drums::kNumSlots && pos >= 0; ++i)
+  {
+    auto& slot = restored.slot[i];
+    pos = chunk.Get(&slot.levelDb, pos);
+    pos = pos >= 0 ? chunk.Get(&slot.pan, pos) : -1;
+    pos = pos >= 0 ? chunk.Get(&slot.tuneSemitones, pos) : -1;
+    pos = pos >= 0 ? chunk.Get(&slot.decay, pos) : -1;
+    pos = pos >= 0 ? chunk.Get(&slot.filterHz, pos) : -1;
+    pos = pos >= 0 ? chunk.Get(&slot.drive, pos) : -1;
+    uint8_t mute = 0;
+    uint8_t solo = 0;
+    pos = pos >= 0 ? chunk.Get(&mute, pos) : -1;
+    pos = pos >= 0 ? chunk.Get(&solo, pos) : -1;
+    slot.mute = mute != 0;
+    slot.solo = solo != 0;
+  }
+
+  if (pos < 0)
+    return -1;
+
+  kit = restored;
+  return pos;
+}
+
+bool Keith::SerializeState(IByteChunk& chunk) const
+{
+  SerializeDrumKit(chunk, mDrumKit);
+  return SerializeParams(chunk);
+}
+
+int Keith::UnserializeState(const IByteChunk& chunk, int startPos)
+{
+  keith::drums::KitParams restored;
+  const int paramsPos = UnserializeDrumKit(chunk, startPos, restored);
+  if (paramsPos >= 0)
+  {
+    mDrumKit = restored;
+    return UnserializeParams(chunk, paramsPos);
+  }
+
+  // Pre-U11 chunks contain only the old 75 doubles. Preserve those values and supply
+  // the new synthesized-drum defaults rather than rejecting the entire saved state.
+  ResetDrumKitToDefaults();
+  int pos = startPos;
+  const int available = std::max(0, (chunk.Size() - startPos) / static_cast<int>(sizeof(double)));
+  const int oldParamCount = std::min(available, kParamOutLevel + 1);
+  for (int i = 0; i < oldParamCount && pos >= 0; ++i)
+  {
+    double value = 0.;
+    pos = chunk.Get(&value, pos);
+    if (pos >= 0)
+      GetParam(i)->Set(value);
+  }
+  for (int i = oldParamCount; i < kNumParams; ++i)
+    GetParam(i)->SetToDefault();
+
+  OnParamReset(kPresetRecall);
+  return pos;
+}
+
+void Keith::OnRestoreState()
+{
+  const int selected = std::clamp(GetParam(kParamDrumSlotSelect)->Int() - 1, 0,
+                                  keith::drums::kNumSlots - 1);
+  mSelectedDrumSlot.store(selected);
+  LoadSelectedDrumSlotParams(selected);
+#if IPLUG_DSP
+  mDSP.SetDrumParams(mDrumKit);
+#endif
+  mDrumUiDirty.store(true);
+  SendCurrentParamValuesFromDelegate();
+}
+
+void Keith::ResetDrumKitToDefaults()
+{
+  mDrumKit = keith::drums::DefaultKitParams();
+  mSelectedDrumSlot.store(0);
+}
+
+void Keith::LoadSelectedDrumSlotParams(int slot)
+{
+  const int safeSlot = std::clamp(slot, 0, keith::drums::kNumSlots - 1);
+  const auto& values = mDrumKit.slot[safeSlot];
+  mSelectedDrumSlot.store(safeSlot);
+  GetParam(kParamDrumSlotLevel)->Set(values.levelDb);
+  GetParam(kParamDrumSlotPan)->Set(values.pan * 100.f);
+  GetParam(kParamDrumSlotTune)->Set(values.tuneSemitones);
+  GetParam(kParamDrumSlotDecay)->Set(values.decay * 100.f);
+  GetParam(kParamDrumSlotFilter)->Set(values.filterHz);
+  GetParam(kParamDrumSlotDrive)->Set(values.drive * 100.f);
+  GetParam(kParamDrumSlotMute)->Set(values.mute ? 1. : 0.);
+  GetParam(kParamDrumSlotSolo)->Set(values.solo ? 1. : 0.);
+  GetParam(kParamDrumKitLevel)->Set(mDrumKit.levelDb);
+}
+
+void Keith::StoreSelectedDrumSlotParam(int paramIdx)
+{
+  auto& slot = mDrumKit.slot[mSelectedDrumSlot.load()];
+  switch (paramIdx)
+  {
+    case kParamDrumSlotLevel: slot.levelDb = static_cast<float>(GetParam(paramIdx)->Value()); break;
+    case kParamDrumSlotPan: slot.pan = static_cast<float>(GetParam(paramIdx)->Value() / 100.); break;
+    case kParamDrumSlotTune: slot.tuneSemitones = static_cast<float>(GetParam(paramIdx)->Value()); break;
+    case kParamDrumSlotDecay: slot.decay = static_cast<float>(GetParam(paramIdx)->Value() / 100.); break;
+    case kParamDrumSlotFilter: slot.filterHz = static_cast<float>(GetParam(paramIdx)->Value()); break;
+    case kParamDrumSlotDrive: slot.drive = static_cast<float>(GetParam(paramIdx)->Value() / 100.); break;
+    case kParamDrumSlotMute: slot.mute = GetParam(paramIdx)->Bool(); break;
+    case kParamDrumSlotSolo: slot.solo = GetParam(paramIdx)->Bool(); break;
+    default: break;
+  }
+}
+
+void Keith::UpdateDrumUi()
+{
+  if (!mDrumUiDirty.exchange(false))
+    return;
+
+  for (int param = kParamDrumSlotSelect; param <= kParamDrumKitLevel; ++param)
+    SendParameterValueFromDelegate(param, GetParam(param)->GetNormalized(), true);
+
+#if IPLUG_EDITOR
+  if (IGraphics* graphics = GetUI())
+    graphics->SetAllControlsDirty();
+#endif
+}
+
 void Keith::AddFactoryPresets()
 {
   double defaults[kNumParams];
@@ -206,8 +370,9 @@ void Keith::AddFactoryPresets()
       if (delta.preset == preset)
         values[delta.param] = delta.value;
 
-    // Same layout the host serialises: one double per parameter, in parameter order.
+    // Factory chunks use the same custom-state layout as host save/restore.
     IByteChunk chunk;
+    Keith::SerializeDrumKit(chunk, keith::drums::DefaultKitParams());
     for (int i = 0; i < kNumParams; ++i)
       chunk.Put(&values[i]);
 
@@ -224,8 +389,10 @@ static_assert(kParamFilterType == 25 && kParamFilterCutoff == 26 && kParamFilter
               "KeithFilterResponse is bound to these host ids");
 static_assert(kParamOscSync == 43 && kParamMonoLegato == 55,
               "U9 appends 43..55");
-static_assert(kParamIns1Algo == 56 && kParamOutLevel == 74 && kNumParams == 75,
+static_assert(kParamIns1Algo == 56 && kParamOutLevel == 74,
               "U10 appends 56..74");
+static_assert(kParamDrumSlotSelect == 75 && kParamDrumKitLevel == 84 && kNumParams == 85,
+              "U11 appends 75..84");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -336,6 +503,22 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamOutLevel)->InitDouble("FX Out Level", 0., -60., 12., 0.01, "dB");
   GetParam(kParamOutLevel)->SetDisplayText(-60., "-inf");
 
+  // U11. These controls edit the selected slot. The 16 complete slot records live in state chunks.
+  GetParam(kParamDrumSlotSelect)->InitInt("Drum Slot Select", 1, 1, 16);
+  GetParam(kParamDrumSlotLevel)->InitDouble("Drum Slot Level", 0., -60., 6., 0.01, "dB");
+  GetParam(kParamDrumSlotLevel)->SetDisplayText(-60., "-inf");
+  GetParam(kParamDrumSlotPan)->InitDouble("Drum Slot Pan", 0., -100., 100., 0.1, "%");
+  GetParam(kParamDrumSlotTune)->InitDouble("Drum Slot Tune", 0., -12., 12., 0.01, "st");
+  GetParam(kParamDrumSlotDecay)->InitDouble("Drum Slot Decay", 70., 0., 100., 0.1, "%");
+  GetParam(kParamDrumSlotFilter)->InitDouble("Drum Slot Filter", 12000., 20., 20000., 0.1, "Hz",
+                                             IParam::kFlagsNone, "", IParam::ShapeExp(),
+                                             IParam::kUnitFrequency);
+  GetParam(kParamDrumSlotDrive)->InitDouble("Drum Slot Drive", 0., 0., 100., 0.1, "%");
+  GetParam(kParamDrumSlotMute)->InitBool("Drum Slot Mute", false);
+  GetParam(kParamDrumSlotSolo)->InitBool("Drum Slot Solo", false);
+  GetParam(kParamDrumKitLevel)->InitDouble("Drum Kit Level", 0., -60., 6., 0.01, "dB");
+  GetParam(kParamDrumKitLevel)->SetDisplayText(-60., "-inf");
+
   // Baked factory presets (15, grouped Family 01-05, neutral names only).
   AddFactoryPresets();
 
@@ -351,6 +534,8 @@ Keith::Keith(const InstanceInfo& info)
 #if IPLUG_EDITOR
 void Keith::OnIdle()
 {
+  UpdateDrumUi();
+
   IGraphics* pGraphics = GetUI();
 
   if (!pGraphics)
@@ -391,6 +576,7 @@ void Keith::OnReset()
   SyncTapeParams();
   SyncSynthParams();
   SyncFxParams();
+  SyncDrumParams();
   mDSP.SetGain(GetParam(kParamGain)->Value());
 }
 
@@ -416,6 +602,32 @@ void Keith::OnParamChange(int paramIdx)
   if (paramIdx >= kParamIns1Algo && paramIdx <= kParamOutLevel)
   {
     SyncFxParams();
+    return;
+  }
+
+  if (paramIdx == kParamDrumSlotSelect)
+  {
+    const int slot = std::clamp(GetParam(paramIdx)->Int() - 1, 0,
+                                keith::drums::kNumSlots - 1);
+    LoadSelectedDrumSlotParams(slot);
+    SyncDrumParams();
+    mDrumUiDirty.store(true);
+    return;
+  }
+
+  if (paramIdx >= kParamDrumSlotLevel && paramIdx <= kParamDrumSlotSolo)
+  {
+    StoreSelectedDrumSlotParam(paramIdx);
+    SyncDrumParams();
+    if (paramIdx == kParamDrumSlotMute || paramIdx == kParamDrumSlotSolo)
+      mDrumUiDirty.store(true);
+    return;
+  }
+
+  if (paramIdx == kParamDrumKitLevel)
+  {
+    mDrumKit.levelDb = static_cast<float>(GetParam(paramIdx)->Value());
+    SyncDrumParams();
     return;
   }
 
@@ -537,5 +749,10 @@ void Keith::SyncFxParams()
 
   const double outDb = GetParam(kParamOutLevel)->Value();
   mDSP.SetOutLevel(keith::synth::DbToLinear(static_cast<float>(outDb)));
+}
+
+void Keith::SyncDrumParams()
+{
+  mDSP.SetDrumParams(mDrumKit);
 }
 #endif

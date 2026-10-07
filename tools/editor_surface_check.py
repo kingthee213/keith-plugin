@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-level gate for the Keith editor surface (through U10).
+"""Source-level gate for the Keith editor surface (through U11).
 
 Proves three things without a host or a GUI:
 
@@ -105,6 +105,16 @@ def main():
     check("every live parameter is exposed by the editor surface",
           set(live) == referenced, f"missing {sorted(set(live) - referenced)}" if set(live) != referenced else "all bound")
 
+    u11 = [
+        "kParamDrumSlotSelect", "kParamDrumSlotLevel", "kParamDrumSlotPan",
+        "kParamDrumSlotTune", "kParamDrumSlotDecay", "kParamDrumSlotFilter",
+        "kParamDrumSlotDrive", "kParamDrumSlotMute", "kParamDrumSlotSolo",
+        "kParamDrumKitLevel",
+    ]
+    check("U11 drum ids append at 75-84",
+          [live.get(name) for name in u11] == list(range(75, 85)),
+          str([live.get(name) for name in u11]))
+
     # --- baked presets ---------------------------------------------------------------------------
     names = parse_presets(source)
     if names is None:
@@ -156,6 +166,16 @@ def main():
     wrong = sorted(f"{name} x{counts.get(name, 0)}" for name in live if counts.get(name, 0) != allowed(name))
     check("every live parameter is attached exactly once",
           not wrong, ", ".join(wrong) if wrong else f"{len(live)} parameters")
+
+    upper_layout = layout.upper()
+    false_drum_ui = [
+        text for text in ["MAP ONLY", "DRUM SAMPLER NOT BUILT", "LOAD SAMPLE", "SAMPLE BROWSER"]
+        if text in upper_layout
+    ]
+    check("drum editor is live synthesized percussion",
+          "SYNTHESIZED DRUM ENGINE" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
+          and not false_drum_ui,
+          ", ".join(false_drum_ui) if false_drum_ui else "live grid, no sample UI")
 
     serialized = {name for _, name in deltas}
     u9_deltas = ["kParamFilterKeyTrack", "kParamLfoRate", "kParamLfoDest", "kParamLfoAmount", "kParamFilterDrive"]

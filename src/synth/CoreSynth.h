@@ -881,6 +881,14 @@ public:
     return sum;
   }
 
+  int ActiveVoiceCount() const
+  {
+    int count = 0;
+    for (const Voice& voice : mVoices)
+      count += voice.Busy() ? 1 : 0;
+    return count;
+  }
+
   Params& GetParams() { return mParams; }
 
 private:

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "IPlug_include_in_plug_hdr.h"
+#include "drums/DrumSynth.h"
+
+#include <atomic>
 
 const int kNumPresets = 15;
 
@@ -134,6 +137,18 @@ enum EParams
   kParamMstBypass = 73,
   kParamOutLevel = 74,
 
+  // U11 appends. IDs 0-74 stay put.
+  kParamDrumSlotSelect = 75,
+  kParamDrumSlotLevel = 76,
+  kParamDrumSlotPan = 77,
+  kParamDrumSlotTune = 78,
+  kParamDrumSlotDecay = 79,
+  kParamDrumSlotFilter = 80,
+  kParamDrumSlotDrive = 81,
+  kParamDrumSlotMute = 82,
+  kParamDrumSlotSolo = 83,
+  kParamDrumKitLevel = 84,
+
   kNumParams
 };
 
@@ -151,10 +166,30 @@ class Keith final : public Plugin
 {
 public:
   Keith(const InstanceInfo& info);
+  bool SerializeState(IByteChunk& chunk) const override;
+  int UnserializeState(const IByteChunk& chunk, int startPos) override;
+  void OnRestoreState() override;
+
+  int SelectedDrumSlot() const { return mSelectedDrumSlot.load(); }
+  bool DrumSlotMuted(int slot) const
+  {
+    return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
+  }
+  bool DrumSlotSoloed(int slot) const
+  {
+    return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].solo;
+  }
 
 private:
   /** Builds the baked factory presets and adopts preset 0 as the init state. */
   void AddFactoryPresets();
+  void LoadSelectedDrumSlotParams(int slot);
+  void StoreSelectedDrumSlotParam(int paramIdx);
+  void ResetDrumKitToDefaults();
+  void UpdateDrumUi();
+  static void SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit);
+  static int UnserializeDrumKit(const IByteChunk& chunk, int startPos,
+                               keith::drums::KitParams& kit);
 
 #if IPLUG_EDITOR
 public:
@@ -172,6 +207,7 @@ private:
   void SyncTapeParams();
   void SyncSynthParams();
   void SyncFxParams();
+  void SyncDrumParams();
   KeithDSP<sample> mDSP;
 #endif
 
@@ -180,4 +216,8 @@ private:
   int mLastPreset = -1;
   int mLastFxAlgo[3] {-1, -1, -1};
 #endif
+
+  keith::drums::KitParams mDrumKit = keith::drums::DefaultKitParams();
+  std::atomic<int> mSelectedDrumSlot {0};
+  std::atomic<bool> mDrumUiDirty {false};
 };

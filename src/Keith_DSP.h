@@ -2,6 +2,7 @@
 
 #include "MidiSynth.h"
 #include "Smoothers.h"
+#include "drums/DrumSynth.h"
 #include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
@@ -198,6 +199,9 @@ public:
     mBlockSize = blockSize;
     mRuntime.modWheel = 0.f;
     mPerf.Clear();
+    mDrums.Reset(sampleRate);
+    mDrums.SetParams(mDrumParams);
+    mNumDrumEvents = 0;
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
     mSynth.Reset();
     mModulationsData.Resize(blockSize * kNumKeithModulations);
@@ -243,6 +247,11 @@ public:
   void SetInsert2Params(const InsertParams& p) { mInsert2.SetParams(p); }
   void SetMasterFxParams(const MasterParams& p) { mMasterFx.SetParams(p); }
   void SetOutLevel(double linear) { mOutLevel.SetLinear(static_cast<T>(linear)); }
+  void SetDrumParams(const keith::drums::KitParams& p)
+  {
+    mDrumParams = p;
+    mDrums.SetParams(p);
+  }
 
   void SetSynthParams(const keith::synth::Params& p)
   {
@@ -267,7 +276,25 @@ public:
     mParamSmoother.ProcessBlock(mParamsToSmooth, mModulations.GetList(), nFrames);
     mSynth.ProcessBlock(mModulations.GetList(), outputs, 0, nOutputs, nFrames);
 
-    // Voices -> synth bus -> insert 1 -> insert 2 -> tape -> master FX ->
+    int drumEvent = 0;
+    for (int s = 0; s < nFrames; ++s)
+    {
+      while (drumEvent < mNumDrumEvents && mDrumEvents[drumEvent].offset <= s)
+      {
+        mDrums.Trigger(mDrumEvents[drumEvent].slot, mDrumEvents[drumEvent].velocity);
+        ++drumEvent;
+      }
+
+      float drumLeft = 0.f;
+      float drumRight = 0.f;
+      mDrums.ProcessFrame(drumLeft, drumRight);
+      outputs[0][s] += static_cast<T>(drumLeft);
+      if (nOutputs > 1)
+        outputs[1][s] += static_cast<T>(drumRight);
+    }
+    RetainFutureDrumEvents(nFrames, drumEvent);
+
+    // Synth voices plus the independent drum bus -> insert 1 -> insert 2 -> tape -> master FX ->
     // output level -> the existing gain parameter.
     mInsert1.ProcessBlock(outputs, nOutputs, nFrames);
     mInsert2.ProcessBlock(outputs, nOutputs, nFrames);
@@ -290,6 +317,26 @@ public:
 
   void ProcessMidiMsg(const IMidiMsg& msg)
   {
+    const IMidiMsg::EStatusMsg status = msg.StatusMsg();
+    const bool noteMessage = status == IMidiMsg::kNoteOn || status == IMidiMsg::kNoteOff;
+    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()))
+    {
+      if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
+        QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
+                       static_cast<float>(msg.Velocity()) / 127.f);
+      return;
+    }
+
+    if (status == IMidiMsg::kControlChange)
+    {
+      const int cc = msg.ControlChangeIdx();
+      if (cc == IMidiMsg::kAllNotesOff || cc == 120)
+      {
+        mDrums.AllNotesOff();
+        mNumDrumEvents = 0;
+      }
+    }
+
     TrackPerformanceMidi(msg);
     mSynth.AddMidiMsgToQueue(msg);
   }
@@ -300,6 +347,41 @@ public:
   }
 
 private:
+  struct DrumEvent
+  {
+    int offset = 0;
+    int slot = 0;
+    float velocity = 0.f;
+  };
+
+  void QueueDrumEvent(int offset, int slot, float velocity)
+  {
+    if (mNumDrumEvents >= kMaxDrumEvents)
+      return;
+
+    DrumEvent event {std::max(0, offset), slot, velocity};
+    int insertion = mNumDrumEvents;
+    while (insertion > 0 && mDrumEvents[insertion - 1].offset > event.offset)
+    {
+      mDrumEvents[insertion] = mDrumEvents[insertion - 1];
+      --insertion;
+    }
+    mDrumEvents[insertion] = event;
+    ++mNumDrumEvents;
+  }
+
+  void RetainFutureDrumEvents(int nFrames, int consumed)
+  {
+    int write = 0;
+    for (int read = consumed; read < mNumDrumEvents; ++read)
+    {
+      DrumEvent event = mDrumEvents[read];
+      event.offset = std::max(0, event.offset - nFrames);
+      mDrumEvents[write++] = event;
+    }
+    mNumDrumEvents = write;
+  }
+
   void TrackPerformanceMidi(const IMidiMsg& msg)
   {
     using keith::synth::LegatoAttack;
@@ -370,6 +452,7 @@ private:
 
 private:
   static constexpr int kNumParts = 4;
+  static constexpr int kMaxDrumEvents = 128;
 
   double mSampleRate = 44100.;
   int mBlockSize = 64;
@@ -382,6 +465,10 @@ private:
   keith::synth::Params mSynthParams {};
   keith::synth::RuntimeMod mRuntime {};
   KeithPerformance mPerf {};
+  keith::drums::KitParams mDrumParams = keith::drums::DefaultKitParams();
+  keith::drums::Engine mDrums;
+  DrumEvent mDrumEvents[kMaxDrumEvents] {};
+  int mNumDrumEvents = 0;
   keith::fx::InsertEffect<T> mInsert1;
   keith::fx::InsertEffect<T> mInsert2;
   keith::fx::TapeAnalog<T> mGlobalTape;

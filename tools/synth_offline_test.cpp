@@ -1,4 +1,5 @@
 // Offline core-synth verification — not linked into the plugin binary.
+#include "../src/drums/DrumSynth.h"
 #include "../src/fx/PatchEffects.h"
 #include "../src/synth/CoreSynth.h"
 
@@ -19,6 +20,9 @@ using keith::fx::InsertEffect;
 using keith::fx::MasterAlgorithm;
 using keith::fx::MasterEffect;
 using keith::fx::SmoothedGain;
+using keith::drums::Engine;
+using keith::drums::KitParams;
+using keith::drums::SlotParams;
 
 static int gPass = 0;
 static int gFail = 0;
@@ -145,6 +149,42 @@ struct StereoBuffer
   std::vector<float> left;
   std::vector<float> right;
 };
+
+static StereoBuffer RenderDrumHit(int sampleRate, const KitParams& params, int slot,
+                                  float velocity, int frames)
+{
+  Engine engine;
+  engine.Reset(sampleRate);
+  engine.SetParams(params);
+  engine.Trigger(slot, velocity);
+  StereoBuffer output(static_cast<size_t>(frames));
+  for (int i = 0; i < frames; ++i)
+    engine.ProcessFrame(output.left[static_cast<size_t>(i)], output.right[static_cast<size_t>(i)]);
+  return output;
+}
+
+static bool AllFinite(const StereoBuffer& x)
+{
+  return AllFinite(x.left) && AllFinite(x.right);
+}
+
+static double StereoPeak(const StereoBuffer& x)
+{
+  return std::max(PeakAbs(x.left), PeakAbs(x.right));
+}
+
+static double DifferenceRms(const std::vector<float>& x, size_t start, size_t count)
+{
+  if (count < 2)
+    return 0.;
+  double sum = 0.;
+  for (size_t i = start + 1; i < start + count; ++i)
+  {
+    const double difference = static_cast<double>(x[i]) - static_cast<double>(x[i - 1]);
+    sum += difference * difference;
+  }
+  return std::sqrt(sum / static_cast<double>(count - 1));
+}
 
 template<typename Effect>
 static StereoBuffer ProcessEffect(Effect& effect, const typename Effect::Params& params,
@@ -1343,6 +1383,280 @@ int main()
     effect.ProcessBlock(changedChannels, 2, 1024);
     const double firstChanged = std::fabs(static_cast<double>(left[1024]) - left[1023]);
     Expect(firstChanged < 0.01, "fx_parameter_changes_are_smoothed");
+  }
+
+  // U11 synthesized percussion.
+  {
+    const KitParams kit = keith::drums::DefaultKitParams();
+    for (int slot = 0; slot < keith::drums::kNumSlots; ++slot)
+    {
+      const StereoBuffer output = RenderDrumHit(sr, kit, slot, 0.9f, sr * 3);
+      const size_t tailStart = output.left.size() - static_cast<size_t>(sr / 20);
+      const bool tailSilent = PeakAbs(std::vector<float>(output.left.begin() +
+        static_cast<ptrdiff_t>(tailStart), output.left.end())) == 0. &&
+        PeakAbs(std::vector<float>(output.right.begin() +
+        static_cast<ptrdiff_t>(tailStart), output.right.end())) == 0.;
+      char name[64];
+      std::snprintf(name, sizeof(name), "drum_voice_%02d_finite_nonzero_tail", slot + 1);
+      Expect(AllFinite(output) && StereoPeak(output) > 1.0e-5 && tailSilent, name);
+    }
+  }
+
+  {
+    KitParams kit = keith::drums::DefaultKitParams();
+    const StereoBuffer soft = RenderDrumHit(sr, kit, 1, 0.2f, sr / 2);
+    const StereoBuffer hard = RenderDrumHit(sr, kit, 1, 1.f, sr / 2);
+    const size_t start = static_cast<size_t>(sr / 200);
+    const size_t count = static_cast<size_t>(sr / 8);
+    const double softRms = Rms(soft.left, start, count) + Rms(soft.right, start, count);
+    const double hardRms = Rms(hard.left, start, count) + Rms(hard.right, start, count);
+    Expect(hardRms > softRms * 2.0, "drum_velocity_changes_level");
+  }
+
+  {
+    KitParams shortKit = keith::drums::DefaultKitParams();
+    shortKit.slot[5].decay = 0.f;
+    KitParams longKit = shortKit;
+    longKit.slot[5].decay = 1.f;
+    const StereoBuffer shortHit = RenderDrumHit(sr, shortKit, 5, 0.9f, sr * 2);
+    const StereoBuffer longHit = RenderDrumHit(sr, longKit, 5, 0.9f, sr * 2);
+    const size_t start = static_cast<size_t>(sr * 2 / 5);
+    const size_t count = static_cast<size_t>(sr / 5);
+    const double shortTail = Rms(shortHit.left, start, count) + Rms(shortHit.right, start, count);
+    const double longTail = Rms(longHit.left, start, count) + Rms(longHit.right, start, count);
+    Expect(longTail > std::max(1.0e-8, shortTail * 8.0), "drum_slot_decay_changes_length");
+  }
+
+  {
+    KitParams lowKit = keith::drums::DefaultKitParams();
+    lowKit.slot[9].tuneSemitones = -12.f;
+    KitParams highKit = lowKit;
+    highKit.slot[9].tuneSemitones = 12.f;
+    const StereoBuffer low = RenderDrumHit(sr, lowKit, 9, 0.9f, sr / 2);
+    const StereoBuffer high = RenderDrumHit(sr, highKit, 9, 0.9f, sr / 2);
+    const size_t start = static_cast<size_t>(sr / 50);
+    const size_t count = static_cast<size_t>(sr / 8);
+    const int lowCrossings = CountZeroCrossings(low.left, start, count);
+    const int highCrossings = CountZeroCrossings(high.left, start, count);
+    if (!(highCrossings > lowCrossings * 1.4))
+      std::printf("  drum tune crossings low %d high %d\n", lowCrossings, highCrossings);
+    Expect(highCrossings > lowCrossings * 1.4, "drum_slot_tune_changes_pitch");
+  }
+
+  {
+    KitParams darkKit = keith::drums::DefaultKitParams();
+    darkKit.slot[1].filterHz = 600.f;
+    KitParams brightKit = darkKit;
+    brightKit.slot[1].filterHz = 18000.f;
+    const StereoBuffer dark = RenderDrumHit(sr, darkKit, 1, 0.9f, sr / 2);
+    const StereoBuffer bright = RenderDrumHit(sr, brightKit, 1, 0.9f, sr / 2);
+    const size_t start = static_cast<size_t>(sr / 100);
+    const size_t count = static_cast<size_t>(sr / 8);
+    const double darkDifference = DifferenceRms(dark.left, start, count);
+    const double brightDifference = DifferenceRms(bright.left, start, count);
+    Expect(brightDifference > darkDifference * 2.0, "drum_slot_filter_changes_brightness");
+  }
+
+  {
+    KitParams cleanKit = keith::drums::DefaultKitParams();
+    cleanKit.slot[12].drive = 0.f;
+    cleanKit.slot[12].filterHz = 18000.f;
+    KitParams drivenKit = cleanKit;
+    drivenKit.slot[12].drive = 1.f;
+    const StereoBuffer clean = RenderDrumHit(sr, cleanKit, 12, 1.f, sr / 2);
+    const StereoBuffer driven = RenderDrumHit(sr, drivenKit, 12, 1.f, sr / 2);
+    const size_t start = static_cast<size_t>(sr / 50);
+    const size_t count = static_cast<size_t>(sr / 8);
+    const double cleanRoughness = DifferenceRms(clean.left, start, count) /
+      std::max(1.0e-9, Rms(clean.left, start, count));
+    const double drivenRoughness = DifferenceRms(driven.left, start, count) /
+      std::max(1.0e-9, Rms(driven.left, start, count));
+    const double waveformDifference = MeanAbsDiff(clean.left, driven.left, start);
+    if (!(drivenRoughness > cleanRoughness * 1.08 && waveformDifference > 0.002))
+      std::printf("  drum drive roughness clean %g driven %g diff %g\n",
+                  cleanRoughness, drivenRoughness, waveformDifference);
+    Expect(drivenRoughness > cleanRoughness * 1.08 &&
+           waveformDifference > 0.002,
+           "drum_slot_drive_adds_harmonics");
+  }
+
+  {
+    KitParams kit = keith::drums::DefaultKitParams();
+    kit.slot[0].mute = true;
+    const StereoBuffer muted = RenderDrumHit(sr, kit, 0, 1.f, sr);
+    Expect(StereoPeak(muted) == 0., "drum_slot_mute_is_silent");
+  }
+
+  {
+    KitParams kit = keith::drums::DefaultKitParams();
+    kit.slot[0].solo = true;
+    Engine soloOnly;
+    soloOnly.Reset(sr);
+    soloOnly.SetParams(kit);
+    soloOnly.Trigger(0, 0.9f);
+    Engine withOther;
+    withOther.Reset(sr);
+    withOther.SetParams(kit);
+    withOther.Trigger(0, 0.9f);
+    withOther.Trigger(1, 0.9f);
+    bool identical = true;
+    for (int i = 0; i < sr; ++i)
+    {
+      float aL = 0.f, aR = 0.f, bL = 0.f, bR = 0.f;
+      soloOnly.ProcessFrame(aL, aR);
+      withOther.ProcessFrame(bL, bR);
+      identical = identical && aL == bL && aR == bR;
+    }
+    Expect(identical, "drum_solo_mutes_others");
+  }
+
+  {
+    KitParams leftKit = keith::drums::DefaultKitParams();
+    leftKit.slot[0].pan = -1.f;
+    KitParams rightKit = leftKit;
+    rightKit.slot[0].pan = 1.f;
+    const StereoBuffer left = RenderDrumHit(sr, leftKit, 0, 0.9f, sr / 2);
+    const StereoBuffer right = RenderDrumHit(sr, rightKit, 0, 0.9f, sr / 2);
+    const double leftL = Rms(left.left, 0, left.left.size());
+    const double leftR = Rms(left.right, 0, left.right.size());
+    const double rightL = Rms(right.left, 0, right.left.size());
+    const double rightR = Rms(right.right, 0, right.right.size());
+    Expect(leftL > leftR * 1000. && rightR > rightL * 1000., "drum_pan_shifts_balance");
+  }
+
+  {
+    Params synthParams = SteadyPatch();
+    synthParams.ampSustain = 1.f;
+    OfflineEngine baseline;
+    OfflineEngine routed;
+    baseline.Reset(sr);
+    routed.Reset(sr);
+    baseline.SetParams(synthParams);
+    routed.SetParams(synthParams);
+    for (int note = 60; note < 76; ++note)
+    {
+      baseline.NoteOn(note, 0.8f);
+      routed.NoteOn(note, 0.8f);
+    }
+    for (int i = 0; i < 1024; ++i)
+    {
+      baseline.Process();
+      routed.Process();
+    }
+
+    Engine drums;
+    drums.Reset(sr);
+    drums.SetParams(keith::drums::DefaultKitParams());
+    const int drumNote = 36;
+    if (keith::drums::DestinationForMidiNote(drumNote) == keith::drums::MidiDestination::Drum)
+      drums.Trigger(keith::drums::SlotForMidiNote(drumNote), 1.f);
+    else
+      routed.NoteOn(drumNote, 1.f);
+
+    bool synthIdentical = true;
+    double drumPeak = 0.;
+    for (int i = 0; i < sr / 4; ++i)
+    {
+      synthIdentical = synthIdentical && baseline.Process() == routed.Process();
+      float left = 0.f, right = 0.f;
+      drums.ProcessFrame(left, right);
+      drumPeak = std::max(drumPeak, std::max(std::fabs(static_cast<double>(left)),
+                                            std::fabs(static_cast<double>(right))));
+    }
+    Expect(synthIdentical && routed.ActiveVoiceCount() == 16 && drumPeak > 0.001,
+           "drum_notes_do_not_steal_synth_voices");
+  }
+
+  {
+    auto sequence = [&](std::vector<float>& output) {
+      Engine engine;
+      engine.Reset(sr);
+      engine.SetParams(keith::drums::DefaultKitParams());
+      const int hitFrames = sr / 3;
+      output.assign(static_cast<size_t>(hitFrames * 4), 0.f);
+      for (int hit = 0; hit < 4; ++hit)
+      {
+        engine.Trigger(1, 0.9f);
+        for (int i = 0; i < hitFrames; ++i)
+        {
+          float left = 0.f, right = 0.f;
+          engine.ProcessFrame(left, right);
+          output[static_cast<size_t>(hit * hitFrames + i)] = left;
+        }
+      }
+    };
+    std::vector<float> first;
+    std::vector<float> second;
+    sequence(first);
+    sequence(second);
+    const size_t hitFrames = static_cast<size_t>(sr / 3);
+    std::vector<float> hitOne(first.begin(), first.begin() + static_cast<ptrdiff_t>(hitFrames));
+    std::vector<float> hitTwo(first.begin() + static_cast<ptrdiff_t>(hitFrames),
+                              first.begin() + static_cast<ptrdiff_t>(hitFrames * 2));
+    Expect(Identical(first, second) && MeanAbsDiff(hitOne, hitTwo, 0) > 1.0e-4,
+           "drum_round_robin_varies_and_stays_deterministic");
+  }
+
+  {
+    KitParams kit = keith::drums::DefaultKitParams();
+    kit.levelDb = 6.f;
+    for (int i = 0; i < keith::drums::kNumSlots; ++i)
+    {
+      kit.slot[i].levelDb = 6.f;
+      kit.slot[i].pan = (i & 1) ? 1.f : -1.f;
+      kit.slot[i].tuneSemitones = 12.f;
+      kit.slot[i].decay = 1.f;
+      kit.slot[i].filterHz = 20000.f;
+      kit.slot[i].drive = 1.f;
+    }
+    Engine engine;
+    engine.Reset(sr);
+    engine.SetParams(kit);
+    for (int i = 0; i < keith::drums::kNumSlots; ++i)
+      engine.Trigger(i, 1.f);
+    bool finite = true;
+    double peak = 0.;
+    for (int i = 0; i < sr * 4; ++i)
+    {
+      float left = 0.f, right = 0.f;
+      engine.ProcessFrame(left, right);
+      finite = finite && std::isfinite(left) && std::isfinite(right);
+      peak = std::max(peak, std::max(std::fabs(static_cast<double>(left)),
+                                    std::fabs(static_cast<double>(right))));
+    }
+    Expect(finite && peak <= 1.000001, "drum_all_slots_max_is_finite");
+  }
+
+  {
+    bool preserved = true;
+    for (int preset = 0; preset < 15; ++preset)
+    {
+      Params patch = SteadyPatch();
+      patch.osc1Shape = static_cast<float>(preset % 5) * 0.2f;
+      patch.osc2Level = static_cast<float>(preset % 4) * 0.15f;
+      patch.filterCutoffHz = 1800.f + static_cast<float>(preset) * 650.f;
+      patch.masterLevel = 0.35f + static_cast<float>(preset % 3) * 0.1f;
+      OfflineEngine before;
+      OfflineEngine after;
+      before.Reset(sr);
+      after.Reset(sr);
+      before.SetParams(patch);
+      after.SetParams(patch);
+      before.NoteOn(60 + preset % 12, 0.8f);
+      after.NoteOn(60 + preset % 12, 0.8f);
+      Engine drums;
+      drums.Reset(sr);
+      drums.SetParams(keith::drums::DefaultKitParams());
+      for (int i = 0; i < 4096; ++i)
+      {
+        float drumLeft = 0.f, drumRight = 0.f;
+        drums.ProcessFrame(drumLeft, drumRight);
+        const float expected = before.Process();
+        const float actual = after.Process() + drumLeft + drumRight;
+        preserved = preserved && expected == actual && drumLeft == 0.f && drumRight == 0.f;
+      }
+    }
+    Expect(preserved, "drum_new_defaults_preserve_presets");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);

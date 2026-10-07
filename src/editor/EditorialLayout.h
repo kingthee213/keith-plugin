@@ -174,20 +174,22 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   tabs(fx, box(kFxMasterBypass), kParamMstBypass, {"ACTIVE", "BYPASS"});
   freeKnob(fx, kFxOutLevel, kParamOutLevel, "OUT LEVEL", kMagenta, true);
 
-  text(library, IRECT(60,226,620,260), "PATCH LIBRARY", MonoBold(22,kPaper));
-  text(library, IRECT(658,226,976,260), "CONTROL NOTES", MonoBold(16,kPaper));
-  std::vector<KeithArchive::Row> rows;
-  int count;
-  const auto* presets = BakedPresets(count);
-  for (int i=0;i<count;++i) rows.push_back({presets[i].name,i});
-  library->AddChildControl(new KeithArchive(IRECT(58,284,620,686),std::move(rows)));
-  library->AddChildControl(new KeithArchive(IRECT(644,284,982,686), {
-    {"SOURCE"},{"Morph: sine through pulse."},{"Drag up to increase."},{"Ctrl-drag: fine control."},
-    {"Double-click: default."},{"ENVELOPES"},{"Drag the four handles."},{"Click a value to type."},
-    {"TAPE"},{"Dry/wet blends the bus."},{"MODULATION"},{"One LFO, CC1, velocity."},
-    {"CONTENT"},{"15 original synth patches."},
-    {"Factory ROMs not included."},{"Drum sampler not built."},{"FX chain: page 07."},{"Mod matrix not built."}
-  }));
+  text(library, IRECT(58,214,600,246), "SYNTHESIZED DRUM ENGINE", MonoBold(22,kPaper));
+  text(library, IRECT(58,244,600,268), "16 ORIGINAL VOICES / NO SAMPLE PLAYBACK", Mono(11,kCyan));
+  library->AddChildControl(new KeithPadGridControl(IRECT(58,278,600,690), kParamDrumSlotSelect));
+  text(library, IRECT(620,214,990,238), "PAD CLICK SELECTS / MIDI 36-51 PLAYS", Mono(10,kPaper));
+  freeKnob(library, {620,250,738,386}, kParamDrumSlotLevel, "SLOT LEVEL", kGreen, true);
+  freeKnob(library, {746,250,864,386}, kParamDrumSlotPan, "PAN", kGreen, true);
+  freeKnob(library, {872,250,990,386}, kParamDrumSlotTune, "TUNE", kMagenta, true);
+  freeKnob(library, {620,402,738,538}, kParamDrumSlotDecay, "DECAY");
+  freeKnob(library, {746,402,864,538}, kParamDrumSlotFilter, "FILTER");
+  freeKnob(library, {872,402,990,538}, kParamDrumSlotDrive, "DRIVE", kMagenta);
+  freeKnob(library, {620,552,750,690}, kParamDrumKitLevel, "KIT LEVEL", kPaper, true);
+  text(library, IRECT(770,552,838,574), "MUTE", Mono(10,kPaper));
+  tabs(library, IRECT(842,548,990,582), kParamDrumSlotMute, {"OFF", "MUTE"});
+  text(library, IRECT(770,610,838,632), "SOLO", Mono(10,kPaper));
+  tabs(library, IRECT(842,606,990,640), kParamDrumSlotSolo, {"OFF", "SOLO"});
+  text(library, IRECT(770,656,990,690), "VELOCITY + DETERMINISTIC RR", Mono(10,kCyan));
 
   // The channel strip is always reachable while navigating source, shape or tape.
   auto* channel = new IContainerBase(IRECT(1030,204,1252,718));
