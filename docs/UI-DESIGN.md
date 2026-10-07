@@ -1,233 +1,75 @@
-# Keith — UI Design Language
+# Keith editor design
 
-Working product name: **Keith** (BRIEF §13 — confirm or replace).  
-This document is the drawing brief for the editor. A second person should be able to rebuild the shell from it without inventing a new look.
+## Owner direction and status
 
-Prototype reference: `design/editor-prototype.html` (offline, single file).  
-Parameter contract: `docs/PARAM-MANIFEST.md`.  
-Drum map for the manual: `docs/DRUM-MAP.md`.
+The owner superseded the comic-panel prototype with an editorial, avant-garde punk instrument, then explicitly requested realistic high-resolution materials and visible light bounce. The latest instruction is to rebuild the UI/UX from first principles, with Sam hand-editing. This document describes the replacement build, not an owner-approved final look.
 
----
+The original Gorillaz and Green Lantern references inform attitude and green/red contrast only. Every rendered asset is original. The old `design/editor-prototype.html` and U3/U8 briefs are historical references, not the current visual contract.
 
-## 1. School (original art only)
+## Instrument model
 
-**School statement.** Original art in a cartoon / comic-panel school: thick ink outlines, flat saturated fills, high-energy panel framing, cosmic green / magenta / gold accents on a deep ink ground. Energy and contrast first; no photorealism, no soft UI glass.
+Product name (UI): **Yote Machine**, from **The Youth Hostel DSP**. This is a display-name change only:
+the repo, binary, plugin name and preset naming are unchanged, per owner instruction. The wordmark
+carries the product name and the stamped magenta service plate carries the studio name beneath it.
 
-**Hard exclusion.** Style reference only. Do **not** reproduce any character, costume, ring, lantern, corps symbol, logo, wordmark, or recognisable mark from either referenced property. Do not use those property names in the UI, file names, or metadata. If a mark, mascot, texture, or icon is drawn, it is new.
+One worn green-enamel instrument with a stamped red nameplate, exposed metal at the seams, charcoal work area, machined controls and permanent filter/voice channel. Physical light defines the bevels and reflections. Artwork occupies the chassis, while parameter graphics remain live native controls.
 
-**Mascot / mark (proposed).** A simple original star-burst stamp (eight hard points, flat gold fill, black outline) used as a decorative corner tick only — not a character, not a logo claim. If the owner rejects it, drop it; the shell stands without it.
+Default design canvas: 1280 x 800, scaled through iPlug2's corner resizer. This is uniform scaling, not responsive reflow. Small-size legibility needs owner validation; do not claim the old 1024 x 700 layout guarantee.
 
----
+## Workflow and layout
 
-## 2. Palette (hex + role)
+- Header: wordmark, grouped family/preset dropdown, previous/next preset, master output.
+- Source: two horizontal oscillator work areas. Oversized morph dials, DSP-derived waveform, tune, level and pulse width. Side mixer holds sub, noise, FM and synth level.
+- Envelopes: volume, pitch and filter tabs share a large editable graph. Fixed normalized time lanes keep handles stable while dragging. Pitch depth is separate from the normalized contour, which stays editable at zero depth. Readouts accept exact numeric input.
+- Tape: signal order runs from large drive control on the left through head bump, wow/flutter, hiss and print to large dry/wet on the right. Bypass is explicit.
+- Library: independent scrollbar-free patch and control-note windows inside the page. Scroll position belongs to each window. Only the visible row can receive a click.
+- Permanent right channel: filter type, cutoff, resonance, envelope depth, engine mode, polyphony, glide, unison and detune remain accessible across pages.
+- Footer: playable keyboard and typing-key hints.
 
-| Token | Hex | Role |
-|---|---|---|
-| `ink` | `#0B0B12` | Window chrome ground, deepest panel fill |
-| `panel` | `#14141F` | Module panel face |
-| `panel-alt` | `#1C1C2A` | Nested boxes, list rows, inactive pads |
-| `line` | `#0A0A0A` | Thick comic outline (near-black ink) |
-| `paper` | `#F4EFE4` | Label paper strips, readout backgrounds |
-| `cosmic-green` | `#39FF14` | Primary accent — active pad, focus ring, armed state |
-| `magenta` | `#FF2BD6` | Secondary accent — FX hot controls, selected list row |
-| `gold` | `#FFC857` | Tertiary accent — brand wordmark, value highlights, star stamp |
-| `cyan-ink` | `#2EE6FF` | Readouts / MIDI activity blink (sparingly) |
-| `mute-red` | `#FF3B4A` | Mute / off / clip warning |
-| `flat-fill-a` | `#2A1A4A` | Drum panel wash (flat purple-ink) |
-| `flat-fill-b` | `#0F2A22` | Synth panel wash (flat green-ink) |
-| `flat-fill-c` | `#2A1020` | FX panel wash (flat magenta-ink) |
-| `flat-fill-d` | `#1A1A10` | Preset strip wash |
+Page choices are UI state, not extra automation parameters. Existing host IDs 0 through 42 remain unchanged. The family menu and patch rows restore real baked presets.
 
-Saturations stay high. Gradients are forbidden except a single 2-stop panel wash (solid → slightly darker solid). No purple-on-white “AI default” look; the ground is ink, accents are neon comic flat.
+## Materials and assets
 
----
+`tools/render_materials.py` builds the original asset scene in Blender 5.x. Cycles runs on CPU with six threads and 40 samples. One fixed orthographic camera and one upper-left area light illuminate the complete instrument. Uniform world fill is nondirectional. The camera and light do not move for page crops.
 
-## 3. Type
+`src/editor/ControlLayout.h` is the shared placement table for native knobs and rendered physical controls. The renderer reads the same bounds and radii that the C++ layout uses. Knobs, control bearings, contact wear and shadows are rendered in their actual positions. At runtime the pointer and value remain live, while the rotationally symmetric body stays correctly lit.
 
-Every face below is either OFL (freely redistributable) or drawn by us. Licences recorded for bundling into the iPlug2 editor binary.
+Material noise uses world-space Geometry.Position instead of per-object Generated coordinates. This keeps grain scale independent of the shape or size of a panel. Enamel stays mostly intact; exposed material follows case seams and knob bearings. Flat regions behind text remain quiet.
 
-| Face | Use | Weights | Sizes (px at design width 1280) | Licence | Source |
-|---|---|---|---|---|---|
-| **Bangers** | Product wordmark, section titles, pad labels | Regular only | Wordmark 42; section 22; pad 13 | SIL Open Font Licence 1.1 | Google Fonts / github.com/googlefonts/bangers |
-| **Space Mono** | Parameter labels, list rows, numeric readouts | Regular, Bold | Label 11; readout 12–14; list 12 | SIL Open Font Licence 1.1 | Google Fonts / github.com/googlefonts/spacemono |
-| **Keith Stamp** (drawn by us) | Optional 8-point star corner mark | n/a (vector) | 16–20 square | Original — all rights owner | Inline SVG in prototype; port as NanoVG paths |
+- `resources/images/chassis.png`: 2560 x 1600 shell including permanently visible physical controls.
+- `resources/images/workspace-source.png`, `workspace-pitch.png`, `workspace-tape.png`: exact 2x crops for the corresponding page regions, all rendered with the same camera and lighting.
+- `resources/images/physical-layout.json`: render receipt with crop bounds, light setup and physical control centres/radii.
+- `design/physical-editor.blend`: saved authored common scene.
 
-**Type rules**
+The unused generic module and dial sprite files are historical assets; they are no longer embedded or drawn. Page images are exact 2x crops of their native bounds, not textures stretched to arbitrary containers.
 
-- Section titles: Bangers, uppercase, black `line` outline feel via 2–3 px text stroke in green/magenta/gold fill.
-- Parameter labels: Space Mono Regular, uppercase tracking +0.04em, colour `paper`.
-- Values: Space Mono Bold, colour `gold` when changing, `paper` at rest.
-- No Inter, Roboto, Arial, system-ui as the design faces. System fallbacks are allowed only while fonts load; the shipped editor embeds the OFL files.
+These are baked images. No Blender installation, ray tracer or external image service is needed at runtime. Windows resources embed the active PNGs into both VST3 and standalone.
 
----
+Oswald Bold is the wordmark and section-heading face. Space Mono Regular and Bold stay on values, labels, tabs and readouts. Bangers stays embedded and is not used for headings. OFL notices accompany the distribution.
 
-## 4. Panel / box vocabulary
+## Reference study
 
-### 4.1 Window
+Owner-added references: The God Particle and Output Arcade. These are control/UX references, not assets to copy.
 
-- **One window**, resizable. **Proposed** default / design size: **1280 × 800** CSS px.
-- **Stated minimum (U5):** **1024 × 700**. Below that the shell is not claimed to keep a complete no-scroll surface.
-- At design size and above: **no column scrollbars**; every control block (Kit, Mod·Voice, Insert 2, Master, Gain) is fully in view without scrolling a column.
-- Aspect not locked; layout reflows by flex / denser rhythm, not by tabs.
-- Outer chrome: `ink` fill, 4 px `line` border, 0 radius (hard comic corners). Optional corner star stamps (see §1).
-- No tab bar. Drum, synth, FX, and preset browser are simultaneous panels.
+- [The God Particle official product page](https://cradle.app/products/the-god-particle): the inspected official Add Mass illustration makes the primary amount control and its value dominant, with smaller grouped tone controls. Keith uses that hierarchy principle for morph, cutoff, tape drive and mix. It does not reproduce the central sphere or source artwork.
+- [Arcade official product page](https://output.com/products/arcade): the inspected Get Inspired image exposes identifiable named content grouped for discovery. Keith keeps patch selection distinct from editing and retains the instrument channel while browsing. The selected marketing images do not prove detailed Arcade interactions, so those are not claimed as verified behavior.
+- [Arcade macro documentation](https://support.output.com/en/articles/10297593-macro-sliders): the inspected Play-page reference separates four named macro sliders, a central performance graphic and a persistent keyboard. Keith borrows the separation of immediate sound shaping from deeper editing, not Arcade's assets or identical arrangement. Current Keith controls retain their actual parameter names and bindings rather than suggesting unimplemented macros.
+- Official source media stays link-only. No reference imagery is included in the plugin or asset set.
 
-### 4.2 Module frame (“comic panel”)
+## Interaction contract
 
-- Rectangle with **5 px** outer `line` stroke.
-- 8 px inner gutter of `panel`.
-- Title strip: 28 px tall paper or flat colour bar along the top edge, title in Bangers.
-- Panel washes: drum `flat-fill-a`, synth `flat-fill-b`, FX `flat-fill-c`, preset `flat-fill-d`.
-- Drop “shadow”: a second hard rectangle offset +4,+4 in `line` (no blur).
+- Knob drag up increases value. iPlug2 gearing is 4.0; fine-control modifier follows the host/framework. Double-click resets to the parameter default.
+- Click a numeric knob readout for exact entry. Knob and envelope prompts use the already-loaded Space Mono font, not iPlug2's unloaded default font. Native Return/Escape completion is asynchronous; runtime probes wait for the field to close before continuing.
+- Envelope time handles use the same forward and inverse mapping. Sustain moves vertically. Readout clicks prompt numeric entry. Double-click a handle resets that parameter.
+- Library scrolling clamps to its own content, including short content. Scrolling one list does not move its neighbour.
+- Returning to a page preserves its internal selected envelope tab.
+- Family labels remain Family 01 through Family 05. Presets are the current 15 original synth patches, not sampled factory ROM programs.
+- Internally, preset rows are grouped by emulated source family first — Triton, Triton Extreme, Korg M1, Korg Wavestation, then Korg TR — and only then by neutral sound role. Those reference names are metadata/documentation only; the editor exposes Family 01–05 and neutral role names.
 
-### 4.3 Knob
+## Verification and boundaries
 
-- Circle diameter **34 px** at design size (compact **30 px** at minimum 1024×700).
-- Fill `panel-alt`, stroke 2 px `line`.
-- Indicator: thick radial tick in `cosmic-green` (synth/drum) or `magenta` (FX).
-- Arc track under the tick: 270° from 7-o’clock to 5-o’clock.
-- Label centred below, Space Mono ~9–10.
-- Value readout under label at design size; hidden at minimum size to reclaim height.
-- Interaction: drag vertical = change; double-click = default (**proposed** behaviour).
+Compile Release VST3 and standalone. Run CTest, `tools/editor_surface_check.py`, and strictness-10 pluginval with GUI tests. Inspect the actual standalone and test tab visibility, preset selection, knob sensitivity, all envelope interactions and independent list scrolling.
 
-### 4.4 Switch
+The source checker verifies references, not actual hit testing or sound. The geometry test verifies forward/inverse mappings and scroll clamping. Neither is visual approval. Record captures and test evidence separately, and ask the owner to approve the rendered screen.
 
-- Pill **40 × 18**, hard outline 2 px (compact vs earlier 48×22 to fit).
-- Off: `panel-alt` fill, thumb left.
-- On: `cosmic-green` or `magenta` fill (group colour), thumb right, black outline retained.
-- No soft shadows.
-
-### 4.5 Pad (drum)
-
-- Square **44 × 44** at design size (grid gap 4); **36 × 36** at minimum. Caps prevent the old aspect-fill clip.
-- Idle: `panel-alt`, 3 px `line`, flat.
-- Hit / MIDI activity: flash `cosmic-green` fill for ~80 ms.
-- Selected slot: `gold` outer ring outside the pad.
-- Muted slot: `mute-red` diagonal hatch (SVG or two lines).
-- Label: short slot name inside pad (Bangers); note name below at design size only.
-
-### 4.6 List (preset / bank)
-
-- Rows 28 px, alternating `panel` / `panel-alt`.
-- Selected row: `magenta` left bar 6 px + `paper` text on `flat-fill-c`.
-- Family chips: hard rectangles, selected = `gold` fill + black text.
-
-### 4.7 State language
-
-| State | How it reads |
-|---|---|
-| Idle | Flat panel colours, paper labels |
-| Focus / hover | 2 px `cosmic-green` inset ring on the control |
-| Active / playing | Pad or meter flashes green/cyan |
-| Armed / selected | Gold ring (pads) or magenta bar (lists) |
-| Muted / bypass | Mute-red hatch or dim to 40% opacity + “BYP” tag |
-| Automation written | Small cyan-ink square at control top-right (**proposed**) |
-
----
-
-## 5. Layout (no tab hunt)
-
-All four zones visible at once. Wireframe at design size 1280x800 (U5 fit pass):
-
-```
-+-- chrome ------------------------------------------------------+
-| [*] KEITH   PRESET STRIP (family / bank / patch / nav)  52px |
-+----------------+-----------------------------+-----------------+
-| DRUM KIT       | SYNTH / BASS / KEYS         | FX              |
-| 4x4 pads 44px  | Engine / Poly               | Tape bus        |
-| slot + M/S     | Osc                         | Insert 1 | 2    |
-| kit knobs      | Filter | Amp Env (pair)     | Master + Gain   |
-|                | Mod / Voice                 |                 |
-+----------------+-----------------------------+-----------------+
-      ~300px                flex grow                 ~340px
-```
-
-**Fit rules (U5)**
-
-- **1280 x 800 (design):** complete surface, no column scroll, no clipped block bottoms. Pads capped at 44 px (not aspect-fill). Knobs 34 px. Preset strip single 52 px row. Filter|Amp and Insert1|Insert2 side-by-side pairs reclaim vertical budget.
-- **1024 x 700 (minimum):** same complete surface via denser rhythm -- pads 36 px, knobs 30 px, value readouts under knobs hidden, note labels under pads hidden, brand subtitle dropped. Still no column scrollbars.
-- Width between min and design: three columns stay; columns shrink with the denser media query under 1100 / 740.
-
-**1:1 mapping.** Every visible control maps to exactly one row in `PARAM-MANIFEST.md`. Decorative art (star stamps, panel washes, title ink) is not a parameter. U1 live parameter `gain` appears in the FX Master out row.
-
----
-
-## 6. Zones in detail
-
-### 6.1 Preset strip (top)
-
-- Product wordmark left.
-- Family chips: `Family 01` … `Family 04` only (never reference-machine names).
-- Bank list (scroll) + patch list (scroll) side by side or stacked on narrow widths.
-- Prev / next patch switches; Save / Init (**proposed** — Init confirms).
-- Star / favourite toggle (**proposed**).
-
-### 6.2 Drum kit (left)
-
-- 16 pads = 16 slots (see `DRUM-MAP.md`).
-- Under grid: selected-slot knobs — Level, Pan, Tune, Decay, Filter, Drive (**proposed** set).
-- Kit-level: Kit Level, Kit Swing feel amount if used (**proposed** — may drop if engine has no swing).
-
-### 6.3 Synth / bass / keys (centre)
-
-- Engine switch: **Hybrid** (Surge-style behaviour target) / **Analog** (OB-XF-style behaviour target). Labels are neutral — never “Surge” or “OB-XF” in the UI.
-- Part / layer select if multi-part (**proposed** single part for v0.1).
-- Blocks always visible: Osc, Filter, Amp Env, Mod (condensed matrix destinations).
-- Unison, Porta, Poly/Mono.
-
-### 6.4 FX (right)
-
-- **Tape** global bus (BRIEF §3 / §7): Saturation, Head Bump, Wow, Flutter, Hiss, Print, Mix.
-- Insert FX 1–2 and Master FX: algorithm list + 3–4 macros each (**proposed** algorithm catalogue pending content lane totals).
-- Per-block bypass switches.
-
----
-
-## 7. Motion (presence, not noise)
-
-1. Pad hit: 80 ms green flash + 1 px scale punch.
-2. Preset load: title strip ink wipe left→right ~200 ms.
-3. Knob grab: indicator brightens to full neon.
-
-No continuous idle animation. No glow bloom stacks.
-
----
-
-## 8. Assets and licence checklist
-
-| Asset | Origin | Licence |
-|---|---|---|
-| Bangers.ttf | googlefonts/bangers | OFL-1.1 |
-| SpaceMono-Regular/Bold.ttf | googlefonts/spacemono | OFL-1.1 |
-| Star stamp SVG | drawn for this project | original |
-| Halftone / panel CSS | authored CSS | original |
-| Prototype HTML | authored | original |
-
-No Splice, Freakshow, Gorillaz, Green Lantern, or Korg-named assets.
-
----
-
-## 9. Porting notes (composer lane)
-
-- Port layout geometry and colours into iPlug2 / NanoVG (or chosen iPlug2 graphics stack).
-- Bind every control id from `PARAM-MANIFEST.md` 1:1; do not invent UI-only parameters.
-- Embed the two OFL families in the plugin resources; keep OFL notices in license notes.
-- Prototype is the visual contract, not production code.
-
----
-
-## 10. Proposed (undecided) items in this doc
-
-Marked **proposed** above and listed again for the coordinator:
-
-1. Default window size 1280×800; U5 states minimum **1024×700** (replaces earlier 960×640 claim until owner confirms).
-2. Eight-point gold star corner stamp.
-3. Knob double-click → default.
-4. Automation-written cyan square badge.
-5. Preset Init + favourite star.
-6. v0.1 single synth part (no multi-part mixer yet).
-7. Drum slot control set: Level, Pan, Tune, Decay, Filter, Drive.
-8. Kit Swing control (drop if unused by engine).
-9. Insert/Master FX algorithm lists and macro counts (await U2/U4).
-10. Neutral engine labels **Hybrid** / **Analog**.
-11. Whether U1 `gain` remains the long-term master level or is superseded by `synth_master_level` / `fx_out_level`.
+The wider BRIEF remains open: the drum sampler, full factory content, modulation matrix and insert effects are not implemented by this UI rebuild. This change must not present them as working controls or claim the complete instrument is finished.

@@ -140,7 +140,10 @@ END
 3 TEXTINCLUDE
 BEGIN
     "#include ""..\\config.h""\r\n"
-    "ROBOTO_FN TTF ROBOTO_FN\0"
+    "BANGERS_FN TTF BANGERS_FN\r\n"
+    "OSWALD_FN TTF OSWALD_FN\r\n"
+    "SPACEMONO_FN TTF SPACEMONO_FN\r\n"
+    "SPACEMONO_BOLD_FN TTF SPACEMONO_BOLD_FN\0"
 END
 
 #endif    // APSTUDIO_INVOKED
@@ -210,6 +213,13 @@ END
 // Generated from the TEXTINCLUDE 3 resource.
 //
 #include "..\config.h"
-ROBOTO_FN TTF ROBOTO_FN
+CHASSIS_FN PNG "images/chassis.png"
+SOURCE_MATERIAL_FN PNG "images/workspace-source.png"
+PITCH_MATERIAL_FN PNG "images/workspace-pitch.png"
+TAPE_MATERIAL_FN PNG "images/workspace-tape.png"
+BANGERS_FN TTF BANGERS_FN
+OSWALD_FN TTF OSWALD_FN
+SPACEMONO_FN TTF SPACEMONO_FN
+SPACEMONO_BOLD_FN TTF SPACEMONO_BOLD_FN
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

@@ -198,17 +198,18 @@ instruction.
 
 ## 10. INTERFACE
 
-Cartoon visual language referencing **Gorillaz** and **Green Lanterns** (DC — the comics and the
-animated show): thick ink lines, flat saturated colour, comic-panel energy, cosmic green/magenta/gold
-palette. **Original art only.**
+Editorial, avant-garde punk art direction with physically realistic high-resolution materials,
+chipped paint, machined controls and light bounce. The owner explicitly replaced the earlier
+cartoon-panel treatment and requested a complete UI/UX rethink. `docs/UI-DESIGN.md` describes the
+current implementation and its verification limits. **Original art only.**
 
-**[L5]** No Gorillaz characters or artwork (Jamie Hewlett), and no DC Green Lantern characters,
-rings, lantern icons, corps symbols, logos or costume marks. Style reference only; new art drawn in
-that school with nothing recognisable in it.
+**[L5]** The Gorillaz and Green Lantern references describe attitude, not assets to reproduce.
+No borrowed characters, rings, lantern icons, corps symbols, logos or costume marks.
 
-- Resizable, one window, every visible control maps 1:1 to a real parameter.
-- Layout supports the first-call goal: drum kit, synth/bass/keys, FX and preset browser all
-  reachable without a tab hunt.
+- Resizable single window with real parameter bindings and stable host automation IDs.
+- Internal tabs separate coherent sound-design tasks. The filter/voice channel stays reachable.
+- Preset dropdowns and nested scrollbar-free windows support browsing.
+- The owner approves the rendered design. Build and test success alone do not approve appearance.
 
 ---
 

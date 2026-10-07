@@ -1,9 +1,8 @@
 # Keith
 
-Working-name instrument plugin (private handover). This repo is the **U1 skeleton**: iPlug2
-build system, Windows VST3, macOS universal AUv2 + VST3 targets, and a minimal test voice
-(sine oscillator → gain) so builds are auditable. Engine, FX, UI, and content land in later
-units.
+Private instrument project with a working two-oscillator synth, 43 automatable parameters,
+15 original presets across Family 01-05, a tape bus, and shared Windows VST3/standalone editor.
+The physical/editorial UI rebuild is in progress. The complete instrument brief is not finished.
 
 Locked product spec: [`BRIEF.md`](BRIEF.md).
 
@@ -106,15 +105,30 @@ pluginval --strictness-level 10 --validate-in-process^
 
 `build/out/Keith.exe` runs the same engine without a host. Click the on-screen
 keyboard, or play from the computer keyboard: **A W S E D F T G Y H U J K O L**
-(one octave), **Z / X** shift the octave. Keep `Roboto-Regular.ttf` next to the
-exe, or the editor draws no text.
+(one octave), **Z / X** shift the octave. The editor faces
+(`Bangers-Regular.ttf`, `Oswald-Bold.ttf`, `SpaceMono-Regular.ttf`,
+`SpaceMono-Bold.ttf`) are embedded in the binary and also copied next to the
+exe; if you move the exe alone, copy the four TTFs with it or the editor draws
+no text.
 
-## Test voice (pre-engine)
+## Current engine and editor
 
-Nine automatable parameters: **Gain** plus the global tape bus (saturation, head bump, wow,
-flutter, hiss, print-through, mix, bypass). Polyphonic sine oscillator → smoothed gain → tape
-bus → stereo out, with an editor that binds to those nine parameters and an on-screen keyboard.
-Replaced by the real engine in a later unit — no banks, drum map or preset browser yet.
+Source, Envelopes, Tape and Library pages share a permanent filter/voice channel. The editor uses
+original baked Cycles materials and native parameter controls. See [UI design](docs/UI-DESIGN.md).
+Factory ROMs, drum sampling, the modulation matrix and insert effects remain outside this slice.
+
+```powershell
+cmake --build build --config Release --target keith-synth-tests keith-editor-tests
+ctest --test-dir build -C Release --output-on-failure
+python tools/editor_surface_check.py
+```
+
+Rendering the authored material assets is optional for a normal build. PNGs are checked into the
+asset set and embedded in Windows binaries. To rebuild them with Blender 5.x:
+
+```powershell
+blender --background --factory-startup --python tools/render_materials.py
+```
 
 ## CI
 
@@ -133,8 +147,21 @@ Replaced by the real engine in a later unit — no banks, drum map or preset bro
   Copyright (c) the iPlug 2 developers.”*
 - **Bundled permissive dependencies** shipped with iPlug2: WDL, NanoVG, NanoSVG, RTAudio,
   RTMidi, Steinberg VST3 SDK (see iPlug2 `LICENSE.txt` and dependency folders).
-- **Roboto Regular** (`resources/fonts/Roboto-Regular.ttf`) — editor UI font, Apache License 2.0,
-  Copyright the Roboto project authors. Shipped with the plugin bundle and the standalone.
+- **Oswald Bold** (`resources/fonts/Oswald-Bold.ttf`) — product wordmark and section headings.
+  SIL Open Font Licence 1.1, Copyright 2016 The Oswald Project Authors
+  (https://github.com/googlefonts/OswaldFont). The file is the static Bold from
+  `ofl/oswald/static/Oswald-Bold.ttf` at
+  https://github.com/google/fonts/blob/e6298cc84f59/ofl/oswald/static/Oswald-Bold.ttf
+  (google/fonts main no longer carries that `static/` directory). `resources/fonts/OFL.txt`
+  sits beside the TTF. One face is registered, under the font id `Oswald`. Embedded in the
+  plugin and standalone binaries.
+- **Bangers** (`resources/fonts/Bangers-Regular.ttf`) — retained in the resource table. Headings
+  use Oswald. SIL Open Font Licence 1.1, Copyright the Bangers project authors
+  (github.com/googlefonts/bangers). Embedded in the plugin and standalone binaries.
+- **Space Mono** (`resources/fonts/SpaceMono-Regular.ttf`, `SpaceMono-Bold.ttf`) — parameter
+  labels, list rows, numeric readouts. SIL Open Font Licence 1.1, Copyright the Space Mono
+  project authors (github.com/googlefonts/spacemono). Embedded in the plugin and standalone
+  binaries.
 - **Tape/analog DSP** (`src/fx/TapeAnalog.h`) — original Keith implementation. Algorithm ideas
   seeded from the Airwindows open-source library (MIT Licence, Copyright (c) 2018 Chris Johnson):
   modules **Tape**, **ToTape7**, **Flutter**, **Flutter2**, **Noise**, and **TapeDust**. No

@@ -1,0 +1,94 @@
+{
+  "timestamp_utc": "2026-10-07T10:21:33.103140+00:00",
+  "host": "ai-chud",
+  "mode": "read-only discovery",
+  "restrictions": [
+    "no installation",
+    "no service stop or start",
+    "no lane changes",
+    "no paid APIs"
+  ],
+  "ssh_returncode": 0,
+  "remote": {
+    "comfyui_root_exists": true,
+    "venv_python_exists": true,
+    "model_directories": {
+      "diffusion_models": [
+        {
+          "name": "Qwen_Image_Edit-Q4_0.gguf",
+          "bytes": 11852773920
+        },
+        {
+          "name": "flux-2-klein-base-4b-fp8.safetensors",
+          "bytes": 4089498488
+        },
+        {
+          "name": "flux-2-klein-4b-fp8.safetensors",
+          "bytes": 4070624520
+        },
+        {
+          "name": "wan2.2_ti2v_5B_fp16.safetensors",
+          "bytes": 9999658848
+        }
+      ],
+      "unet": [],
+      "checkpoints": [],
+      "text_encoders": [
+        {
+          "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "bytes": 6735906897
+        },
+        {
+          "name": "qwen_3_4b.safetensors",
+          "bytes": 8044982048
+        },
+        {
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "bytes": 9384670680
+        }
+      ],
+      "clip": [],
+      "vae": [
+        {
+          "name": "flux2-vae.safetensors",
+          "bytes": 336213556
+        },
+        {
+          "name": "qwen_image_vae.safetensors",
+          "bytes": 253806246
+        },
+        {
+          "name": "wan2.2_vae.safetensors",
+          "bytes": 1409400960
+        }
+      ],
+      "loras": []
+    },
+    "/system_stats": {
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "/object_info/UNETLoader": {
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "/object_info/CheckpointLoaderSimple": {
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "/object_info/CLIPLoader": {
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "/object_info/VAELoader": {
+      "error": "<urlopen error [Errno 111] Connection refused>"
+    },
+    "gpu": "0, NVIDIA GeForce RTX 3060, 12288 MiB, 10824 MiB, 1087 MiB, 100 %\n1, NVIDIA GeForce RTX 3060, 12288 MiB, 10677 MiB, 1236 MiB, 100 %\n",
+    "comfyui_unit_state": "inactive",
+    "text_unit_state": "active",
+    "process_names": [
+      "   2828 llama-server",
+      "   2834 ollama",
+      " 114518 python3"
+    ]
+  },
+  "tailnet_system_stats": {
+    "error": "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+  }
+}

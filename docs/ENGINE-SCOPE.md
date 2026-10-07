@@ -180,10 +180,13 @@ Voice allocator: 16 voices shared across parts (exact voice budget TBD in implem
 
 ## 6. Build order after U4
 
-1. **U4 (this pass):** `docs/ENGINE-SCOPE.md` + tape/analog block (global + per-part).
-2. **Next composer pass:** OB-XF analog voice (simpler subtractive path first).
-3. **Then:** Surge-style hybrid engine + modulation matrix.
-4. **Then:** Part routing, drum engine, Triton-family insert FX chains (data-driven from U2 lists).
+1. **U4:** `docs/ENGINE-SCOPE.md` + tape/analog block (global + per-part).
+2. **U7 (landed):** Core subtractive vertical slice in `src/synth/CoreSynth.h` — 2 osc + sub/noise,
+   Hybrid/Analog select, multimode filter, amp/pitch/filter envs, poly/mono/porta/unison. Not a full
+   OB-Xf ladder or Surge WT/matrix yet.
+3. **Next composer pass:** Deeper Analog ladder / SEM behaviour + Hybrid wavetable morph fidelity.
+4. **Then:** Modulation matrix / LFO destinations.
+5. **Then:** Part routing, drum engine, Family-01 insert FX chains (data-driven from bank lists).
 
 ---
 

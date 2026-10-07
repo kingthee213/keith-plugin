@@ -1,0 +1,235 @@
+{
+  "camera": "orthographic 12.8",
+  "resolution": [
+    2560,
+    1600
+  ],
+  "lighting": "single upper-left softbox plus nondirectional world fill",
+  "material_coordinates": "Geometry.Position world space",
+  "shared": [
+    {
+      "parameter": "kParamGain",
+      "page": "shared",
+      "cx": 1170.0,
+      "cy": 57.0,
+      "radius": 23.200000000000003
+    },
+    {
+      "parameter": "kParamFilterCutoff",
+      "page": "shared",
+      "cx": 1143.0,
+      "cy": 356.0,
+      "radius": 35.2
+    },
+    {
+      "parameter": "kParamFilterReso",
+      "page": "shared",
+      "cx": 1091.5,
+      "cy": 481.0,
+      "radius": 22.400000000000002
+    },
+    {
+      "parameter": "kParamFilterEnv",
+      "page": "shared",
+      "cx": 1196.5,
+      "cy": 481.0,
+      "radius": 22.400000000000002
+    },
+    {
+      "parameter": "kParamPorta",
+      "page": "shared",
+      "cx": 1071.0,
+      "cy": 661.0,
+      "radius": 10.4
+    },
+    {
+      "parameter": "kParamUnisonVoices",
+      "page": "shared",
+      "cx": 1143.0,
+      "cy": 661.0,
+      "radius": 10.4
+    },
+    {
+      "parameter": "kParamUnisonDetune",
+      "page": "shared",
+      "cx": 1215.0,
+      "cy": 661.0,
+      "radius": 10.4
+    }
+  ],
+  "pages": [
+    {
+      "page": "source",
+      "bounds": [
+        34,
+        204,
+        1004,
+        718
+      ],
+      "controls": [
+        {
+          "parameter": "kParamOsc1Shape",
+          "page": "source",
+          "cx": 139.0,
+          "cy": 330.5,
+          "radius": 48.400000000000006
+        },
+        {
+          "parameter": "kParamOsc1Pitch",
+          "page": "source",
+          "cx": 321.6666665,
+          "cy": 369.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamOsc1Level",
+          "page": "source",
+          "cx": 485.0,
+          "cy": 369.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamOsc1PW",
+          "page": "source",
+          "cx": 648.3333335,
+          "cy": 369.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamOsc2Shape",
+          "page": "source",
+          "cx": 139.0,
+          "cy": 566.5,
+          "radius": 48.400000000000006
+        },
+        {
+          "parameter": "kParamOsc2Pitch",
+          "page": "source",
+          "cx": 321.6666665,
+          "cy": 605.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamOsc2Level",
+          "page": "source",
+          "cx": 485.0,
+          "cy": 605.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamOsc2PW",
+          "page": "source",
+          "cx": 648.3333335,
+          "cy": 605.5,
+          "radius": 21.200000000000003
+        },
+        {
+          "parameter": "kParamSubLevel",
+          "page": "source",
+          "cx": 830.0,
+          "cy": 333.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamNoiseLevel",
+          "page": "source",
+          "cx": 934.0,
+          "cy": 333.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamFmAmount",
+          "page": "source",
+          "cx": 830.0,
+          "cy": 546.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamSynthMasterLevel",
+          "page": "source",
+          "cx": 934.0,
+          "cy": 546.5,
+          "radius": 24.0
+        }
+      ]
+    },
+    {
+      "page": "pitch",
+      "bounds": [
+        34,
+        204,
+        1004,
+        718
+      ],
+      "controls": [
+        {
+          "parameter": "kParamPitchAmount",
+          "page": "pitch",
+          "cx": 900.0,
+          "cy": 419.5,
+          "radius": 45.0
+        }
+      ]
+    },
+    {
+      "page": "tape",
+      "bounds": [
+        34,
+        204,
+        1004,
+        718
+      ],
+      "controls": [
+        {
+          "parameter": "kParamTapeSat",
+          "page": "tape",
+          "cx": 143.0,
+          "cy": 405.0,
+          "radius": 61.0
+        },
+        {
+          "parameter": "kParamTapeMix",
+          "page": "tape",
+          "cx": 883.0,
+          "cy": 405.0,
+          "radius": 61.0
+        },
+        {
+          "parameter": "kParamTapeBump",
+          "page": "tape",
+          "cx": 350.6666665,
+          "cy": 351.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamTapeWow",
+          "page": "tape",
+          "cx": 516.0,
+          "cy": 351.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamTapeFlutter",
+          "page": "tape",
+          "cx": 681.3333335,
+          "cy": 351.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamTapeHiss",
+          "page": "tape",
+          "cx": 389.0,
+          "cy": 531.5,
+          "radius": 24.0
+        },
+        {
+          "parameter": "kParamTapePrint",
+          "page": "tape",
+          "cx": 631.0,
+          "cy": 531.5,
+          "radius": 24.0
+        }
+      ]
+    }
+  ]
+}

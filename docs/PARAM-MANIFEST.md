@@ -3,9 +3,8 @@
 Contract between the editor lane and the composer / engine lane.
 **Stable ids.** The engine and host automation read these names; do not rename casually.
 
-Reconciled **U5 (2026-10-06)** against `src/Keith.cpp` / `src/Keith.h` as shipped by U1.
-U1 exposes a single host parameter: `Gain` (`kParamGain`). All other rows remain intended
-editor surface and are marked `not yet implemented` until the engine publishes them.
+Reconciled **U9 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
+U1/U4 host IDs **0–8** (Gain + tape bus) are preserved. U7 IDs **9–42** are preserved. U9 appends IDs **43–55**.
 
 Column meanings:
 
@@ -19,7 +18,7 @@ Column meanings:
 | `group` | `drum` / `synth` / `fx` / `preset` / `master` |
 | `automatable` | MIDI/host-automatable parameter name (VST3/AU) |
 | `status` | Taste / lock state: `locked` (from BRIEF) or `proposed` (not decided) |
-| `impl` | Engine wiring: `live` (exists in code) / `not yet implemented` / `live - added U5` |
+| `impl` | Engine wiring: `live` / `not yet implemented` / `live - added U#` |
 
 ---
 
@@ -28,7 +27,7 @@ Column meanings:
 | id | label | type | range | default | group | automatable | status | impl |
 |---|---|---|---|---|---|---|---|---|
 | `gain` | Gain | knob | 0-100 % | 100 % | master | Gain | proposed | live - added U5 |
-| `preset_family` | Family | list | Family 01-04 | Family 01 | preset | Preset Family | proposed | not yet implemented |
+| `preset_family` | Family | list | Family 01-05 | Family 01 | preset | Preset Family | proposed | live - host preset action |
 | `preset_bank` | Bank | list | bank index 0-N | 0 | preset | Preset Bank | proposed | not yet implemented |
 | `preset_patch` | Patch | list | patch index 0-N | 0 | preset | Preset Patch | proposed | not yet implemented |
 | `preset_prev` | Prev | switch | moment | - | preset | Preset Prev | proposed | not yet implemented |
@@ -63,45 +62,62 @@ Column meanings:
 | `drum_slot_solo` | Solo | switch | off/on | off | drum | Drum Slot Solo | proposed | not yet implemented |
 | `drum_kit_level` | Kit Level | knob | -inf-+6 dB | 0 dB | drum | Drum Kit Level | proposed | not yet implemented |
 | `drum_kit_swing` | Swing | knob | 0-100 % | 0 % | drum | Drum Kit Swing | proposed | not yet implemented |
-| `synth_engine` | Engine | switch | Hybrid / Analog | Hybrid | synth | Synth Engine | proposed | not yet implemented |
+| `synth_engine` | Engine | switch | Hybrid / Analog | Hybrid | synth | Synth Engine | proposed | live - added U7 |
 | `synth_part` | Part | list | 1-4 | 1 | synth | Synth Part | proposed | not yet implemented |
-| `synth_poly_mode` | Poly | switch | Poly / Mono | Poly | synth | Synth Poly Mode | proposed | not yet implemented |
-| `synth_porta` | Porta | knob | 0-1000 ms | 0 ms | synth | Synth Porta | proposed | not yet implemented |
-| `synth_unison_voices` | Unison | knob | 1-8 | 1 | synth | Synth Unison Voices | proposed | not yet implemented |
-| `synth_unison_detune` | Detune | knob | 0-100 % | 25 % | synth | Synth Unison Detune | proposed | not yet implemented |
-| `synth_osc1_shape` | Osc1 Shape | knob | 0-100 % | 0 % | synth | Synth Osc1 Shape | proposed | not yet implemented |
-| `synth_osc1_pitch` | Osc1 Pitch | knob | -24-+24 st | 0 st | synth | Synth Osc1 Pitch | proposed | not yet implemented |
-| `synth_osc1_level` | Osc1 Level | knob | 0-100 % | 100 % | synth | Synth Osc1 Level | proposed | not yet implemented |
-| `synth_osc2_shape` | Osc2 Shape | knob | 0-100 % | 0 % | synth | Synth Osc2 Shape | proposed | not yet implemented |
-| `synth_osc2_pitch` | Osc2 Pitch | knob | -24-+24 st | 0 st | synth | Synth Osc2 Pitch | proposed | not yet implemented |
-| `synth_osc2_level` | Osc2 Level | knob | 0-100 % | 80 % | synth | Synth Osc2 Level | proposed | not yet implemented |
-| `synth_sub_level` | Sub Level | knob | 0-100 % | 0 % | synth | Synth Sub Level | proposed | not yet implemented |
-| `synth_noise_level` | Noise | knob | 0-100 % | 0 % | synth | Synth Noise Level | proposed | not yet implemented |
-| `synth_fm_amount` | FM | knob | 0-100 % | 0 % | synth | Synth FM Amount | proposed | not yet implemented |
-| `synth_filter_cutoff` | Cutoff | knob | 20 Hz-20 kHz | 8 kHz | synth | Synth Filter Cutoff | proposed | not yet implemented |
-| `synth_filter_reso` | Reso | knob | 0-100 % | 10 % | synth | Synth Filter Reso | proposed | not yet implemented |
-| `synth_filter_type` | Filt Type | list | LP24 / LP12 / BP / HP | LP24 | synth | Synth Filter Type | proposed | not yet implemented |
-| `synth_filter_env` | Filt Env | knob | -100-+100 % | 40 % | synth | Synth Filter Env | proposed | not yet implemented |
-| `synth_amp_attack` | Attack | knob | 0.1 ms-10 s | 5 ms | synth | Synth Amp Attack | proposed | not yet implemented |
-| `synth_amp_decay` | Decay | knob | 1 ms-10 s | 200 ms | synth | Synth Amp Decay | proposed | not yet implemented |
-| `synth_amp_sustain` | Sustain | knob | 0-100 % | 70 % | synth | Synth Amp Sustain | proposed | not yet implemented |
-| `synth_amp_release` | Release | knob | 1 ms-10 s | 300 ms | synth | Synth Amp Release | proposed | not yet implemented |
-| `synth_filt_attack` | F Att | knob | 0.1 ms-10 s | 10 ms | synth | Synth Filt Attack | proposed | not yet implemented |
-| `synth_filt_decay` | F Dec | knob | 1 ms-10 s | 250 ms | synth | Synth Filt Decay | proposed | not yet implemented |
-| `synth_filt_sustain` | F Sus | knob | 0-100 % | 40 % | synth | Synth Filt Sustain | proposed | not yet implemented |
-| `synth_filt_release` | F Rel | knob | 1 ms-10 s | 300 ms | synth | Synth Filt Release | proposed | not yet implemented |
-| `synth_lfo_rate` | LFO Rate | knob | 0.01-30 Hz | 1 Hz | synth | Synth LFO Rate | proposed | not yet implemented |
-| `synth_lfo_amount` | LFO Amt | knob | 0-100 % | 0 % | synth | Synth LFO Amount | proposed | not yet implemented |
-| `synth_mod_wheel` | Mod Dest | list | Cutoff / Pitch / Shape / Level | Cutoff | synth | Synth Mod Dest | proposed | not yet implemented |
-| `synth_master_level` | Level | knob | -inf-+6 dB | 0 dB | synth | Synth Master Level | proposed | not yet implemented |
-| `fx_tape_sat` | Saturation | knob | 0-100 % | 25 % | fx | FX Tape Saturation | proposed | not yet implemented |
-| `fx_tape_bump` | Head Bump | knob | 0-100 % | 20 % | fx | FX Tape Head Bump | proposed | not yet implemented |
-| `fx_tape_wow` | Wow | knob | 0-100 % | 10 % | fx | FX Tape Wow | proposed | not yet implemented |
-| `fx_tape_flutter` | Flutter | knob | 0-100 % | 10 % | fx | FX Tape Flutter | proposed | not yet implemented |
-| `fx_tape_hiss` | Hiss | knob | 0-100 % | 5 % | fx | FX Tape Hiss | proposed | not yet implemented |
-| `fx_tape_print` | Print | knob | 0-100 % | 0 % | fx | FX Tape Print | proposed | not yet implemented |
-| `fx_tape_mix` | Tape Mix | knob | 0-100 % | 40 % | fx | FX Tape Mix | proposed | not yet implemented |
-| `fx_tape_bypass` | Tape Byp | switch | off/on | off | fx | FX Tape Bypass | proposed | not yet implemented |
+| `synth_poly_mode` | Poly | switch | Poly / Mono | Poly | synth | Synth Poly Mode | proposed | live - added U7 |
+| `synth_porta` | Porta | knob | 0-1000 ms | 0 ms | synth | Synth Porta | proposed | live - added U7 |
+| `synth_unison_voices` | Unison | knob | 1-8 | 1 | synth | Synth Unison Voices | proposed | live - added U7 |
+| `synth_unison_detune` | Detune | knob | 0-100 % | 25 % | synth | Synth Unison Detune | proposed | live - added U7 |
+| `synth_osc1_shape` | Osc1 Shape | knob | 0-100 % | 0 % | synth | Synth Osc1 Shape | proposed | live - added U7 |
+| `synth_osc1_pitch` | Osc1 Pitch | knob | -24-+24 st | 0 st | synth | Synth Osc1 Pitch | proposed | live - added U7 |
+| `synth_osc1_level` | Osc1 Level | knob | 0-100 % | 100 % | synth | Synth Osc1 Level | proposed | live - added U7 |
+| `synth_osc1_pw` | Osc1 PW | knob | 5-95 % | 50 % | synth | Synth Osc1 PW | proposed | live - added U7 |
+| `synth_osc2_shape` | Osc2 Shape | knob | 0-100 % | 0 % | synth | Synth Osc2 Shape | proposed | live - added U7 |
+| `synth_osc2_pitch` | Osc2 Pitch | knob | -24-+24 st | 0 st | synth | Synth Osc2 Pitch | proposed | live - added U7 |
+| `synth_osc2_level` | Osc2 Level | knob | 0-100 % | 80 % | synth | Synth Osc2 Level | proposed | live - added U7 |
+| `synth_osc2_pw` | Osc2 PW | knob | 5-95 % | 50 % | synth | Synth Osc2 PW | proposed | live - added U7 |
+| `synth_sub_level` | Sub Level | knob | 0-100 % | 0 % | synth | Synth Sub Level | proposed | live - added U7 |
+| `synth_noise_level` | Noise | knob | 0-100 % | 0 % | synth | Synth Noise Level | proposed | live - added U7 |
+| `synth_fm_amount` | FM | knob | 0-100 % | 0 % | synth | Synth FM Amount | proposed | live - added U7 |
+| `synth_filter_cutoff` | Cutoff | knob | 20 Hz-20 kHz | 8 kHz | synth | Synth Filter Cutoff | proposed | live - added U7 |
+| `synth_filter_reso` | Reso | knob | 0-100 % | 10 % | synth | Synth Filter Reso | proposed | live - added U7 |
+| `synth_filter_type` | Filt Type | list | LP24 / LP12 / BP / HP | LP24 | synth | Synth Filter Type | proposed | live - added U7 |
+| `synth_filter_env` | Filt Env | knob | -100-+100 % | 40 % | synth | Synth Filter Env | proposed | live - added U7 |
+| `synth_amp_attack` | Attack | knob | 0.1 ms-10 s | 5 ms | synth | Synth Amp Attack | proposed | live - added U7 |
+| `synth_amp_decay` | Decay | knob | 1 ms-10 s | 200 ms | synth | Synth Amp Decay | proposed | live - added U7 |
+| `synth_amp_sustain` | Sustain | knob | 0-100 % | 70 % | synth | Synth Amp Sustain | proposed | live - added U7 |
+| `synth_amp_release` | Release | knob | 1 ms-10 s | 300 ms | synth | Synth Amp Release | proposed | live - added U7 |
+| `synth_pitch_attack` | P Att | knob | 0.1 ms-10 s | 10 ms | synth | Synth Pitch Attack | proposed | live - added U7 |
+| `synth_pitch_decay` | P Dec | knob | 1 ms-10 s | 250 ms | synth | Synth Pitch Decay | proposed | live - added U7 |
+| `synth_pitch_sustain` | P Sus | knob | 0-100 % | 0 % | synth | Synth Pitch Sustain | proposed | live - added U7 |
+| `synth_pitch_release` | P Rel | knob | 1 ms-10 s | 300 ms | synth | Synth Pitch Release | proposed | live - added U7 |
+| `synth_pitch_amount` | P Amt | knob | -24-+24 st | 0 st | synth | Synth Pitch Amount | proposed | live - added U7 |
+| `synth_filt_attack` | F Att | knob | 0.1 ms-10 s | 10 ms | synth | Synth Filt Attack | proposed | live - added U7 |
+| `synth_filt_decay` | F Dec | knob | 1 ms-10 s | 250 ms | synth | Synth Filt Decay | proposed | live - added U7 |
+| `synth_filt_sustain` | F Sus | knob | 0-100 % | 40 % | synth | Synth Filt Sustain | proposed | live - added U7 |
+| `synth_filt_release` | F Rel | knob | 1 ms-10 s | 300 ms | synth | Synth Filt Release | proposed | live - added U7 |
+| `synth_osc_sync` | Osc Sync | switch | Free / Sync | Free | synth | Synth Osc Sync | proposed | live - added U9 |
+| `synth_osc_ring` | Osc Ring | switch | Off / On | Off | synth | Synth Osc Ring | proposed | live - added U9 |
+| `synth_filter_key_track` | Key Track | knob | 0-100 % | 0 % | synth | Synth Filter Key Track | proposed | live - added U9 |
+| `synth_filter_drive` | Drive | knob | 0-100 % | 0 % | synth | Synth Filter Drive | proposed | live - added U9 |
+| `synth_lfo_rate` | LFO Rate | knob | 0.01-30 Hz | 1 Hz | synth | Synth LFO Rate | proposed | live - added U9 |
+| `synth_lfo_shape` | LFO Shape | list | Sine / Tri / Saw / Square / S&H | Sine | synth | Synth LFO Shape | proposed | live - added U9 |
+| `synth_lfo_dest` | LFO Dest | list | Off / Cutoff / Pitch / Shape / Level | Off | synth | Synth LFO Dest | proposed | live - added U9 |
+| `synth_lfo_amount` | LFO Amt | knob | -100-+100 % | 0 % | synth | Synth LFO Amount | proposed | live - added U9 |
+| `synth_mod_wheel` | Mod Dest | list | Off / Cutoff / Pitch / Shape / Level | Off | synth | Synth Mod Dest | proposed | live - added U9 |
+| `synth_mod_amount` | Mod Amt | knob | -100-+100 % | 0 % | synth | Synth Mod Amount | proposed | live - added U9 |
+| `synth_vel_to_amp` | Vel To Amp | knob | 0-100 % | 0 % | synth | Synth Vel To Amp | proposed | live - added U9 |
+| `synth_vel_to_filter` | Vel To Filter | knob | 0-100 % | 0 % | synth | Synth Vel To Filter | proposed | live - added U9 |
+| `synth_mono_legato` | Mono Legato | switch | Retrig / Legato | Retrig | synth | Synth Mono Legato | proposed | live - added U9 |
+| `synth_master_level` | Level | knob | -60-+6 dB | 0 dB | synth | Synth Master Level | proposed | live - added U7 |
+| `fx_tape_sat` | Saturation | knob | 0-100 % | 25 % | fx | FX Tape Saturation | proposed | live - added U4 |
+| `fx_tape_bump` | Head Bump | knob | 0-100 % | 20 % | fx | FX Tape Head Bump | proposed | live - added U4 |
+| `fx_tape_wow` | Wow | knob | 0-100 % | 10 % | fx | FX Tape Wow | proposed | live - added U4 |
+| `fx_tape_flutter` | Flutter | knob | 0-100 % | 10 % | fx | FX Tape Flutter | proposed | live - added U4 |
+| `fx_tape_hiss` | Hiss | knob | 0-100 % | 5 % | fx | FX Tape Hiss | proposed | live - added U4 |
+| `fx_tape_print` | Print | knob | 0-100 % | 0 % | fx | FX Tape Print | proposed | live - added U4 |
+| `fx_tape_mix` | Tape Mix | knob | 0-100 % | 40 % | fx | FX Tape Mix | proposed | live - added U4 |
+| `fx_tape_bypass` | Tape Byp | switch | off/on | off | fx | FX Tape Bypass | proposed | live - added U4 |
 | `fx_ins1_algo` | Ins1 Algo | list | algo enum (TBD) | 0 | fx | FX Insert1 Algo | proposed | not yet implemented |
 | `fx_ins1_a` | Ins1 A | knob | 0-100 % | 50 % | fx | FX Insert1 A | proposed | not yet implemented |
 | `fx_ins1_b` | Ins1 B | knob | 0-100 % | 50 % | fx | FX Insert1 B | proposed | not yet implemented |
@@ -124,53 +140,78 @@ Column meanings:
 
 ---
 
-## U1 code surface (source of truth for `live`)
+## U7 code surface (source of truth for `live`)
 
-From `src/Keith.h` / `src/Keith.cpp` (read-only for this lane):
+From `src/Keith.h` / `src/Keith.cpp`:
 
-```
-enum EParams { kParamGain = 0, kNumParams };
-GetParam(kParamGain)->InitDouble("Gain", 100., 0., 100.0, 0.01, "%");
-```
+| Code enum | ID | Host name | Manifest `id` |
+|---|---|---|---|
+| `kParamGain` | 0 | Gain | `gain` |
+| `kParamTapeSat` … `kParamTapeBypass` | 1–8 | FX Tape * | `fx_tape_*` |
+| `kParamEngine` | 9 | Synth Engine | `synth_engine` |
+| `kParamPolyMode` | 10 | Synth Poly Mode | `synth_poly_mode` |
+| `kParamPorta` | 11 | Synth Porta | `synth_porta` |
+| `kParamUnisonVoices` | 12 | Synth Unison Voices | `synth_unison_voices` |
+| `kParamUnisonDetune` | 13 | Synth Unison Detune | `synth_unison_detune` |
+| `kParamOsc1Shape` … `kParamOsc1PW` | 14–17 | Synth Osc1 * | `synth_osc1_*` |
+| `kParamOsc2Shape` … `kParamOsc2PW` | 18–21 | Synth Osc2 * | `synth_osc2_*` |
+| `kParamSubLevel` | 22 | Synth Sub Level | `synth_sub_level` |
+| `kParamNoiseLevel` | 23 | Synth Noise Level | `synth_noise_level` |
+| `kParamFmAmount` | 24 | Synth FM Amount | `synth_fm_amount` |
+| `kParamFilterType` … `kParamFilterEnv` | 25–28 | Synth Filter * | `synth_filter_*` |
+| `kParamAmpAttack` … `kParamAmpRelease` | 29–32 | Synth Amp * | `synth_amp_*` |
+| `kParamPitchAttack` … `kParamPitchAmount` | 33–37 | Synth Pitch * | `synth_pitch_*` |
+| `kParamSynthMasterLevel` | 38 | Synth Master Level | `synth_master_level` |
+| `kParamFiltAttack` … `kParamFiltRelease` | 39–42 | Synth Filt * | `synth_filt_*` |
 
-| Code enum | Host name | Range | Default | Manifest `id` |
-|---|---|---|---|---|
-| `kParamGain` | Gain | 0-100 % step 0.01 | 100 % | `gain` |
+**Migration note:** No existing IDs moved. Synth params are new appends. Pitch envelope rows (`synth_pitch_*`) and pulse-width rows (`synth_osc1_pw`, `synth_osc2_pw`) are new vs the U5 intent table (U5 listed filter ADSR but not pitch ADSR / PW).
 
-No other `Init*` parameter registrations exist in U1.
+`kNumParams` at the U7 checkpoint was **43**. U9 below is the current map.
 
 ---
 
-## Row counts (U5 reconcile)
+## U9 code surface (source of truth for `live`)
+
+Appended after ID 42. Host names are the `Init*` strings in `src/Keith.cpp`. Defaults are inert.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---|---|---|---|
+| `kParamOscSync` | 43 | Synth Osc Sync | `synth_osc_sync` | Free |
+| `kParamOscRing` | 44 | Synth Osc Ring | `synth_osc_ring` | Off |
+| `kParamFilterKeyTrack` | 45 | Synth Filter Key Track | `synth_filter_key_track` | 0 % |
+| `kParamFilterDrive` | 46 | Synth Filter Drive | `synth_filter_drive` | 0 % |
+| `kParamLfoRate` | 47 | Synth LFO Rate | `synth_lfo_rate` | 1 Hz |
+| `kParamLfoShape` | 48 | Synth LFO Shape | `synth_lfo_shape` | Sine |
+| `kParamLfoDest` | 49 | Synth LFO Dest | `synth_lfo_dest` | Off |
+| `kParamLfoAmount` | 50 | Synth LFO Amount | `synth_lfo_amount` | 0 % |
+| `kParamModWheelDest` | 51 | Synth Mod Dest | `synth_mod_wheel` | Off |
+| `kParamModWheelAmount` | 52 | Synth Mod Amount | `synth_mod_amount` | 0 % |
+| `kParamVelToAmp` | 53 | Synth Vel To Amp | `synth_vel_to_amp` | 0 % |
+| `kParamVelToFilter` | 54 | Synth Vel To Filter | `synth_vel_to_filter` | 0 % |
+| `kParamMonoLegato` | 55 | Synth Mono Legato | `synth_mono_legato` | Retrig |
+
+DSP owner is `src/synth/CoreSynth.h` (`Voice::Process`, `Lfo`, `HeldKeyTracker`). CC1 is stored from the MIDI message in `KeithDSP::TrackPerformanceMidi` because `VoiceAllocator` addresses a controller by its CC number, so `SetControl` does not reach a voice playing any other note. `SetControl` still writes the same runtime value when it does fire.
+
+`kNumParams` = **56**.
+
+---
+
+## Row counts (U9 reconcile)
 
 | Metric | Count |
 |---|---|
-| Total rows | **94** |
-| Rows matching a real parameter (`impl` contains `live`) | **1** (`gain`) |
-| Rows `not yet implemented` | **93** |
-| Rows added this pass | **1** (`gain`) |
-
-Note: U3 reported 101 rows; the table that was actually on disk had **93** data rows.
-U5 keeps those 93 intent rows and adds `gain`.
+| Total rows | **111** |
+| Real parameters (`kNumParams`, IDs 0–55) | **56** |
+| Host preset action, not a parameter (`preset_family`) | **1** |
+| Rows `not yet implemented` | **54** |
+| Rows added this pass (new ids) | **10** (sync, ring, key track, drive, LFO shape, LFO dest, mod amount, vel to amp, vel to filter, mono legato) |
+| Rows flipped to `live` this pass | **3** (`synth_lfo_rate`, `synth_lfo_amount`, `synth_mod_wheel`) |
 
 ---
 
-## Notes for the engine lane
+## Notes for the editor lane
 
-1. Pads are UI triggers / slot selectors; MIDI note -> slot mapping lives in `DRUM-MAP.md`. Host automation of pads is optional; if the host surface cannot expose pads, keep `drum_slot_select` + slot knobs.
-2. Momentary preset switches (`prev` / `next` / `save` / `init`) may be implemented as non-automatable UI actions; they stay in this manifest so the editor layout stays 1:1.
-3. `fx_*_algo` enum members are filled when U2 / U4 publish the factory FX algorithm list. Until then the prototype shows placeholder names `Algo 01` without claiming real algorithm identities.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0–55. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
+3. Deferred intentionally: `synth_part`, all `drum_*`, all `preset_*`, insert/master FX, `fx_out_level`. One LFO and CC1 shipped in U9. A modulation matrix did not.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.
-5. `gain` is the U1 sine-voice output gain. It is distinct from the proposed `synth_master_level` and `fx_out_level` rows (those remain intended once the fuller engine lands). Do not silently merge them without a composer-lane decision.
-6. When U4 / later engine passes add parameters, flip `impl` from `not yet implemented` to `live` and align `range` / `default` / `label` to the code.
-
-## Proposed-but-undecided (summary)
-
-All non-`gain` rows stay `proposed` (taste / product surface not locked). Highest-impact undecided clusters:
-
-- Preset navigation / save / init / favourite behaviour
-- Drum slot tone control set and kit swing
-- Synth engine labelling (Hybrid / Analog), part count, filter enum
-- Insert/Master FX algorithm catalogues and macro meanings
-- Whether pads are host-automatable parameters or UI-only
-- Whether U1 `gain` remains the long-term master level or is superseded by `synth_master_level` / `fx_out_level`
