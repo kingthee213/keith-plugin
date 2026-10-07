@@ -101,6 +101,59 @@ if(WIN32 AND TARGET Keith-vst3)
   endforeach()
 endif()
 
+# Headless proof that every baked preset survives Keith::RestorePreset.
+# IPLUG_EDITOR stays off so this target does not pull IGraphics. Building
+# keith-synth-tests builds this too, because the verification line names that target.
+set(_keith_vst3_sdk "${IPLUG2_DIR}/Dependencies/IPlug/VST3_SDK")
+add_executable(keith-preset-restore-tests
+  tools/preset_restore_test.cpp
+  src/Keith.cpp
+  "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3.cpp"
+  "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3_ProcessorBase.cpp"
+  "${_keith_vst3_sdk}/base/source/baseiids.cpp"
+  "${_keith_vst3_sdk}/base/source/fdebug.cpp"
+  "${_keith_vst3_sdk}/base/source/fobject.cpp"
+  "${_keith_vst3_sdk}/base/source/fstring.cpp"
+  "${_keith_vst3_sdk}/base/source/updatehandler.cpp"
+  "${_keith_vst3_sdk}/base/thread/source/flock.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/funknown.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/ustring.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/coreiids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/common/pluginview.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/common/commoniids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstbus.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstcomponent.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstcomponentbase.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstinitiids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstparameters.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstsinglecomponenteffect.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/main/pluginfactory.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/main/dllmain.cpp"
+)
+target_compile_features(keith-preset-restore-tests PRIVATE cxx_std_17)
+target_include_directories(keith-preset-restore-tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+  "${IPLUG2_DIR}/IPlug/VST3"
+  "${_keith_vst3_sdk}"
+  "${_keith_vst3_sdk}/pluginterfaces"
+  "${_keith_vst3_sdk}/public.sdk"
+  "${_keith_vst3_sdk}/public.sdk/source"
+  "${_keith_vst3_sdk}/base"
+)
+target_compile_definitions(keith-preset-restore-tests PRIVATE
+  VST3_API
+  IPLUG_DSP=1
+  IPLUG_EDITOR=0
+  NO_IGRAPHICS
+  $<$<CONFIG:Debug>:DEVELOPMENT>
+  $<$<NOT:$<CONFIG:Debug>>:RELEASE>
+)
+target_link_libraries(keith-preset-restore-tests PRIVATE iPlug2::IPlug iPlug2::Extras::Synth)
+add_test(NAME preset-restore COMMAND keith-preset-restore-tests)
+add_dependencies(keith-synth-tests keith-preset-restore-tests)
+
 if(WIN32 AND TARGET Keith-app)
   add_custom_command(TARGET Keith-app POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
