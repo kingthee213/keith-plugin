@@ -42,7 +42,10 @@
   --fill-b: #0F2A22;
   --fill-c: #2A1020;
   --fill-d: #1A1A10;
-  --shadow: 4px 4px 0 var(--line);
+  --shadow: 3px 3px 0 var(--line);
+  --pad: 44px;
+  --knob: 34px;
+  --knob-wrap: 50px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,11 +54,11 @@ html, body {
   background: #050508;
   color: var(--paper);
   font-family: "Space Mono", monospace;
-  overflow: auto;
+  overflow: hidden;
 }
 body {
-  min-width: 960px;
-  min-height: 640px;
+  min-width: 1024px;
+  min-height: 700px;
 }
 
 /* Halftone atmosphere  -  original CSS, no external assets */
@@ -75,18 +78,20 @@ body::before {
   z-index: 1;
   width: 100%;
   height: 100%;
-  min-height: 640px;
-  padding: 10px;
+  min-height: 700px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  overflow: hidden;
 }
 
 .comic {
   background: var(--panel);
-  border: 5px solid var(--line);
+  border: 4px solid var(--line);
   box-shadow: var(--shadow);
   position: relative;
+  min-height: 0;
 }
 .comic::after {
   content: "";
@@ -99,12 +104,13 @@ body::before {
 .titlebar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 10px;
-  border-bottom: 4px solid var(--line);
+  gap: 6px;
+  height: 22px;
+  flex: 0 0 22px;
+  padding: 0 8px;
+  border-bottom: 3px solid var(--line);
   font-family: "Bangers", sans-serif;
-  font-size: 22px;
+  font-size: 17px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink);
@@ -115,114 +121,128 @@ body::before {
 .titlebar.paper { background: var(--paper); }
 
 .star {
-  width: 18px; height: 18px; flex: 0 0 18px;
+  width: 16px; height: 16px; flex: 0 0 16px;
 }
 .star polygon { fill: var(--gold); stroke: var(--line); stroke-width: 2; }
 
-/* Top preset strip */
+/* Top preset strip — single compact row */
 #preset {
-  flex: 0 0 auto;
+  flex: 0 0 52px;
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 168px 1fr;
   background: var(--fill-d);
-  min-height: 64px;
+  overflow: hidden;
 }
 #preset .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-right: 5px solid var(--line);
+  gap: 8px;
+  padding: 4px 10px;
+  border-right: 4px solid var(--line);
   background: var(--ink);
 }
 #preset .brand h1 {
   font-family: "Bangers", sans-serif;
-  font-size: 42px;
+  font-size: 32px;
   color: var(--gold);
   -webkit-text-stroke: 2px var(--line);
   paint-order: stroke fill;
   line-height: 1;
 }
 #preset .brand .sub {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--paper);
   opacity: 0.7;
-  margin-top: 2px;
+  margin-top: 1px;
+  white-space: nowrap;
 }
 #preset .strip-body {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 4px 8px;
+  min-width: 0;
+  overflow: hidden;
 }
-.family-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.family-chips { display: flex; gap: 4px; flex: 0 0 auto; }
 .chip {
   font-family: "Bangers", sans-serif;
-  font-size: 14px;
-  padding: 4px 10px;
-  border: 3px solid var(--line);
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 2px solid var(--line);
   background: var(--panel-alt);
   color: var(--paper);
   cursor: pointer;
   box-shadow: 2px 2px 0 var(--line);
+  white-space: nowrap;
 }
 .chip.active { background: var(--gold); color: var(--ink); }
 .lists {
-  display: flex; gap: 8px; flex: 1; min-width: 280px;
+  display: flex; gap: 6px; flex: 1; min-width: 0;
 }
 .listbox {
   flex: 1;
-  min-width: 120px;
-  max-height: 72px;
-  overflow: auto;
-  border: 3px solid var(--line);
+  min-width: 100px;
+  height: 40px;
+  overflow: hidden;
+  border: 2px solid var(--line);
   background: var(--panel);
 }
 .listbox .row {
-  height: 24px;
-  padding: 0 8px;
-  font-size: 11px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10px;
   display: flex; align-items: center;
   border-bottom: 1px solid #2a2a3a;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .listbox .row:nth-child(even) { background: var(--panel-alt); }
 .listbox .row.sel {
   background: var(--fill-c);
-  box-shadow: inset 6px 0 0 var(--magenta);
+  box-shadow: inset 5px 0 0 var(--magenta);
   color: var(--paper);
   font-weight: 700;
 }
-.btn-row { display: flex; gap: 6px; }
+.btn-row { display: flex; gap: 4px; flex: 0 0 auto; }
 .btn {
   font-family: "Bangers", sans-serif;
-  font-size: 14px;
-  padding: 6px 12px;
-  border: 3px solid var(--line);
+  font-size: 12px;
+  padding: 4px 9px;
+  border: 2px solid var(--line);
   background: var(--green);
   color: var(--ink);
   cursor: pointer;
   box-shadow: 2px 2px 0 var(--line);
+  white-space: nowrap;
 }
 .btn.mag { background: var(--magenta); color: var(--paper); }
 .btn.ghost { background: var(--panel-alt); color: var(--paper); }
 .btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--line); }
 
-/* Main three columns */
+/* Main three columns — no column scroll at design size */
 #main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(360px, 1fr) minmax(260px, 320px);
-  gap: 10px;
+  grid-template-columns: minmax(260px, 300px) minmax(340px, 1fr) minmax(280px, 340px);
+  gap: 6px;
   min-height: 0;
-}
-@media (max-width: 1100px) {
-  #main { grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.2fr) minmax(220px, 0.9fr); }
+  overflow: hidden;
 }
 
 .zone { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.zone .body { flex: 1; padding: 10px; overflow: auto; min-height: 0; }
+.zone .body {
+  flex: 1;
+  padding: 6px;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
 #drum { background: var(--fill-a); }
 #synth { background: var(--fill-b); }
@@ -230,14 +250,16 @@ body::before {
 
 .pad-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, var(--pad));
+  grid-template-rows: repeat(4, var(--pad));
+  gap: 4px;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 .pad {
-  aspect-ratio: 1;
-  min-height: 48px;
-  border: 4px solid var(--line);
+  width: var(--pad);
+  height: var(--pad);
+  border: 3px solid var(--line);
   background: var(--panel-alt);
   display: flex;
   flex-direction: column;
@@ -246,26 +268,26 @@ body::before {
   cursor: pointer;
   user-select: none;
   position: relative;
-  box-shadow: 3px 3px 0 var(--line);
+  box-shadow: 2px 2px 0 var(--line);
 }
 .pad .name {
   font-family: "Bangers", sans-serif;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--paper);
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 .pad .note {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--cyan);
-  margin-top: 2px;
+  margin-top: 1px;
 }
-.pad.selected { outline: 3px solid var(--gold); outline-offset: 2px; }
+.pad.selected { outline: 2px solid var(--gold); outline-offset: 1px; }
 .pad.hit { background: var(--green); }
 .pad.hit .name { color: var(--ink); }
 .pad.muted::before {
   content: "";
-  position: absolute; inset: 6px;
+  position: absolute; inset: 4px;
   background: repeating-linear-gradient(-45deg, transparent, transparent 4px, var(--mute) 4px, var(--mute) 6px);
   opacity: 0.55;
   pointer-events: none;
@@ -274,28 +296,27 @@ body::before {
 .knob-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 12px;
-  margin-top: 6px;
+  gap: 2px 4px;
+  align-items: flex-start;
 }
 .knob-wrap {
-  width: 64px;
+  width: var(--knob-wrap);
   text-align: center;
 }
 .knob {
-  width: 44px; height: 44px;
+  width: var(--knob); height: var(--knob);
   margin: 0 auto;
   border-radius: 50%;
-  border: 3px solid var(--line);
+  border: 2px solid var(--line);
   background: var(--panel-alt);
   position: relative;
   cursor: ns-resize;
-  box-shadow: 2px 2px 0 var(--line);
+  box-shadow: 1px 1px 0 var(--line);
 }
-.knob.sm { width: 36px; height: 36px; }
 .knob .tick {
   position: absolute;
   left: 50%; top: 50%;
-  width: 3px; height: 16px;
+  width: 2px; height: 12px;
   background: var(--green);
   border: 1px solid var(--line);
   transform-origin: 50% 100%;
@@ -305,26 +326,28 @@ body::before {
 .knob.mag .tick { background: var(--magenta); }
 .knob-wrap label {
   display: block;
-  margin-top: 4px;
-  font-size: 10px;
+  margin-top: 2px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--paper);
+  line-height: 1.1;
 }
 .knob-wrap .val {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--gold);
+  line-height: 1.1;
 }
 
 .switch {
-  width: 48px; height: 22px;
-  border: 3px solid var(--line);
-  border-radius: 11px;
+  width: 40px; height: 18px;
+  border: 2px solid var(--line);
+  border-radius: 9px;
   background: var(--panel-alt);
   position: relative;
   cursor: pointer;
-  box-shadow: 2px 2px 0 var(--line);
+  box-shadow: 1px 1px 0 var(--line);
   display: inline-block;
   vertical-align: middle;
 }
@@ -333,40 +356,54 @@ body::before {
 .switch .thumb {
   position: absolute;
   top: 1px; left: 2px;
-  width: 14px; height: 14px;
+  width: 12px; height: 12px;
   background: var(--paper);
   border: 2px solid var(--line);
   border-radius: 50%;
   transition: left 80ms linear;
 }
-.switch.on .thumb { left: 26px; }
+.switch.on .thumb { left: 22px; }
 
 .block {
-  border: 3px solid var(--line);
+  border: 2px solid var(--line);
   background: rgba(11,11,18,0.45);
-  padding: 8px;
-  margin-bottom: 8px;
+  padding: 4px 5px 5px;
+  flex: 0 0 auto;
 }
+.block.grow { flex: 1 1 auto; min-height: 0; }
 .block h3 {
   font-family: "Bangers", sans-serif;
-  font-size: 16px;
+  font-size: 13px;
   color: var(--gold);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   letter-spacing: 0.03em;
+  line-height: 1.1;
 }
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+.block-head h3 { margin-bottom: 0; }
+.inline-switches {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px;
+}
+.inline-switches .lbl { font-size: 10px; text-transform: uppercase; }
 .engine-row {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 0 0 auto;
 }
-.engine-row span.lbl { font-size: 11px; text-transform: uppercase; }
+.engine-row span.lbl { font-size: 10px; text-transform: uppercase; }
 .seg {
-  display: flex; border: 3px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+  display: flex; border: 2px solid var(--line); box-shadow: 1px 1px 0 var(--line);
 }
 .seg button {
   font-family: "Bangers", sans-serif;
-  font-size: 14px;
-  padding: 4px 12px;
+  font-size: 12px;
+  padding: 2px 10px;
   border: none;
-  border-right: 3px solid var(--line);
+  border-right: 2px solid var(--line);
   background: var(--panel-alt);
   color: var(--paper);
   cursor: pointer;
@@ -374,21 +411,52 @@ body::before {
 .seg button:last-child { border-right: none; }
 .seg button.active { background: var(--green); color: var(--ink); }
 
-.meta {
-  font-size: 10px;
-  opacity: 0.65;
-  margin-top: 8px;
+.fx-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  flex: 0 0 auto;
 }
+.synth-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.meta { display: none; }
 .size-readout {
   position: fixed;
-  right: 14px; bottom: 10px;
+  right: 10px; bottom: 8px;
   z-index: 5;
   font-size: 10px;
   background: var(--paper);
   color: var(--ink);
-  border: 3px solid var(--line);
+  border: 2px solid var(--line);
   padding: 2px 8px;
   box-shadow: 2px 2px 0 var(--line);
+}
+
+/* Minimum window: 1024×700 — tighter pads/knobs, same complete surface */
+@media (max-width: 1100px), (max-height: 740px) {
+  :root {
+    --pad: 36px;
+    --knob: 30px;
+    --knob-wrap: 44px;
+  }
+  #preset { flex-basis: 48px; grid-template-columns: 140px 1fr; }
+  #preset .brand h1 { font-size: 26px; }
+  #preset .brand .sub { display: none; }
+  .chip { font-size: 11px; padding: 2px 6px; }
+  .btn { font-size: 11px; padding: 3px 7px; }
+  #main {
+    grid-template-columns: minmax(220px, 260px) minmax(300px, 1fr) minmax(250px, 300px);
+  }
+  .titlebar { height: 20px; flex-basis: 20px; font-size: 15px; }
+  .pad .name { font-size: 10px; }
+  .pad .note { display: none; }
+  .knob-wrap .val { display: none; }
+  .block h3 { font-size: 12px; }
 }
 </style>
 </head>
@@ -445,12 +513,14 @@ body::before {
       <div class="body">
         <div class="pad-grid" id="pads"></div>
         <div class="block">
-          <h3>Slot · <span id="slotLabel">01 Kick</span></h3>
-          <div class="knob-row" id="slotKnobs"></div>
-          <div style="margin-top:10px;display:flex;gap:16px;align-items:center;">
-            <label class="lbl" style="font-size:11px;">MUTE <span class="switch" data-id="drum_slot_mute"><span class="thumb"></span></span></label>
-            <label class="lbl" style="font-size:11px;">SOLO <span class="switch" data-id="drum_slot_solo"><span class="thumb"></span></span></label>
+          <div class="block-head">
+            <h3>Slot · <span id="slotLabel">01 Kick</span></h3>
+            <div class="inline-switches" style="margin-top:0;">
+              <label class="lbl">MUTE <span class="switch" data-id="drum_slot_mute"><span class="thumb"></span></span></label>
+              <label class="lbl">SOLO <span class="switch" data-id="drum_slot_solo"><span class="thumb"></span></span></label>
+            </div>
           </div>
+          <div class="knob-row" id="slotKnobs"></div>
         </div>
         <div class="block">
           <h3>Kit</h3>
@@ -477,13 +547,15 @@ body::before {
           <h3>Osc</h3>
           <div class="knob-row" id="oscKnobs"></div>
         </div>
-        <div class="block">
-          <h3>Filter</h3>
-          <div class="knob-row" id="filtKnobs"></div>
-        </div>
-        <div class="block">
-          <h3>Amp Env</h3>
-          <div class="knob-row" id="ampKnobs"></div>
+        <div class="synth-pair">
+          <div class="block">
+            <h3>Filter</h3>
+            <div class="knob-row" id="filtKnobs"></div>
+          </div>
+          <div class="block">
+            <h3>Amp Env</h3>
+            <div class="knob-row" id="ampKnobs"></div>
+          </div>
         </div>
         <div class="block">
           <h3>Mod · Voice</h3>
@@ -498,25 +570,28 @@ body::before {
       <div class="titlebar magenta">FX</div>
       <div class="body">
         <div class="block">
-          <h3>Tape Bus</h3>
+          <div class="block-head">
+            <h3>Tape Bus</h3>
+            <div class="inline-switches" style="margin-top:0;">
+              <label class="lbl">BYP <span class="switch mag" data-id="fx_tape_bypass"><span class="thumb"></span></span></label>
+            </div>
+          </div>
           <div class="knob-row" id="tapeKnobs"></div>
-          <div style="margin-top:8px;">
-            <span class="lbl" style="font-size:11px;">BYPASS </span>
-            <span class="switch mag" data-id="fx_tape_bypass"><span class="thumb"></span></span>
+        </div>
+        <div class="fx-pair">
+          <div class="block">
+            <h3>Insert 1 · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:10px;">Algo 01</span></h3>
+            <div class="knob-row" id="ins1Knobs"></div>
+          </div>
+          <div class="block">
+            <h3>Insert 2 · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:10px;">Algo 01</span></h3>
+            <div class="knob-row" id="ins2Knobs"></div>
           </div>
         </div>
         <div class="block">
-          <h3>Insert 1 · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:11px;">Algo 01</span></h3>
-          <div class="knob-row" id="ins1Knobs"></div>
-        </div>
-        <div class="block">
-          <h3>Insert 2 · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:11px;">Algo 01</span></h3>
-          <div class="knob-row" id="ins2Knobs"></div>
-        </div>
-        <div class="block">
-          <h3>Master · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:11px;">Algo 01</span></h3>
+          <h3>Master · <span style="color:var(--paper);font-family:'Space Mono',monospace;font-size:10px;">Algo 01</span></h3>
           <div class="knob-row" id="mstKnobs"></div>
-          <div class="knob-row" id="outKnobs" style="margin-top:6px;"></div>
+          <div class="knob-row" id="outKnobs" style="margin-top:2px;"></div>
         </div>
         <p class="meta">Tape = global bus · insert/master macros proposed</p>
       </div>
@@ -662,7 +737,10 @@ body::before {
   fill("mstKnobs", [
     ["fx_mst_a","A",0],["fx_mst_b","B",0],["fx_mst_c","C",0],["fx_mst_mix","Mix",-20]
   ], true);
-  fill("outKnobs", [["fx_out_level","Out",-20]], true);
+  fill("outKnobs", [
+    ["gain","Gain",100],
+    ["fx_out_level","Out",-20]
+  ], true);
 
   renderPads();
 
@@ -706,7 +784,8 @@ body::before {
 
   function size() {
     document.getElementById("sizeReadout").textContent =
-      window.innerWidth + " × " + window.innerHeight + " · design 1280×800";
+      window.innerWidth + " × " + window.innerHeight +
+      " · design 1280×800 · min 1024×700";
   }
   window.addEventListener("resize", size);
   size();

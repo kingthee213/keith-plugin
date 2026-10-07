@@ -65,8 +65,11 @@ Every face below is either OFL (freely redistributable) or drawn by us. Licences
 
 ### 4.1 Window
 
-- **One window**, resizable. **Proposed** default size: **1280 × 800** CSS px. Minimum **960 × 640**. Aspect not locked; layout reflows by flex, not by tabs.
-- Outer chrome: `ink` fill, 6 px `line` border, 0 radius (hard comic corners). Optional corner star stamps (see §1).
+- **One window**, resizable. **Proposed** default / design size: **1280 × 800** CSS px.
+- **Stated minimum (U5):** **1024 × 700**. Below that the shell is not claimed to keep a complete no-scroll surface.
+- At design size and above: **no column scrollbars**; every control block (Kit, Mod·Voice, Insert 2, Master, Gain) is fully in view without scrolling a column.
+- Aspect not locked; layout reflows by flex / denser rhythm, not by tabs.
+- Outer chrome: `ink` fill, 4 px `line` border, 0 radius (hard comic corners). Optional corner star stamps (see §1).
 - No tab bar. Drum, synth, FX, and preset browser are simultaneous panels.
 
 ### 4.2 Module frame (“comic panel”)
@@ -79,29 +82,29 @@ Every face below is either OFL (freely redistributable) or drawn by us. Licences
 
 ### 4.3 Knob
 
-- Circle diameter **44 px** (compact **36 px** in dense rows).
-- Fill `panel-alt`, stroke 3 px `line`.
+- Circle diameter **34 px** at design size (compact **30 px** at minimum 1024×700).
+- Fill `panel-alt`, stroke 2 px `line`.
 - Indicator: thick radial tick in `cosmic-green` (synth/drum) or `magenta` (FX).
 - Arc track under the tick: 270° from 7-o’clock to 5-o’clock.
-- Label centred below, Space Mono 11.
-- Value readout optional under label when focused.
+- Label centred below, Space Mono ~9–10.
+- Value readout under label at design size; hidden at minimum size to reclaim height.
 - Interaction: drag vertical = change; double-click = default (**proposed** behaviour).
 
 ### 4.4 Switch
 
-- Pill **48 × 22**, hard outline 3 px.
+- Pill **40 × 18**, hard outline 2 px (compact vs earlier 48×22 to fit).
 - Off: `panel-alt` fill, thumb left.
 - On: `cosmic-green` or `magenta` fill (group colour), thumb right, black outline retained.
 - No soft shadows.
 
 ### 4.5 Pad (drum)
 
-- Square **56 × 56** (grid gap 8).
-- Idle: `panel-alt`, 4 px `line`, flat.
+- Square **44 × 44** at design size (grid gap 4); **36 × 36** at minimum. Caps prevent the old aspect-fill clip.
+- Idle: `panel-alt`, 3 px `line`, flat.
 - Hit / MIDI activity: flash `cosmic-green` fill for ~80 ms.
-- Selected slot: `gold` outer ring 3 px outside the pad.
+- Selected slot: `gold` outer ring outside the pad.
 - Muted slot: `mute-red` diagonal hatch (SVG or two lines).
-- Label: short slot name inside pad (Bangers 13) or note name below.
+- Label: short slot name inside pad (Bangers); note name below at design size only.
 
 ### 4.6 List (preset / bank)
 
@@ -124,28 +127,28 @@ Every face below is either OFL (freely redistributable) or drawn by us. Licences
 
 ## 5. Layout (no tab hunt)
 
-All four zones visible at once. Proposed wireframe at 1280×800:
+All four zones visible at once. Wireframe at design size 1280x800 (U5 fit pass):
 
 ```
-┌─ chrome 6px ─────────────────────────────────────────────────┐
-│ [★] KEITH          PRESET STRIP (family · bank · patch · ★)  │  64px
-├────────────────┬─────────────────────────────┬───────────────┤
-│ DRUM KIT       │ SYNTH / BASS / KEYS         │ FX            │
-│ 4×4 pad grid   │ Engine A/B · part select    │ TAPE bus      │
-│ slot tone row  │ Osc · Filter · Amp · Mod    │ Insert 1..2   │
-│ kit gain/pan   │ Unison · Porta · Voice      │ Master FX     │
-│                │                             │ Mix / bypass  │
-└────────────────┴─────────────────────────────┴───────────────┘
-     ~360px                  flex grow                  ~320px
++-- chrome ------------------------------------------------------+
+| [*] KEITH   PRESET STRIP (family / bank / patch / nav)  52px |
++----------------+-----------------------------+-----------------+
+| DRUM KIT       | SYNTH / BASS / KEYS         | FX              |
+| 4x4 pads 44px  | Engine / Poly               | Tape bus        |
+| slot + M/S     | Osc                         | Insert 1 | 2    |
+| kit knobs      | Filter | Amp Env (pair)     | Master + Gain   |
+|                | Mod / Voice                 |                 |
++----------------+-----------------------------+-----------------+
+      ~300px                flex grow                 ~340px
 ```
 
-**Reflow rules**
+**Fit rules (U5)**
 
-- Width ≥ 1280: three columns as above.
-- 960–1279: synth column keeps priority; drum and FX shrink but stay visible (pads become 48 px).
-- Height ≥ 800: comfortable knobs. Below 700: knob diameter 36, pad 48; preset strip stays pinned top.
+- **1280 x 800 (design):** complete surface, no column scroll, no clipped block bottoms. Pads capped at 44 px (not aspect-fill). Knobs 34 px. Preset strip single 52 px row. Filter|Amp and Insert1|Insert2 side-by-side pairs reclaim vertical budget.
+- **1024 x 700 (minimum):** same complete surface via denser rhythm -- pads 36 px, knobs 30 px, value readouts under knobs hidden, note labels under pads hidden, brand subtitle dropped. Still no column scrollbars.
+- Width between min and design: three columns stay; columns shrink with the denser media query under 1100 / 740.
 
-**1:1 mapping.** Every visible control maps to exactly one row in `PARAM-MANIFEST.md`. Decorative art (star stamps, panel washes, title ink) is not a parameter.
+**1:1 mapping.** Every visible control maps to exactly one row in `PARAM-MANIFEST.md`. Decorative art (star stamps, panel washes, title ink) is not a parameter. U1 live parameter `gain` appears in the FX Master out row.
 
 ---
 
@@ -217,7 +220,7 @@ No Splice, Freakshow, Gorillaz, Green Lantern, or Korg-named assets.
 
 Marked **proposed** above and listed again for the coordinator:
 
-1. Default window size 1280×800, min 960×640.
+1. Default window size 1280×800; U5 states minimum **1024×700** (replaces earlier 960×640 claim until owner confirms).
 2. Eight-point gold star corner stamp.
 3. Knob double-click → default.
 4. Automation-written cyan square badge.
@@ -227,3 +230,4 @@ Marked **proposed** above and listed again for the coordinator:
 8. Kit Swing control (drop if unused by engine).
 9. Insert/Master FX algorithm lists and macro counts (await U2/U4).
 10. Neutral engine labels **Hybrid** / **Analog**.
+11. Whether U1 `gain` remains the long-term master level or is superseded by `synth_master_level` / `fx_out_level`.
