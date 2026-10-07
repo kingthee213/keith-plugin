@@ -40,7 +40,8 @@ One instrument plugin, built on the **Mishby by Freakshow Industries** as its so
 foundation so analog capability/emulation is possible. It is an amalgamation of the sounds and
 synths the owner named, as his own version to fine-tune and work with:
 
-- drum sounds and factory content modelled on **Triton, Triton Extreme, Korg M1, Korg Wavestation**
+- drum sounds and factory content modelled on **Triton, Triton Extreme, Korg M1, Korg Wavestation**,
+  and the **Korg TR** (2005) — Family 05, see §6 and `docs/DECISIONS.md` D1
 - synth capabilities mimicking the **Surge synth** and **OB-XF**
 - Triton-family sounds preloaded with the effects they have in the Tritons
 - coverage of everything related to the **Neptunes**
@@ -119,7 +120,7 @@ RTMidi) in the repo's license notes.
 
 ## 6. CONTENT — DRUMS + FACTORY BANKS
 
-Four families, each with drum sounds and factory programs, at full library scale: mirror the factory
+Five families, each with drum sounds and factory programs, at full library scale: mirror the factory
 program/combi/patch sets of the named synths as our own recreations. The content lane enumerates the
 real factory lists from public documentation — manuals, patch lists, published program banks — logs
 every one in `banks/SOURCES.md` with its source, and **reports the real totals before building. Do
@@ -129,7 +130,9 @@ not invent patch names or counts.**
 Wavestation.
 Reason: Triton establishes the patch format and the FX-chain architecture and is the family named
 most; Triton Extreme reuses that structure; M1 is a simpler PCM/AI engine; Wavestation's
-wave-sequencing is an engine of its own, so it goes last.
+wave-sequencing is an engine of its own, so it goes last. **Family 05** (Korg TR, 2005 — owner
+decision `docs/DECISIONS.md` D1) is enumerated in the same form as the rest; its bank data lands with
+the post-v0.1 bank updates, not as a v0.1 blocker.
 
 **6.2 Phasing:** Triton family + engine + UI ship first as a usable v0.1 he can make beats with.
 Remaining families land as bank updates — banks are data, so no rebuild is needed to add them. The
@@ -149,8 +152,8 @@ actually permits reuse.
 factory program's insert + master FX chain is embedded per patch and reproduced on load, not left
 dry.
 
-**6.5 Naming:** neutral family labels in the UI and in preset names (Family 01–04, or neutral names
-the owner picks). The Korg names — Triton, Triton Extreme, Korg M1, Korg Wavestation — appear only in
+**6.5 Naming:** neutral family labels in the UI and in preset names (Family 01–05, or neutral names
+the owner picks). The Korg names — Triton, Triton Extreme, Korg M1, Korg Wavestation, TR — appear only in
 the internal reference doc, **never in the UI, preset names, file names or plugin metadata.**
 
 **[L3]** Korg ROM waves, Korg factory programs and the Korg names are Korg IP/trademarks. Neutral

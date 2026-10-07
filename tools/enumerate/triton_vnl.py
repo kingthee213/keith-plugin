@@ -10,7 +10,16 @@ No Korg content is embedded in this file; it only reads a document the caller
 supplies. The raw PDF is never copied into the repository.
 
 Usage:
-    python triton_vnl.py <voice-name-list.pdf> <out.json> [--profile triton|extreme]
+    python triton_vnl.py <voice-name-list.pdf> <out.json> [--profile triton|tr]
+
+Profiles:
+    triton (default) - the TRITON / TRITON Extreme page layout: one list
+        section per page, no per-column group labels.
+    tr               - the TR (2005) page layout: a page may start a new list
+        section in its right-hand columns while its left column continues the
+        previous section (the `EX` multisamples), the sample lists carry
+        per-column `Rom` / `EX` group labels, and one kit's per-key table can
+        continue into a second half-page column that prints no kit number.
 
 Requires: pdfplumber  (pip install pdfplumber)
 """
@@ -28,6 +37,17 @@ NUM_RE = re.compile(r"^([A-N]\d{3}|g\(\w+\)\d{3})([sd]?)$")
 NOTE_RE = re.compile(r"^[A-G]#?\d$")
 HEAD_RE = re.compile(r"^#+$")
 BANK_RE = re.compile(r"^[A-Z]$")
+
+# The TR drum-kit pages print one shared key column of 88 keys (A0-C8) for every
+# kit on the page. A kit whose map runs past C8 prints those extra keys either in
+# its own column or in a second half-page table; those rows are kept only for the
+# kit that actually assigns them.
+SHARED_KEY_ROWS = 88
+
+# Width of the narrow band to the left of a kit column that can hold that
+# column's own key labels (the TR's last kit prints its extra keys in a
+# half-page table whose labels sit just left of its drumsample columns).
+LOCAL_KEY_WINDOW = 20.0
 
 # section heading -> kind; matched on the leading words of a page row
 SECTIONS = [
@@ -421,7 +441,165 @@ def parse_numbered(rows, starts):
     return out
 
 
-def parse_pdf(path, verbose=True):
+def tr_block_sections(starts, headings, carried):
+    """TR layout: a section heading can be printed in the middle of a page, above
+    only the columns it governs; columns to its left keep the section that was
+    active on the previous page. Returns {block index: section kind} and the
+    section the page ends on (the carry into the next page)."""
+    ordered = sorted(headings)
+    out, cur, hi = {}, carried, 0
+    for i, s in enumerate(starts):
+        while hi < len(ordered) and ordered[hi][0] <= s + 2:
+            cur = ordered[hi][1]
+            hi += 1
+        out[i] = cur
+    return out, (out[len(starts) - 1] if starts else carried)
+
+
+def tr_groups_by_block(rows, starts, header_top, carried):
+    """TR sample lists label each column group (`Rom`, `EX`) in a row above the
+    column headers, printed to the left of the first column it covers. A column
+    with no label of its own continues the group of the column to its left, or of
+    the previous page's last column. Returns {block index: group} and the group
+    the page ends on."""
+    label_row = None
+    for row in rows:
+        if row["top"] >= header_top - 1:
+            continue
+        if any(re.search(r"[A-Za-z]", w["text"]) for w in row["words"]):
+            label_row = row
+    labels = []
+    if label_row is not None:
+        labels = sorted(
+            (w["x0"], w["text"])
+            for w in label_row["words"]
+            if re.search(r"[A-Za-z]", w["text"])
+        )
+    out, cur, li = {}, carried, 0
+    for i, s in enumerate(starts):
+        while li < len(labels) and labels[li][0] <= s + 2:
+            cur = labels[li][1]
+            li += 1
+        out[i] = cur
+    return out, (out[len(starts) - 1] if starts else carried)
+
+
+def parse_kit_tr(rows, starts, page_no=None):
+    """TR drum-kit table.
+
+    One shared key column (A0-C8) serves every kit on the page; a kit whose map
+    runs past C8 prints the extra keys in its own column, or - when the page has
+    no room left - in a second half-page table whose key labels sit immediately
+    left of that table's own drumsample columns. Such a half-page table prints no
+    kit number, so it continues the kit to its left, which is what the document
+    shows: the left half ends at `088: SD-AmbiCrackle 1` and the half-page table
+    starts at `089: SD-AmbiCrackle 2`.
+    """
+    bounds = bounds_from(starts)
+    shared_hi = bounds[0][0]
+    # key labels: the shared column, and each block's own column of extra keys
+    local = {}
+    for bi, s in enumerate(starts):
+        klo = max(s - LOCAL_KEY_WINDOW, shared_hi)
+        khi = s - 6.0
+        got = []
+        for row in rows:
+            lab = [
+                w
+                for w in row["words"]
+                if NOTE_RE.match(w["text"]) and klo <= w["x0"] < khi
+            ]
+            if lab:
+                got.append((row["top"], lab[0]["text"]))
+        if got:
+            local[bi] = got
+    foreign = [
+        (max(starts[bi] - LOCAL_KEY_WINDOW, shared_hi), starts[bi] - 6.0)
+        for bi in local
+    ]
+    shared = []
+    for row in rows:
+        lab = [
+            w
+            for w in row["words"]
+            if NOTE_RE.match(w["text"]) and w["x0"] < shared_hi
+        ]
+        if lab:
+            shared.append((row["top"], lab[0]["text"]))
+    # the heading band ends where the shared key column begins
+    band = len(rows)
+    for i, row in enumerate(rows):
+        if any(
+            NOTE_RE.match(w["text"]) and w["x0"] < shared_hi for w in row["words"]
+        ):
+            band = i
+            break
+    headers = {}
+    for row in rows[:band]:
+        for w in row["words"]:
+            m = re.match(r"^(\d{1,3}):(.*)$", w["text"])
+            if not m:
+                continue
+            bi = min(range(len(starts)), key=lambda i: abs(starts[i] - w["x0"]))
+            if bi in headers:
+                continue
+            lo, hi = bounds[bi]
+            parts = [m.group(2)] if m.group(2) else []
+            parts += [
+                t["text"]
+                for t in row["words"]
+                if t["x0"] > w["x1"] and lo - 40 <= t["x0"] < hi
+            ]
+            headers[bi] = {
+                "number": m.group(1),
+                "name": " ".join(parts).lstrip(": ").strip(),
+            }
+
+    def cell_text(bi, top):
+        lo, hi = bounds[bi]
+        cell = [
+            w
+            for row in rows
+            if abs(row["top"] - top) <= 2.5
+            for w in row["words"]
+            if lo <= w["x0"] < hi
+            and not any(klo <= w["x0"] < khi for klo, khi in foreign)
+        ]
+        cell.sort(key=lambda w: w["x0"])
+        if (
+            page_no is not None
+            and cell
+            and cell[-1]["text"] == str(page_no)
+            and re.fullmatch(r"\d{1,3}", cell[-1]["text"])
+        ):
+            # the page number is printed at the right edge of the sheet and can
+            # share a row with a kit's last extra key (TR p21)
+            cell = cell[:-1]
+        return " ".join(w["text"] for w in cell)
+
+    kits = []
+    for bi in range(len(starts)):
+        if bi in headers:
+            keys = []
+            for j, (top, note) in enumerate(shared):
+                text = cell_text(bi, top)
+                if j < SHARED_KEY_ROWS or text:
+                    keys.append({"note": note, "text": text})
+            for top, note in local.get(bi, []):
+                keys.append({"note": note, "text": cell_text(bi, top)})
+            kits.append({**headers[bi], "col": bi, "keys": keys})
+        elif kits:
+            # half-page table with no kit number of its own: its key column is
+            # its own, and the kit is the one printed to its left
+            keys = [
+                {"note": note, "text": cell_text(bi, top)}
+                for top, note in local.get(bi, [])
+            ]
+            kits[-1]["keys"].extend(keys)
+    return kits
+
+
+def parse_pdf(path, verbose=True, profile="triton"):
     data = {
         "source_pdf": path,
         "combinations": [],
@@ -438,9 +616,16 @@ def parse_pdf(path, verbose=True):
         group_by_idx = {}     # column-block index -> sample-list group label
         last_bank = None
         last_group = None
+        last_section = None   # TR profile: section a page ends on
         for pno, page in enumerate(pdf.pages, start=1):
             rows = page_rows(page)
             cuts = [i for i, r in enumerate(rows) if section_of(r)]
+            tr_headings = []
+            if profile == "tr":
+                for i in cuts:
+                    k = section_of(rows[i])
+                    if k not in (None, "none"):
+                        tr_headings.append((rows[i]["words"][0]["x0"], k))
             segments = []
             start = 0
             for i in cuts:
@@ -477,11 +662,23 @@ def parse_pdf(path, verbose=True):
                         (r["top"] for r in block if any(HEAD_RE.match(w["text"]) for w in r["words"])),
                         0.0,
                     )
-                    groups = groups_by_block(block, starts, head_row)
-                    for i in range(len(starts)):
-                        if i in groups:
-                            last_group = groups[i]
-                        group_by_idx[i] = last_group
+                    if profile == "tr":
+                        groups, last_group = tr_groups_by_block(
+                            block, starts, head_row, last_group
+                        )
+                        for i in range(len(starts)):
+                            group_by_idx[i] = groups[i]
+                    else:
+                        groups = groups_by_block(block, starts, head_row)
+                        for i in range(len(starts)):
+                            if i in groups:
+                                last_group = groups[i]
+                            group_by_idx[i] = last_group
+                sec_by_idx = {}
+                if profile == "tr":
+                    sec_by_idx, last_section = tr_block_sections(
+                        starts, tr_headings, last_section
+                    )
                 page_info["blocks"].append(
                     {
                         "section": kind,
@@ -492,7 +689,37 @@ def parse_pdf(path, verbose=True):
                     }
                 )
 
-                if kind == "combination":
+                if profile == "tr":
+                    if kind == "combination":
+                        for x in parse_combination(block, starts, sub):
+                            bi = x.pop("col")
+                            data["combinations"].append(
+                                {**x, "bank": bank_by_idx.get(bi), "page": pno}
+                            )
+                    elif kind == "program":
+                        for x in parse_program(block, starts, sub):
+                            bi = x.pop("col")
+                            data["programs"].append(
+                                {**x, "bank": bank_by_idx.get(bi), "page": pno}
+                            )
+                    elif kind in ("kit", "gm_kit"):
+                        for k in parse_kit_tr(block, starts, page_no=pno):
+                            data["kits" if kind == "kit" else "gm_kits"].append(
+                                {**k, "page": pno}
+                            )
+                    elif kind in ("multisample", "drumsample"):
+                        # a column keeps the section heading and the group label
+                        # printed over it: TR page 29 continues the EX
+                        # multisamples in its left column while the Rom
+                        # drumsamples start in the columns to the right
+                        for x in parse_numbered(block, starts):
+                            bi = x.pop("col")
+                            sec = sec_by_idx.get(bi) or kind
+                            key = "multisamples" if sec == "multisample" else "drumsamples"
+                            data[key].append(
+                                {**x, "group": group_by_idx.get(bi), "page": pno}
+                            )
+                elif kind == "combination":
                     for x in parse_combination(block, starts, sub):
                         bi = x.pop("col")
                         data["combinations"].append(
@@ -540,8 +767,14 @@ def main(argv=None):
     ap.add_argument("pdf")
     ap.add_argument("out")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument(
+        "--profile",
+        choices=("triton", "tr"),
+        default="triton",
+        help="page layout of the Voice Name List being read (default: triton)",
+    )
     args = ap.parse_args(argv)
-    data = parse_pdf(args.pdf, verbose=not args.quiet)
+    data = parse_pdf(args.pdf, verbose=not args.quiet, profile=args.profile)
     with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=1, ensure_ascii=False)
     print(
