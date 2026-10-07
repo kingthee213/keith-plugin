@@ -78,6 +78,18 @@ Driven with targeted Win32 messages to the real `IPlugWndClass` child of the run
   `computer_use_2669d2d152014ce7a0a984ef4af00972.png`
 - LFO Rate readout opens a real numeric field and reads back `1.00`; Escape closes it.
 - LFO Rate knob drag changed the value **1.00 → 30.00 Hz** (correct clamp at the 30 Hz ceiling).
+- `tools/editor_input_smoke.py` ran end to end against the live six-page Release standalone,
+  walking Source → Modulation → Filter → Envelopes and exercising both new U9 controls:
+
+```json
+{"status": "pass", "cutoff_drag": [9000.0, 4995.3], "cutoff_numeric_roundtrip": 5000.0,
+ "lfo_rate_numeric_roundtrip": [1.0, 2.5], "filter_drive_numeric_roundtrip": [0.0, 25.0],
+ "volume_attack_numeric_roundtrip": [8.0, 20.0]}
+```
+
+  This closes the editor-interaction gap the worker reported as untested. It proves numeric entry
+  and drag on a new LFO control and a new filter control on their new pages, plus the pre-existing
+  cutoff and envelope interactions.
 
 ### Test honesty
 
