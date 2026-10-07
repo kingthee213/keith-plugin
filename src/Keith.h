@@ -5,7 +5,7 @@
 
 #include <atomic>
 
-const int kNumPresets = 15;
+const int kNumPresets = 103;
 
 enum EControlTags
 {
@@ -148,6 +148,12 @@ enum EParams
   kParamDrumSlotMute = 82,
   kParamDrumSlotSolo = 83,
   kParamDrumKitLevel = 84,
+
+  // U13 appends. IDs 0-84 stay put.
+  kParamLfo2Rate = 85,
+  kParamLfo2Shape = 86,
+  kParamLfo2Dest = 87,
+  kParamLfo2Amount = 88,
 
   kNumParams
 };

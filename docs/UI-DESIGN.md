@@ -63,7 +63,7 @@ Owner-added references: The God Particle and Output Arcade. These are control/UX
 - Envelope time handles use the same forward and inverse mapping. Sustain moves vertically. Readout clicks prompt numeric entry. Double-click a handle resets that parameter.
 - Library scrolling clamps to its own content, including short content. Scrolling one list does not move its neighbour.
 - Returning to a page preserves its internal selected envelope tab.
-- Family labels remain Family 01 through Family 05. Presets are the current 15 original synth patches, not sampled factory ROM programs.
+- Family labels remain Family 01 through Family 05. The factory library is 103 original parameter-level patches. They are not sampled factory ROM programs, and they are not the documented program lists.
 - Internally, preset rows are grouped by emulated source family first — Triton, Triton Extreme, Korg M1, Korg Wavestation, then Korg TR — and only then by neutral sound role. Those reference names are metadata/documentation only; the editor exposes Family 01–05 and neutral role names.
 
 ## Verification and boundaries
@@ -72,4 +72,4 @@ Compile Release VST3 and standalone. Run CTest, `tools/editor_surface_check.py`,
 
 The source checker verifies references, not actual hit testing or sound. The geometry test verifies forward/inverse mappings and scroll clamping. Neither is visual approval. Record captures and test evidence separately, and ask the owner to approve the rendered screen.
 
-The wider BRIEF remains open: the drum sampler, full factory content, modulation matrix and insert effects are not implemented by this UI rebuild. This change must not present them as working controls or claim the complete instrument is finished.
+The wider BRIEF remains open. This library does not ingest the documented factory program lists, and it does not add a drum sampler or a modulation matrix. Insert effects and the synthesized drum kit are live. Do not treat this as the finished instrument.

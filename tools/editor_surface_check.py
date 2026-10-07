@@ -121,7 +121,7 @@ def main():
         check("baked preset table parsed", False, "kPresetSpecs")
         return 1
 
-    check("at least 12 baked presets", len(names) >= 12, f"{len(names)} presets")
+    check("baked preset count is 80-120", 80 <= len(names) <= 120, f"{len(names)} presets")
     check("preset names unique and non-empty",
           len({n for n, _ in names}) == len(names) and all(n.strip() for n, _ in names))
 

@@ -754,6 +754,84 @@ int main()
     Expect(AllFinite(destCutoff), "lfo_routes_stay_finite");
   }
 
+  // U13: a second, independent LFO. Driving LFO2 while LFO1 is Off must produce the same
+  // kind of modulation, and an LFO2 routed to the FM depth must move the timbre.
+  {
+    auto lfo2Std = [&](const std::vector<float>& buf) {
+      const int win = sr / 200;
+      std::vector<double> env;
+      for (size_t i = static_cast<size_t>(sr / 20); i + static_cast<size_t>(win) < buf.size(); i += static_cast<size_t>(win))
+        env.push_back(Rms(buf, i, static_cast<size_t>(win)));
+      double mean = 0.;
+      for (double v : env)
+        mean += v;
+      mean /= static_cast<double>(env.size());
+      double var = 0.;
+      for (double v : env)
+        var += (v - mean) * (v - mean);
+      return std::sqrt(var / static_cast<double>(env.size()));
+    };
+    auto lfo2Modulated = [&](ModDest dest, float amount) {
+      Params q = SteadyPatch();
+      q.lfo2RateHz = 6.f;
+      q.lfo2Dest = dest;
+      q.lfo2Amount = amount;
+      q.osc1Shape = 0.15f;
+      q.filterCutoffHz = 4000.f;
+      eng.Reset(sr);
+      eng.SetParams(q);
+      return RenderHold(eng, 60, 0.8f, sr / 3);
+    };
+    const auto l2Off = lfo2Modulated(ModDest::Off, 1.f);
+    const auto l2Level = lfo2Modulated(ModDest::Level, 0.8f);
+    const auto l2Cutoff = lfo2Modulated(ModDest::Cutoff, 1.f);
+    const auto l2Zero = lfo2Modulated(ModDest::Cutoff, 0.f);
+    Expect(Identical(l2Off, l2Zero), "lfo2_off_and_zero_amount_match");
+    Expect(lfo2Std(l2Level) > lfo2Std(l2Off) * 3.0, "lfo2_level_tremolos");
+    Expect(MeanAbsDiff(l2Cutoff, l2Off, static_cast<size_t>(sr / 20)) > 0.01,
+           "lfo2_cutoff_moves_filter");
+    Expect(AllFinite(l2Level) && AllFinite(l2Cutoff), "lfo2_routes_stay_finite");
+
+    // LFO2 must be independent of LFO1: with only LFO2 routed, the output moves; with LFO1
+    // routed to the same dest, LFO2 Off, it also moves, and the two are not the same signal.
+    Params only1 = SteadyPatch();
+    only1.lfoRateHz = 3.f;
+    only1.lfoDest = ModDest::Level;
+    only1.lfoAmount = 0.8f;
+    Params only2 = only1;
+    only2.lfoDest = ModDest::Off;
+    only2.lfo2RateHz = 3.f;
+    only2.lfo2Dest = ModDest::Level;
+    only2.lfo2Amount = 0.8f;
+    eng.Reset(sr);
+    eng.SetParams(only1);
+    auto r1 = RenderHold(eng, 60, 0.8f, sr / 3);
+    eng.Reset(sr);
+    eng.SetParams(only2);
+    auto r2 = RenderHold(eng, 60, 0.8f, sr / 3);
+    Expect(lfo2Std(r1) > 0.01 && lfo2Std(r2) > 0.01, "lfo1_and_lfo2_both_modulate");
+
+    // FM destination: an LFO2 routed to the FM depth moves the oscillator's timbre.
+    Params fmBase = SteadyPatch();
+    fmBase.osc1Shape = 0.5f;
+    fmBase.osc2Level = 0.8f;
+    fmBase.fmAmount = 0.5f;
+    fmBase.filterCutoffHz = 14000.f;
+    eng.Reset(sr);
+    eng.SetParams(fmBase);
+    auto fmPlain = RenderHold(eng, 60, 0.8f, sr / 3);
+    Params fmMod = fmBase;
+    fmMod.lfo2RateHz = 0.2f;
+    fmMod.lfo2Dest = ModDest::Fm;
+    fmMod.lfo2Amount = 0.9f;
+    eng.Reset(sr);
+    eng.SetParams(fmMod);
+    auto fmSwing = RenderHold(eng, 60, 0.8f, sr / 3);
+    Expect(MeanAbsDiff(fmPlain, fmSwing, static_cast<size_t>(sr / 20)) > 0.001,
+           "lfo2_fm_moves_timbre");
+    Expect(AllFinite(fmSwing), "lfo2_fm_stays_finite");
+  }
+
   {
     Params mw = SteadyPatch();
     mw.modWheelDest = ModDest::Pitch;

@@ -54,7 +54,8 @@ enum class ModDest : int
   Cutoff = 1,
   Pitch = 2,
   Shape = 3,
-  Level = 4
+  Level = 4,
+  Fm = 5   // U13: drive the FM oscillator depth
 };
 
 /** Live performance state that is not a stored parameter: the mod wheel arrives from CC1
@@ -67,7 +68,7 @@ struct RuntimeMod
 /** One destination of a modulation source, in octaves of cutoff / semitones of pitch / morph
  *  fraction / linear level. Returns nothing; accumulates into the caller's values. */
 inline void ApplyModRoute(ModDest dest, float amount, float& cutoffOct, float& pitchSemi,
-                          float& shapeMod, float& levelMod)
+                          float& shapeMod, float& levelMod, float* fmMod = nullptr)
 {
   switch (dest)
   {
@@ -75,6 +76,7 @@ inline void ApplyModRoute(ModDest dest, float amount, float& cutoffOct, float& p
     case ModDest::Pitch: pitchSemi += amount * 12.f; break; // +/- 1 octave at full amount
     case ModDest::Shape: shapeMod += amount * 0.5f; break; // half a morph stage
     case ModDest::Level: levelMod += amount; break; // tremolo
+    case ModDest::Fm: if (fmMod) *fmMod += amount; break; // drive the FM depth
     case ModDest::Off:
     default: break;
   }
@@ -135,6 +137,12 @@ struct Params
   LfoShape lfoShape = LfoShape::Sine;
   ModDest lfoDest = ModDest::Off;
   float lfoAmount = 0.f;      // -1..1
+
+  // --- U13 append: a second, independent LFO. Default Off, so pre-U13 presets are unchanged. ---
+  float lfo2RateHz = 0.3f;    // 0.01..30
+  LfoShape lfo2Shape = LfoShape::Sine;
+  ModDest lfo2Dest = ModDest::Off;
+  float lfo2Amount = 0.f;     // -1..1
 
   ModDest modWheelDest = ModDest::Off;
   float modWheelAmount = 0.f; // -1..1
@@ -539,6 +547,7 @@ public:
     mPitchEnv.SetSampleRate(mSampleRate);
     mFiltEnv.SetSampleRate(mSampleRate);
     mLfo.SetSampleRate(mSampleRate);
+    mLfo2.SetSampleRate(mSampleRate);
     for (auto& o : mUniOsc1)
       o.SetSampleRate(mSampleRate);
     for (auto& o : mUniOsc2)
@@ -558,6 +567,7 @@ public:
     mVelocity = 0.f;
     mAnalogSoft = 0.f;
     mLfo.Reset();
+    mLfo2.Reset();
     for (int i = 0; i < kMaxUnison; ++i)
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
@@ -579,6 +589,7 @@ public:
     mSub.Reset(0.11f);
     mFilter.Reset();
     mLfo.Reset();
+    mLfo2.Reset();
     for (int i = 0; i < kMaxUnison; ++i)
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
@@ -632,13 +643,16 @@ public:
     const float filtEnv = mFiltEnv.Process();
 
     // --- U9 modulation: one LFO (per-voice, retriggered on note-on) and the mod wheel (CC1).
-    // Each route feeds exactly one DSP point; an Off destination contributes nothing. ---
-    const float lfo = mLfo.Process(p.lfoRateHz, p.lfoShape) * p.lfoAmount; // -1..1 * amount
-    const float mw = mod.modWheel * p.modWheelAmount;                      // 0..1 * amount
+    // U13 adds an independent second LFO. Each route feeds exactly one DSP point; an Off
+    // destination contributes nothing. ---
+    const float lfo = mLfo.Process(p.lfoRateHz, p.lfoShape) * p.lfoAmount;   // -1..1 * amount
+    const float lfo2 = mLfo2.Process(p.lfo2RateHz, p.lfo2Shape) * p.lfo2Amount; // -1..1 * amount
+    const float mw = mod.modWheel * p.modWheelAmount;                        // 0..1 * amount
 
-    float cutoffOct = 0.f, pitchMod = 0.f, shapeMod = 0.f, levelMod = 0.f;
-    ApplyModRoute(p.lfoDest, lfo, cutoffOct, pitchMod, shapeMod, levelMod);
-    ApplyModRoute(p.modWheelDest, mw, cutoffOct, pitchMod, shapeMod, levelMod);
+    float cutoffOct = 0.f, pitchMod = 0.f, shapeMod = 0.f, levelMod = 0.f, fmMod = 0.f;
+    ApplyModRoute(p.lfoDest, lfo, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    ApplyModRoute(p.lfo2Dest, lfo2, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    ApplyModRoute(p.modWheelDest, mw, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
 
     const float pitchSemis = p.pitchAmount * pitchEnv + pitchMod;
     const float baseNote = mNote + pitchSemis;
@@ -676,7 +690,8 @@ public:
         mUniOsc1[u].SyncReset();
 
       // Simple phase-modulation FM: osc2 -> osc1 frequency.
-      f1 *= (1.f + osc2 * p.fmAmount * fmScale * 4.f);
+      const float fmEff = p.fmAmount + fmMod; // LFO/mod-wheel drive the FM depth
+      f1 *= (1.f + osc2 * fmEff * fmScale * 4.f);
       const float osc1 = mUniOsc1[u].Process(f1, osc1Shape, p.osc1PW);
 
       float voice = osc1 * p.osc1Level + osc2 * p.osc2Level;
@@ -730,6 +745,7 @@ private:
   Envelope mPitchEnv;
   Envelope mFiltEnv;
   Lfo mLfo;
+  Lfo mLfo2;
   uint32_t mNoise = 0x12345678u;
   float mNote = 60.f;
   float mVelocity = 0.f;

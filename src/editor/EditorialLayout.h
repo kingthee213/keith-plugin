@@ -87,18 +87,30 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   text(source, box(kRingLabel), "RING", Mono(11, kPaper));
   tabs(source, box(kRingTabs), kParamOscRing, {"OFF", "ON"});
 
-  text(modulation, box(kModLfoHeader), "LFO", Title(kHeadingPx, kPaper));
-  freeKnob(modulation, kModRate, kParamLfoRate, "RATE");
-  freeKnob(modulation, kModLfoAmount, kParamLfoAmount, "AMOUNT", kGreen, true);
-  text(modulation, box(kModShapeLabel), "SHAPE", Mono(12, kPaper));
-  tabs(modulation, box(kModShapeTabs), kParamLfoShape, {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
-  text(modulation, box(kModLfoDestLabel), "DEST", Mono(12, kPaper));
-  tabs(modulation, box(kModLfoDestTabs), kParamLfoDest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL"});
+  // LFO 1 and LFO 2 share the region (58,218)-(500,540). Sub-tabs keep each
+  // LFO at the full size of that region. Shape lists the five LfoShape values.
+  // Dest lists the six ModDest values, including FM.
+  auto* lfoDeck = new KeithPageDeck(IRECT(58, 268, 500, 540));
+  modulation->AddChildControl(lfoDeck);
+  auto* lfo1 = lfoDeck->AddPage();
+  auto* lfo2 = lfoDeck->AddPage();
+  modulation->AddChildControl(new KeithNavButton(IRECT(58, 218, 277, 262), "LFO 1", lfoDeck, 0));
+  modulation->AddChildControl(new KeithNavButton(IRECT(281, 218, 500, 262), "LFO 2", lfoDeck, 1));
+  auto bindLfo = [&](IContainerBase* page, int rate, int shape, int dest, int amount) {
+    freeKnob(page, kModRate, rate, "RATE");
+    freeKnob(page, kModLfoAmount, amount, "AMOUNT", kGreen, true);
+    text(page, box(kModShapeLabel), "SHAPE", Mono(12, kPaper));
+    tabs(page, box(kModShapeTabs), shape, {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
+    text(page, box(kModLfoDestLabel), "DEST", Mono(12, kPaper));
+    tabs(page, box(kModLfoDestTabs), dest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+  };
+  bindLfo(lfo1, kParamLfoRate, kParamLfoShape, kParamLfoDest, kParamLfoAmount);
+  bindLfo(lfo2, kParamLfo2Rate, kParamLfo2Shape, kParamLfo2Dest, kParamLfo2Amount);
   text(modulation, box(kModWheelHeader), "MOD WHEEL", Title(kHeadingPx, kPaper));
   text(modulation, box(kModWheelCc), "CC1", Mono(16, kPaper, EAlign::Far));
   freeKnob(modulation, kModWheelAmount, kParamModWheelAmount, "AMOUNT", kMagenta, true);
   text(modulation, box(kModWheelDestLabel), "DEST", Mono(12, kPaper));
-  tabs(modulation, box(kModWheelDestTabs), kParamModWheelDest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL"});
+  tabs(modulation, box(kModWheelDestTabs), kParamModWheelDest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
   text(modulation, box(kVelHeader), "VELOCITY", Title(kHeadingPx, kPaper));
   freeKnob(modulation, kVelAmp, kParamVelToAmp, "TO AMP");
   freeKnob(modulation, kVelFilter, kParamVelToFilter, "TO FILTER", kGreen);
@@ -174,22 +186,48 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   tabs(fx, box(kFxMasterBypass), kParamMstBypass, {"ACTIVE", "BYPASS"});
   freeKnob(fx, kFxOutLevel, kParamOutLevel, "OUT LEVEL", kMagenta, true);
 
-  text(library, IRECT(58,214,600,246), "SYNTHESIZED DRUM ENGINE", MonoBold(22,kPaper));
-  text(library, IRECT(58,244,600,268), "16 ORIGINAL VOICES / NO SAMPLE PLAYBACK", Mono(11,kCyan));
-  library->AddChildControl(new KeithPadGridControl(IRECT(58,278,600,690), kParamDrumSlotSelect));
-  text(library, IRECT(620,214,990,238), "PAD CLICK SELECTS / MIDI 36-51 PLAYS", Mono(10,kPaper));
-  freeKnob(library, {620,250,738,386}, kParamDrumSlotLevel, "SLOT LEVEL", kGreen, true);
-  freeKnob(library, {746,250,864,386}, kParamDrumSlotPan, "PAN", kGreen, true);
-  freeKnob(library, {872,250,990,386}, kParamDrumSlotTune, "TUNE", kMagenta, true);
-  freeKnob(library, {620,402,738,538}, kParamDrumSlotDecay, "DECAY");
-  freeKnob(library, {746,402,864,538}, kParamDrumSlotFilter, "FILTER");
-  freeKnob(library, {872,402,990,538}, kParamDrumSlotDrive, "DRIVE", kMagenta);
-  freeKnob(library, {620,552,750,690}, kParamDrumKitLevel, "KIT LEVEL", kPaper, true);
-  text(library, IRECT(770,552,838,574), "MUTE", Mono(10,kPaper));
-  tabs(library, IRECT(842,548,990,582), kParamDrumSlotMute, {"OFF", "MUTE"});
-  text(library, IRECT(770,610,838,632), "SOLO", Mono(10,kPaper));
-  tabs(library, IRECT(842,606,990,640), kParamDrumSlotSolo, {"OFF", "SOLO"});
-  text(library, IRECT(770,656,990,690), "VELOCITY + DETERMINISTIC RR", Mono(10,kCyan));
+  // Library holds two browsable surfaces: the patch archive and the drum engine.
+  // Sub-tabs keep both reachable without widening the main nav to eight cells,
+  // and reuse the same nested-deck idiom as the envelopes page.
+  auto* libraryDeck = new KeithPageDeck(IRECT(58,258,990,690));
+  library->AddChildControl(libraryDeck);
+  auto* patches = libraryDeck->AddPage();
+  auto* drums = libraryDeck->AddPage();
+  library->AddChildControl(new KeithNavButton(IRECT(58,214,300,250), "PATCHES", libraryDeck, 0));
+  library->AddChildControl(new KeithNavButton(IRECT(312,214,554,250), "DRUMS", libraryDeck, 1));
+
+  text(patches, IRECT(58,264,620,292), "PATCH LIBRARY", MonoBold(20,kPaper));
+  text(patches, IRECT(644,264,982,292), "CONTROL NOTES", MonoBold(15,kPaper));
+  std::vector<KeithArchive::Row> rows;
+  int count;
+  const auto* presets = BakedPresets(count);
+  for (int i=0;i<count;++i) rows.push_back({presets[i].name,i});
+  patches->AddChildControl(new KeithArchive(IRECT(58,300,620,690), std::move(rows)));
+  patches->AddChildControl(new KeithArchive(IRECT(644,300,982,690), {
+    {"SOURCE"},{"Morph: sine through pulse."},{"Drag up to increase."},{"Ctrl-drag: fine control."},
+    {"Double-click: default."},
+    {"MODULATION"},{"LFO 1 / LFO 2 sub-tabs."},{"Mod wheel, velocity, legato."},
+    {"ENVELOPES"},{"Drag the four handles."},{"Click a value to type."},
+    {"DRUMS"},{"Pads select; MIDI 36-51 plays."},{"Synthesized voices, no samples."},
+    {"FX"},{"Insert 1 into Insert 2."},{"Then tape, then master."},
+    {"CONTENT"},{"103 original patches."},{"No sampled factory ROM data."},{"macOS build not produced."}
+  }));
+
+  text(drums, IRECT(58,264,600,292), "SYNTHESIZED DRUM ENGINE", MonoBold(20,kPaper));
+  text(drums, IRECT(620,264,990,290), "PAD CLICK SELECTS / MIDI 36-51 PLAYS", Mono(10,kPaper));
+  drums->AddChildControl(new KeithPadGridControl(IRECT(58,300,600,690), kParamDrumSlotSelect));
+  freeKnob(drums, {620,300,738,436}, kParamDrumSlotLevel, "SLOT LEVEL", kGreen, true);
+  freeKnob(drums, {746,300,864,436}, kParamDrumSlotPan, "PAN", kGreen, true);
+  freeKnob(drums, {872,300,990,436}, kParamDrumSlotTune, "TUNE", kMagenta, true);
+  freeKnob(drums, {620,446,738,582}, kParamDrumSlotDecay, "DECAY");
+  freeKnob(drums, {746,446,864,582}, kParamDrumSlotFilter, "FILTER");
+  freeKnob(drums, {872,446,990,582}, kParamDrumSlotDrive, "DRIVE", kMagenta);
+  freeKnob(drums, {620,594,750,690}, kParamDrumKitLevel, "KIT LEVEL", kPaper, true);
+  text(drums, IRECT(770,584,838,606), "MUTE", Mono(10,kPaper));
+  tabs(drums, IRECT(842,580,990,614), kParamDrumSlotMute, {"OFF", "MUTE"});
+  text(drums, IRECT(770,632,838,654), "SOLO", Mono(10,kPaper));
+  tabs(drums, IRECT(842,628,990,662), kParamDrumSlotSolo, {"OFF", "SOLO"});
+  text(drums, IRECT(770,666,990,690), "VELOCITY + DETERMINISTIC RR", Mono(10,kCyan));
 
   // The channel strip is always reachable while navigating source, shape or tape.
   auto* channel = new IContainerBase(IRECT(1030,204,1252,718));
@@ -214,6 +252,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     auto* keys=g->GetControlWithTag(kCtrlTagKeyboard)->As<IVKeyboardControl>();
     keys->SetNoteFromMidi(msg.NoteNumber(),msg.StatusMsg()==IMidiMsg::kNoteOn && msg.Velocity()>0);
   });
+  lfoDeck->Select(0);
   envelopes->Select(0);
   pages->Select(0);
 }

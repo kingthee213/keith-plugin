@@ -1,0 +1,17 @@
+Read briefs/U12-factory-library.md and implement it completely in this worktree.
+
+That file is the binding contract. Read its content-constraint section first: there are no audio files in this repo and none may be ingested, so factory content means our own parameter-level recreations, which SOURCES.md rule 6 already sanctions. Do not invent source rows and do not claim sample data.
+
+Build a real preset library of 80-120 presets across all five families, ordered emulated-family-first then by neutral sound role, following the exact existing name pattern. Include a neutral bank of 12-16 presets that demonstrates the BRIEF section 8 production palette.
+
+Critical: tools/verify_preset_metadata.py hardcodes exactly 15 presets and will fail. Rework it to assert coverage and ordering rather than a fixed count, without weakening it into a no-op. tools/editor_surface_check.py must keep passing too.
+
+Every preset must be a delta list over the init defaults using the existing table mechanism. Every delta must target a real parameter id and every preset must actually differ from the defaults. Use the U9/U10/U11 controls where they make a patch real.
+
+No reference-machine, brand or living-artist names anywhere shipped. Do not touch src/editor/ControlLayout.h or the material PNGs under resources/images. Do not edit D:/TYH_R10/dev/keith-plugin. Do not change the parameter set. Do not commit, merge, push, install or deploy.
+
+Build as you go. At the end run every command in the Verification section of the brief, unpiped. pluginval must end in SUCCESS with Editor and Editor Automation included.
+
+Report separately: implemented and verified, implemented but not host-tested, deferred, blocked. Report the exact preset count you shipped, per family.
+
+Work only in D:/TYH_R10/dev/keith-editorial.

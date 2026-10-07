@@ -35,11 +35,11 @@ No exceptions, no "we'll fill it in later", no patch whose origin nobody can nam
 
 | Family | Shipped label | Reference machine (internal only) | Order | Status |
 |---|---|---|---|---|
-| 01 | Family 01 | Triton | 1st — establishes patch + FX-chain format | factory lists enumerated (U2); no bank data built |
-| 02 | Family 02 | Triton Extreme | 2nd — reuses Family 01 structure | factory lists enumerated (U2); no bank data built |
-| 03 | Family 03 | Korg M1 | 3rd — simpler PCM/AI engine | factory lists enumerated (U2); no bank data built |
-| 04 | Family 04 | Korg Wavestation | 4th — wave-sequencing, its own engine | factory lists enumerated (U2); no bank data built |
-| 05 | Family 05 | Korg TR | 5th — later, smaller machine in the Triton family (one insert effect, three combination banks) | factory lists enumerated (U6); no bank data built |
+| 01 | Family 01 | Triton | 1st — establishes patch + FX-chain format | factory lists enumerated (U2); parameter-level recreations shipped (20 presets); no sample data |
+| 02 | Family 02 | Triton Extreme | 2nd — reuses Family 01 structure | factory lists enumerated (U2); parameter-level recreations shipped (21 presets); no sample data |
+| 03 | Family 03 | Korg M1 | 3rd — simpler PCM/AI engine | factory lists enumerated (U2); parameter-level recreations shipped (21 presets); no sample data |
+| 04 | Family 04 | Korg Wavestation | 4th — wave-sequencing, its own engine | factory lists enumerated (U2); parameter-level recreations shipped (20 presets); no sample data |
+| 05 | Family 05 | Korg TR | 5th — later, smaller machine in the Triton family (one insert effect, three combination banks) | factory lists enumerated (U6); parameter-level recreations shipped (21 presets); no sample data |
 
 ## Factory list enumeration (content lane fills this in first)
 
@@ -61,8 +61,130 @@ real totals before building any patch. Do not invent names or counts.**
 | 1 | 05 | — (no bank, patch or preset built in this pass) | factory-list enumeration (combinations, programs, drum kits, multisamples, drumsamples) | `TR Voice Name List` (Korg, doc id 1646, https://www.korg.com/us/support/download/manual/1/211/1646/) | none — public documentation only, no asset ingested | N | keith-omp-2 (U6): every enumerated row matched against the document's own text layer — 2,021 rows, 0 misses |
 | 2 | 05 | — (no bank, patch or preset built in this pass) | FX algorithm catalogue and routing | `TR Parameter Guide` (Korg, doc id 1645, https://www.korg.com/us/support/download/manual/1/211/1645/) | none — public documentation only, no asset ingested | N | keith-omp-2 (U6): 90 of 90 entries recovered, each cross-checked by number and leading word against the guide's own effect chapter; the slot rules and the 470-multisample / 33-drum-kit statement are read from the same document |
 | 3 | 05 | — (no bank, patch or preset built in this pass) | reference / cross-check only | `TR Operation Guide` (Korg, doc id 1644, https://www.korg.com/us/support/download/manual/1/211/1644/) | none — public documentation only, no asset ingested | N | keith-omp-2 (U6): read for the mode and effect architecture only; it publishes no factory list of its own |
+| 4 | 01 | Family 01 / 001 Glass Keys | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 5 | 01 | Family 01 / 002 Sparse Keys | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 6 | 01 | Family 01 / 003 Soft Tines | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 7 | 01 | Family 01 / 004 Bright Clav | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 8 | 01 | Family 01 / 005 Drawbar Organ | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 9 | 01 | Family 01 / 006 Glass Bells | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 10 | 01 | Family 01 / 007 Crystal Pluck | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 11 | 01 | Family 01 / 008 Key Stab | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 12 | 01 | Family 01 / 009 Dry Bass | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 13 | 01 | Family 01 / 010 Smooth Lead | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 14 | 01 | Family 01 / 011 Warm Brass | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 15 | 01 | Family 01 / 012 Silk Strings | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 16 | 01 | Family 01 / 013 Soft Choir | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 17 | 01 | Family 01 / 014 Bell Pad | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 18 | 01 | Family 01 / 015 Slow Motion | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 19 | 01 | Family 01 / 016 Shimmer Texture | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 20 | 01 | Family 01 / 017 Low Drone | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 21 | 01 | Family 01 / 018 Glass Arp | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 22 | 01 | Family 01 / 019 Heavy Delay | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 23 | 01 | Family 01 / 020 Room Kit | preset | our own recreation, matched to TRITON Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 24 | 02 | Family 02 / 001 Neon Keys | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 25 | 02 | Family 02 / 002 Thin Piano | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 26 | 02 | Family 02 / 003 Thin Clav | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 27 | 02 | Family 02 / 004 Perc Organ | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 28 | 02 | Family 02 / 005 Metal Bells | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 29 | 02 | Family 02 / 006 Neon Pluck | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 30 | 02 | Family 02 / 007 Sparse Pluck | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 31 | 02 | Family 02 / 008 Thin Stab | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 32 | 02 | Family 02 / 009 Hard Bass | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 33 | 02 | Family 02 / 010 Sparse Bass | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 34 | 02 | Family 02 / 011 Sync Lead | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 35 | 02 | Family 02 / 012 Stab Brass | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 36 | 02 | Family 02 / 013 Tight Strings | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 37 | 02 | Family 02 / 014 Breath Choir | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 38 | 02 | Family 02 / 015 Poly Pad | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 39 | 02 | Family 02 / 016 Sweep Motion | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 40 | 02 | Family 02 / 017 Skew Texture | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 41 | 02 | Family 02 / 018 Pulse Drone | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 42 | 02 | Family 02 / 019 Wide Arp | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 43 | 02 | Family 02 / 020 Heavy Crush | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 44 | 02 | Family 02 / 021 Punch Kit | preset | our own recreation, matched to TRITON Extreme Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 45 | 03 | Family 03 / 001 Piano Stack | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 46 | 03 | Family 03 / 002 Soft EP | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 47 | 03 | Family 03 / 003 Soul Piano | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 48 | 03 | Family 03 / 004 Clav Stab | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 49 | 03 | Family 03 / 005 Dry Clav | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 50 | 03 | Family 03 / 006 Warm Organ | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 51 | 03 | Family 03 / 007 Bottle Bells | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 52 | 03 | Family 03 / 008 Muted Pluck | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 53 | 03 | Family 03 / 009 Reed Stab | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 54 | 03 | Family 03 / 010 Finger Bass | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 55 | 03 | Family 03 / 011 Solo Lead | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 56 | 03 | Family 03 / 012 Ensemble Brass | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 57 | 03 | Family 03 / 013 Section Strings | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 58 | 03 | Family 03 / 014 Ooh Choir | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 59 | 03 | Family 03 / 015 Dream Pad | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 60 | 03 | Family 03 / 016 Slow Sweep | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 61 | 03 | Family 03 / 017 Hollow Texture | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 62 | 03 | Family 03 / 018 Warm Drone | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 63 | 03 | Family 03 / 019 Mallet Arp | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 64 | 03 | Family 03 / 020 Slap Delay | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 65 | 03 | Family 03 / 021 Dry Perc | preset | our own recreation, matched to M1 Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 66 | 04 | Family 04 / 001 Vector Keys | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 67 | 04 | Family 04 / 002 Phase Piano | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 68 | 04 | Family 04 / 003 Wave Clav | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 69 | 04 | Family 04 / 004 Drift Organ | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 70 | 04 | Family 04 / 005 Chime Bells | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 71 | 04 | Family 04 / 006 Harp Pluck | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 72 | 04 | Family 04 / 007 Soft Stab | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 73 | 04 | Family 04 / 008 Sub Bass | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 74 | 04 | Family 04 / 009 Air Lead | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 75 | 04 | Family 04 / 010 Swell Brass | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 76 | 04 | Family 04 / 011 Bowed Strings | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 77 | 04 | Family 04 / 012 Air Choir | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 78 | 04 | Family 04 / 013 Cloud Pad | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 79 | 04 | Family 04 / 014 Sparse Pad | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 80 | 04 | Family 04 / 015 Motion Pad | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 81 | 04 | Family 04 / 016 Tilt Texture | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 82 | 04 | Family 04 / 017 Slow Drone | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 83 | 04 | Family 04 / 018 Seq Arp | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 84 | 04 | Family 04 / 019 Wash Delay | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 85 | 04 | Family 04 / 020 Metal Kit | preset | our own recreation, matched to WAVESTATION Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 86 | 05 | Family 05 / 001 Stage Keys | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 87 | 05 | Family 05 / 002 Reed Piano | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 88 | 05 | Family 05 / 003 Funk Clav | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 89 | 05 | Family 05 / 004 Rock Organ | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 90 | 05 | Family 05 / 005 Ping Bells | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 91 | 05 | Family 05 / 006 Mute Pluck | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 92 | 05 | Family 05 / 007 Short Stab | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 93 | 05 | Family 05 / 008 Round Bass | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 94 | 05 | Family 05 / 009 Saw Lead | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 95 | 05 | Family 05 / 010 Section Brass | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 96 | 05 | Family 05 / 011 Small Strings | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 97 | 05 | Family 05 / 012 Close Choir | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 98 | 05 | Family 05 / 013 Tape Pad | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 99 | 05 | Family 05 / 014 Filter Motion | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 100 | 05 | Family 05 / 015 Broken Texture | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 101 | 05 | Family 05 / 016 Dark Drone | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 102 | 05 | Family 05 / 017 Tight Arp | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 103 | 05 | Family 05 / 018 Room Crush | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 104 | 05 | Family 05 / 019 Dry Kit | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 105 | 05 | Family 05 / 020 Hard Kit | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
+| 106 | 05 | Family 05 / 021 Tape Kit | preset | our own recreation, matched to TR Voice Name List | none — our own design | N | U12: parameter deltas over init defaults; no sample ingested |
 
-No row for a Family 05 patch, bank or preset exists yet: this pass enumerated the factory lists and
-built nothing (BRIEF.md §6.3). Every Family 05 row above is a *document*, not an ingested asset, and
-the research PDFs stay outside the repository in
+Rows 1-3 above stay document enumerations from U6. They ingested no asset. The research PDFs stay outside the repository in
 `C:/Users/noaha/.agents/orchestrate/keith-plugin/scratch/u6/`.
+
+Rows 4 onward are the shipped parameter library. Each one is our own preset, a delta list over the init defaults, matched to the named voice list for its role. No sample was ingested, and the enumeration totals above are unchanged.
+
+## Arrangement palette
+
+Neutral bank for the BRIEF section 8 production palette. These are shipped presets already listed in the ledger.
+
+- Family 01 / 002 Sparse Keys
+- Family 01 / 008 Key Stab
+- Family 01 / 019 Heavy Delay
+- Family 02 / 002 Thin Piano
+- Family 02 / 007 Sparse Pluck
+- Family 02 / 010 Sparse Bass
+- Family 02 / 017 Skew Texture
+- Family 02 / 020 Heavy Crush
+- Family 03 / 003 Soul Piano
+- Family 03 / 004 Clav Stab
+- Family 04 / 014 Sparse Pad
+- Family 04 / 016 Tilt Texture
+- Family 05 / 019 Dry Kit
+- Family 05 / 020 Hard Kit

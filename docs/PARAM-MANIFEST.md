@@ -3,9 +3,10 @@
 Contract between the editor lane and the composer / engine lane.
 **Stable ids.** The engine and host automation read these names; do not rename casually.
 
-Reconciled **U11 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
-U1/U4 host IDs **0-8**, U7 IDs **9-42**, U9 IDs **43-55** and U10 IDs **56-74**
-are preserved. U11 appends IDs **75-84**.
+Reconciled **U14 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
+U1/U4 host IDs **0-8**, U7 IDs **9-42**, U9 IDs **43-55**, U10 IDs **56-74** and
+U11 IDs **75-84** are preserved. U13 appends the second LFO at IDs **85-88**.
+Current `kNumParams` is **89**.
 
 Column meanings:
 
@@ -103,9 +104,13 @@ Column meanings:
 | `synth_filter_drive` | Drive | knob | 0-100 % | 0 % | synth | Synth Filter Drive | proposed | live - added U9 |
 | `synth_lfo_rate` | LFO Rate | knob | 0.01-30 Hz | 1 Hz | synth | Synth LFO Rate | proposed | live - added U9 |
 | `synth_lfo_shape` | LFO Shape | list | Sine / Tri / Saw / Square / S&H | Sine | synth | Synth LFO Shape | proposed | live - added U9 |
-| `synth_lfo_dest` | LFO Dest | list | Off / Cutoff / Pitch / Shape / Level | Off | synth | Synth LFO Dest | proposed | live - added U9 |
+| `synth_lfo_dest` | LFO Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth LFO Dest | proposed | live - added U9 |
 | `synth_lfo_amount` | LFO Amt | knob | -100-+100 % | 0 % | synth | Synth LFO Amount | proposed | live - added U9 |
-| `synth_mod_wheel` | Mod Dest | list | Off / Cutoff / Pitch / Shape / Level | Off | synth | Synth Mod Dest | proposed | live - added U9 |
+| `synth_lfo2_rate` | LFO2 Rate | knob | 0.01-30 Hz | 1 Hz | synth | Synth LFO2 Rate | proposed | live - added U13 |
+| `synth_lfo2_shape` | LFO2 Shape | list | Sine / Tri / Saw / Square / S&H | Sine | synth | Synth LFO2 Shape | proposed | live - added U13 |
+| `synth_lfo2_dest` | LFO2 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth LFO2 Dest | proposed | live - added U13 |
+| `synth_lfo2_amount` | LFO2 Amt | knob | -100-+100 % | 0 % | synth | Synth LFO2 Amount | proposed | live - added U13 |
+| `synth_mod_wheel` | Mod Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth Mod Dest | proposed | live - added U9 |
 | `synth_mod_amount` | Mod Amt | knob | -100-+100 % | 0 % | synth | Synth Mod Amount | proposed | live - added U9 |
 | `synth_vel_to_amp` | Vel To Amp | knob | 0-100 % | 0 % | synth | Synth Vel To Amp | proposed | live - added U9 |
 | `synth_vel_to_filter` | Vel To Filter | knob | 0-100 % | 0 % | synth | Synth Vel To Filter | proposed | live - added U9 |
@@ -258,28 +263,46 @@ The brief says "11 appends" but lists ten host parameters. Swing is explicitly n
 pads are MIDI events, not parameters. The code therefore appends the ten named parameters and does
 not invent an eleventh ID.
 
-`kNumParams` = **85**.
+`kNumParams` at the U11 checkpoint was **85**.
 
 ---
 
-## Row counts (U11 reconcile)
+## U13 code surface (source of truth for `live`)
+
+Appended after ID 84. LFO 2 is independent of LFO 1. Destination and shape use the same enums. Defaults are inert: destination Off, amount 0. The host rate default is 1 Hz, matching LFO 1 (`InitDouble` in `src/Keith.cpp`).
+
+`ModDest` is Off, Cutoff, Pitch, Shape, Level, FM. FM adds to the FM oscillator depth. `LfoShape` is Sine, Tri, Saw, Square, S&H. The modulation page lists all six destinations and all five shapes for both LFOs. The mod wheel destination list is the same six.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---:|---|---|---|
+| `kParamLfo2Rate` | 85 | Synth LFO2 Rate | `synth_lfo2_rate` | 1 Hz |
+| `kParamLfo2Shape` | 86 | Synth LFO2 Shape | `synth_lfo2_shape` | Sine |
+| `kParamLfo2Dest` | 87 | Synth LFO2 Dest | `synth_lfo2_dest` | Off |
+| `kParamLfo2Amount` | 88 | Synth LFO2 Amount | `synth_lfo2_amount` | 0 % |
+
+`src/synth/CoreSynth.h` owns `mLfo2` and routes it with `ApplyModRoute`. `src/editor/EditorialLayout.h` binds both LFOs as sub-tabs on page 02 MODULATION. IDs 0-84 are unchanged.
+
+`kNumParams` = **89**.
+
+---
+
+## Row counts (U14 reconcile)
 
 | Metric | Count |
 |---|---|
-| Total rows | **111** |
-| Real parameters (`kNumParams`, IDs 0-84) | **85** |
+| Total rows | **115** |
+| Real parameters (`kNumParams`, IDs 0-88) | **89** |
 | Host preset action, not a parameter (`preset_family`) | **1** |
 | MIDI pad rows, live but not parameters | **16** |
 | Rows `not yet implemented` | **8** |
 | Rows `not applicable` | **1** (`drum_kit_swing`) |
-| Rows added this pass (new ids) | **10** (`drum_slot_*`, `drum_kit_level`) |
-| Rows flipped to `live` this pass | **26** (16 pads + 10 parameters) |
+| Rows added for LFO 2 | **4** (`synth_lfo2_rate`, `synth_lfo2_shape`, `synth_lfo2_dest`, `synth_lfo2_amount`) |
 
 ---
 
 ## Notes for the editor lane
 
-1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-84. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-88. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
 2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
-3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. One LFO and CC1 shipped in U9. A modulation matrix did not.
+3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. Two LFOs and CC1 are live. A modulation matrix is not.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.

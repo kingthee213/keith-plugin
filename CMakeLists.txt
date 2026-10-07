@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
+
+# Ignored when the host is not Apple. Set before project() so a fresh Xcode
+# configure picks up the BRIEF §11 floor (macOS 11.7.10) in the toolchain.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.7.10" CACHE STRING "Minimum macOS version")
+
 project(Keith VERSION 0.1.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -63,48 +68,73 @@ iplug_add_plugin(${PROJECT_NAME}
   EXCLUDE_FORMATS CLAP AAX AUV3 WAM WASM_DSP WASM_UI VST2
 )
 
-# Windows resource handling for the editor faces (docs/UI-DESIGN.md §3).
-#
-# The standalone target compiles resources/main.rc (iPlug2 adds it for APP), which embeds the
-# OFL TTFs into the .exe. The VST3 target gets no .rc from iPlug2, so on Windows its fonts
-# resolve only from the working directory — embed the same .rc there too so the VST3 carries its
-# own faces wherever a host loads it from.
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc")
-  set(KEITH_FONT_RESOURCES
-    fonts/Bangers-Regular.ttf
-    fonts/Oswald-Bold.ttf
-    fonts/SpaceMono-Regular.ttf
-    fonts/SpaceMono-Bold.ttf)
+# Editor faces. Windows embeds them with resources/main.rc. macOS LoadFont looks in
+# the bundle's Contents/Resources (NSBundle resourcePath), so the same files are
+# copied there for VST3, AU and the APP, and also beside the .app.
+set(KEITH_FONT_RESOURCES
+  fonts/Bangers-Regular.ttf
+  fonts/Oswald-Bold.ttf
+  fonts/SpaceMono-Regular.ttf
+  fonts/SpaceMono-Bold.ttf)
+set(KEITH_IMAGE_RESOURCES
+  images/chassis.png
+  images/workspace-source.png
+  images/workspace-pitch.png
+  images/workspace-tape.png)
 
-  if(TARGET Keith-vst3)
-    target_sources(Keith-vst3 PRIVATE resources/main.rc)
-    set_source_files_properties(resources/main.rc PROPERTIES
-      COMPILE_FLAGS "/I\"${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts\" /I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
-  endif()
+if(APPLE)
+  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+    if(TARGET ${_target})
+      set_target_properties(${_target} PROPERTIES
+        MACOSX_DEPLOYMENT_TARGET "11.7.10"
+        XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "11.7.10"
+        XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH "NO")
+    endif()
+  endforeach()
 endif()
 
-# iPlug2's CMake does not copy the RESOURCES list next to the Windows binaries; do it here so the
-# VST3 bundle and the standalone both ship their faces. (The .exe and the .vst3 also embed them.)
-if(WIN32 AND TARGET Keith-vst3)
-  add_custom_command(TARGET Keith-vst3 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/OFL.txt"
-      "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources/OFL.txt"
-    COMMENT "Copying Oswald OFL notice into Keith.vst3")
-  foreach(_font IN LISTS KEITH_FONT_RESOURCES)
-    get_filename_component(_font_name "${_font}" NAME)
-    add_custom_command(TARGET Keith-vst3 POST_BUILD
+# resources/main.rc is a Windows resource script. iPlug2 already adds it to the
+# APP target. The VST3 target does not get it, so attach it here on Windows only.
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc" AND TARGET Keith-vst3)
+  target_sources(Keith-vst3 PRIVATE resources/main.rc)
+  set_source_files_properties(resources/main.rc PROPERTIES
+    COMPILE_FLAGS "/I\"${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts\" /I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
+endif()
+
+# Copy named files into destination, flattening to the file name.
+function(keith_stage_files target destination)
+  if(NOT TARGET ${target})
+    return()
+  endif()
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${destination}"
+    COMMENT "Preparing ${destination}")
+  foreach(_rel IN LISTS ARGN)
+    get_filename_component(_name "${_rel}" NAME)
+    add_custom_command(TARGET ${target} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/resources/${_font}"
-        "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources/${_font_name}"
-      COMMENT "Copying editor font ${_font_name} into Keith.vst3")
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/${_rel}"
+        "${destination}/${_name}"
+      COMMENT "Copying ${_name} for ${target}")
   endforeach()
+endfunction()
+
+# iPlug2's CMake does not copy the RESOURCES list next to the Windows binaries.
+# The .rc embeds the faces. These copies keep them on disk as well.
+if(WIN32 AND TARGET Keith-vst3)
+  keith_stage_files(Keith-vst3 "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources"
+    ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
 endif()
 
 # Headless proof that every baked preset survives Keith::RestorePreset.
 # IPLUG_EDITOR stays off so this target does not pull IGraphics. Building
 # keith-synth-tests builds this too, because the verification line names that target.
 set(_keith_vst3_sdk "${IPLUG2_DIR}/Dependencies/IPlug/VST3_SDK")
+if(WIN32)
+  set(_keith_vst3_entry "${_keith_vst3_sdk}/public.sdk/source/main/dllmain.cpp")
+elseif(APPLE)
+  set(_keith_vst3_entry "${_keith_vst3_sdk}/public.sdk/source/main/macmain.cpp")
+endif()
 add_executable(keith-preset-restore-tests
   tools/preset_restore_test.cpp
   src/Keith.cpp
@@ -128,7 +158,7 @@ add_executable(keith-preset-restore-tests
   "${_keith_vst3_sdk}/public.sdk/source/vst/vstparameters.cpp"
   "${_keith_vst3_sdk}/public.sdk/source/vst/vstsinglecomponenteffect.cpp"
   "${_keith_vst3_sdk}/public.sdk/source/main/pluginfactory.cpp"
-  "${_keith_vst3_sdk}/public.sdk/source/main/dllmain.cpp"
+  ${_keith_vst3_entry}
 )
 target_compile_features(keith-preset-restore-tests PRIVATE cxx_std_17)
 target_include_directories(keith-preset-restore-tests PRIVATE
@@ -151,21 +181,35 @@ target_compile_definitions(keith-preset-restore-tests PRIVATE
   $<$<NOT:$<CONFIG:Debug>>:RELEASE>
 )
 target_link_libraries(keith-preset-restore-tests PRIVATE iPlug2::IPlug iPlug2::Extras::Synth)
+if(APPLE)
+  set_source_files_properties(
+    "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3.cpp"
+    "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3_ProcessorBase.cpp"
+    TARGET_DIRECTORY keith-preset-restore-tests
+    PROPERTIES LANGUAGE OBJCXX)
+  target_link_libraries(keith-preset-restore-tests PRIVATE
+    "-framework CoreFoundation" "-framework Cocoa")
+endif()
 add_test(NAME preset-restore COMMAND keith-preset-restore-tests)
 add_dependencies(keith-synth-tests keith-preset-restore-tests)
 
 if(WIN32 AND TARGET Keith-app)
-  add_custom_command(TARGET Keith-app POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/OFL.txt"
-      "${CMAKE_BINARY_DIR}/out/OFL.txt"
-    COMMENT "Copying Oswald OFL notice next to Keith.exe")
-  foreach(_font IN LISTS KEITH_FONT_RESOURCES)
-    get_filename_component(_font_name "${_font}" NAME)
-    add_custom_command(TARGET Keith-app POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/resources/${_font}"
-        "${CMAKE_BINARY_DIR}/out/${_font_name}"
-      COMMENT "Copying editor font ${_font_name} next to Keith.exe")
+  keith_stage_files(Keith-app "${CMAKE_BINARY_DIR}/out"
+    ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
+endif()
+
+# macOS LoadFont resolves a TTF from the bundle resource directory. Copy the
+# faces there for each bundle. The APP also gets them beside the .app, matching
+# the standalone layout used on Windows.
+if(APPLE)
+  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+    if(TARGET ${_target})
+      keith_stage_files(${_target} "$<TARGET_BUNDLE_DIR:${_target}>/Contents/Resources"
+        ${KEITH_FONT_RESOURCES} ${KEITH_IMAGE_RESOURCES} fonts/OFL.txt)
+    endif()
   endforeach()
+  if(TARGET Keith-app)
+    keith_stage_files(Keith-app "$<TARGET_BUNDLE_DIR:Keith-app>/.."
+      ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
+  endif()
 endif()
