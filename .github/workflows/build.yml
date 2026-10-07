@@ -1,0 +1,89 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-macos-arm64:
+    name: macOS Apple Silicon (AU + VST3)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap iPlug2 (pinned)
+        run: ./tools/bootstrap-deps
+
+      - name: Configure (universal, macOS 11.7.10 floor)
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIPLUG_DEPLOY_PLUGINS=OFF
+
+      - name: Build AU + VST3
+        run: cmake --build build --target Keith-vst3 Keith-au
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keith-macos-arm64
+          path: |
+            build/out/Keith.vst3
+            build/out/Keith.component
+
+  build-macos-intel:
+    # BRIEF [A2]: macos-13 Intel runners are retired; use macos-15-intel (free tier).
+    name: macOS Intel (AU + VST3)
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap iPlug2 (pinned)
+        run: ./tools/bootstrap-deps
+
+      - name: Configure (universal, macOS 11.7.10 floor)
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIPLUG_DEPLOY_PLUGINS=OFF
+
+      - name: Build AU + VST3
+        run: cmake --build build --target Keith-vst3 Keith-au
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keith-macos-intel
+          path: |
+            build/out/Keith.vst3
+            build/out/Keith.component
+
+  build-windows:
+    name: Windows x64 VST3
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap iPlug2 (pinned)
+        shell: bash
+        run: ./tools/bootstrap-deps
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 17 2022"
+          -A x64
+          -DIPLUG_DEPLOY_PLUGINS=OFF
+
+      - name: Build VST3
+        run: cmake --build build --config Release --target Keith-vst3
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: keith-windows-vst3
+          path: build/out/Keith.vst3

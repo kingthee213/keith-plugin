@@ -10,6 +10,7 @@ out/
 # vendored SDK checkouts pulled by the build (never committed as our own)
 third_party/iPlug2/
 third_party/Airwindows/
+tools/pluginval/
 # scratch
 .sam-*
 *.prompt.txt

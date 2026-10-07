@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Fetches iPlug2 at a pinned revision into third_party/iPlug2/ (gitignored).
+# CI and local builds must use the same revision — see README.md.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="${ROOT}/third_party/iPlug2"
+# Pinned iPlug2 revision (full SHA). Do not float main.
+IPLUG2_REV="d54f69050f517e43b941d88c2a170f0a840b9ee4"
+IPLUG2_REPO="https://github.com/iPlug2/iPlug2.git"
+
+if [[ -d "${DEST}/.git" ]]; then
+  echo "Updating existing iPlug2 checkout at ${DEST}"
+  git -C "${DEST}" fetch --depth 1 origin "${IPLUG2_REV}"
+  git -C "${DEST}" checkout --detach "${IPLUG2_REV}"
+  git -C "${DEST}" submodule update --init --recursive
+else
+  echo "Cloning iPlug2 ${IPLUG2_REV} into ${DEST}"
+  git clone --recursive "${IPLUG2_REPO}" "${DEST}"
+  git -C "${DEST}" checkout --detach "${IPLUG2_REV}"
+  git -C "${DEST}" submodule update --init --recursive
+fi
+
+echo "Fetching plugin SDKs (VST3, etc.)..."
+(
+  cd "${DEST}/Dependencies/IPlug"
+  ./download-iplug-sdks.sh
+)
+
+echo "iPlug2 ready at ${IPLUG2_REV}"
