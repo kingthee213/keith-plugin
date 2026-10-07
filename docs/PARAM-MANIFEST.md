@@ -3,10 +3,10 @@
 Contract between the editor lane and the composer / engine lane.
 **Stable ids.** The engine and host automation read these names; do not rename casually.
 
-Reconciled **U14 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
+Reconciled **U15 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
 U1/U4 host IDs **0-8**, U7 IDs **9-42**, U9 IDs **43-55**, U10 IDs **56-74** and
-U11 IDs **75-84** are preserved. U13 appends the second LFO at IDs **85-88**.
-Current `kNumParams` is **89**.
+U11 IDs **75-84** are preserved. U13 appends the second LFO at IDs **85-88**. U15 appends
+the four-slot modulation matrix at IDs **89-100**. Current `kNumParams` is **101**.
 
 Column meanings:
 
@@ -110,6 +110,18 @@ Column meanings:
 | `synth_lfo2_shape` | LFO2 Shape | list | Sine / Tri / Saw / Square / S&H | Sine | synth | Synth LFO2 Shape | proposed | live - added U13 |
 | `synth_lfo2_dest` | LFO2 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth LFO2 Dest | proposed | live - added U13 |
 | `synth_lfo2_amount` | LFO2 Amt | knob | -100-+100 % | 0 % | synth | Synth LFO2 Amount | proposed | live - added U13 |
+| `synth_mod1_source` | Mod1 Src | list | Off / LFO 1 / LFO 2 / Mod Wheel / Velocity / Key | Off | synth | Mod1 Src | proposed | live - added U15 |
+| `synth_mod1_dest` | Mod1 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Mod1 Dest | proposed | live - added U15 |
+| `synth_mod1_amount` | Mod1 Amt | knob | -100-+100 % | 0 % | synth | Mod1 Amt | proposed | live - added U15 |
+| `synth_mod2_source` | Mod2 Src | list | Off / LFO 1 / LFO 2 / Mod Wheel / Velocity / Key | Off | synth | Mod2 Src | proposed | live - added U15 |
+| `synth_mod2_dest` | Mod2 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Mod2 Dest | proposed | live - added U15 |
+| `synth_mod2_amount` | Mod2 Amt | knob | -100-+100 % | 0 % | synth | Mod2 Amt | proposed | live - added U15 |
+| `synth_mod3_source` | Mod3 Src | list | Off / LFO 1 / LFO 2 / Mod Wheel / Velocity / Key | Off | synth | Mod3 Src | proposed | live - added U15 |
+| `synth_mod3_dest` | Mod3 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Mod3 Dest | proposed | live - added U15 |
+| `synth_mod3_amount` | Mod3 Amt | knob | -100-+100 % | 0 % | synth | Mod3 Amt | proposed | live - added U15 |
+| `synth_mod4_source` | Mod4 Src | list | Off / LFO 1 / LFO 2 / Mod Wheel / Velocity / Key | Off | synth | Mod4 Src | proposed | live - added U15 |
+| `synth_mod4_dest` | Mod4 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Mod4 Dest | proposed | live - added U15 |
+| `synth_mod4_amount` | Mod4 Amt | knob | -100-+100 % | 0 % | synth | Mod4 Amt | proposed | live - added U15 |
 | `synth_mod_wheel` | Mod Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth Mod Dest | proposed | live - added U9 |
 | `synth_mod_amount` | Mod Amt | knob | -100-+100 % | 0 % | synth | Synth Mod Amount | proposed | live - added U9 |
 | `synth_vel_to_amp` | Vel To Amp | knob | 0-100 % | 0 % | synth | Synth Vel To Amp | proposed | live - added U9 |
@@ -286,23 +298,53 @@ Appended after ID 84. LFO 2 is independent of LFO 1. Destination and shape use t
 
 ---
 
-## Row counts (U14 reconcile)
+## U15 code surface (source of truth for `live`)
+
+Appended after ID 88. Each slot uses the existing `ModDest` set and has an independent source,
+destination and bipolar amount. Source Off, destination Off and amount 0 are inert defaults.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---:|---|---|---|
+| `kParamMod1Source` | 89 | Mod1 Src | `synth_mod1_source` | Off |
+| `kParamMod1Dest` | 90 | Mod1 Dest | `synth_mod1_dest` | Off |
+| `kParamMod1Amount` | 91 | Mod1 Amt | `synth_mod1_amount` | 0 % |
+| `kParamMod2Source` | 92 | Mod2 Src | `synth_mod2_source` | Off |
+| `kParamMod2Dest` | 93 | Mod2 Dest | `synth_mod2_dest` | Off |
+| `kParamMod2Amount` | 94 | Mod2 Amt | `synth_mod2_amount` | 0 % |
+| `kParamMod3Source` | 95 | Mod3 Src | `synth_mod3_source` | Off |
+| `kParamMod3Dest` | 96 | Mod3 Dest | `synth_mod3_dest` | Off |
+| `kParamMod3Amount` | 97 | Mod3 Amt | `synth_mod3_amount` | 0 % |
+| `kParamMod4Source` | 98 | Mod4 Src | `synth_mod4_source` | Off |
+| `kParamMod4Dest` | 99 | Mod4 Dest | `synth_mod4_dest` | Off |
+| `kParamMod4Amount` | 100 | Mod4 Amt | `synth_mod4_amount` | 0 % |
+
+`src/synth/CoreSynth.h` owns the matrix source values and sends every slot through the existing
+`ApplyModRoute` helper. Slots on the same destination sum. The matrix sum is clamped to one
+full-scale route per destination before it is added to the fixed LFO 1, LFO 2 and mod-wheel routes.
+`src/editor/EditorialLayout.h` exposes all four rows on the `MATRIX` sub-tab. IDs 0-88 are unchanged.
+
+`kNumParams` = **101**.
+
+---
+
+## Row counts (U15 reconcile)
 
 | Metric | Count |
 |---|---|
-| Total rows | **115** |
-| Real parameters (`kNumParams`, IDs 0-88) | **89** |
+| Total rows | **127** |
+| Real parameters (`kNumParams`, IDs 0-100) | **101** |
 | Host preset action, not a parameter (`preset_family`) | **1** |
 | MIDI pad rows, live but not parameters | **16** |
 | Rows `not yet implemented` | **8** |
 | Rows `not applicable` | **1** (`drum_kit_swing`) |
 | Rows added for LFO 2 | **4** (`synth_lfo2_rate`, `synth_lfo2_shape`, `synth_lfo2_dest`, `synth_lfo2_amount`) |
+| Rows added for the modulation matrix | **12** (`synth_mod1_*` through `synth_mod4_*`) |
 
 ---
 
 ## Notes for the editor lane
 
-1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-88. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-100. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
 2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
-3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. Two LFOs and CC1 are live. A modulation matrix is not.
+3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. Two LFOs, CC1 and the four-slot modulation matrix are live.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.

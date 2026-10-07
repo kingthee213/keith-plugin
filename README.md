@@ -1,6 +1,6 @@
 # Keith
 
-Keith is a two-oscillator instrument with 89 automatable parameters (IDs 0-88), 103 original presets in Family 01-05, a synthesized drum kit, a tape bus, and insert and master effects. The Windows VST3 and the standalone share one editor. The plugin name, the binary and the preset names stay Keith. The editor wordmark reads Yote Machine. The service plate reads The Youth Hostel DSP.
+Keith is a two-oscillator instrument with 101 automatable parameters (IDs 0-100), 103 original presets in Family 01-05, a synthesized drum kit, a tape bus, and insert and master effects. The Windows VST3 and the standalone share one editor. The plugin name, the binary and the preset names stay Keith. The editor wordmark reads Yote Machine. The service plate reads The Youth Hostel DSP.
 
 Locked product spec: [`BRIEF.md`](BRIEF.md).
 
@@ -9,7 +9,7 @@ Locked product spec: [`BRIEF.md`](BRIEF.md).
 Seven pages. The right-hand channel stays up on all of them: filter type, cutoff, resonance, envelope depth, engine, poly or mono, glide, unison and detune.
 
 1. **Source.** Two oscillators, each with morph, tune, level and pulse width, plus sub, noise, FM, sync and ring.
-2. **Modulation.** LFO 1 and LFO 2 are sub-tabs of one full-size desk (rate, amount, shape, destination). Mod wheel, velocity and mono legato sit beside that desk.
+2. **Modulation.** LFO 1, LFO 2 and the four-slot matrix are sub-tabs of one full-size desk. Each matrix row has source, destination and bipolar amount controls. Mod wheel, velocity and mono legato sit beside that desk.
 3. **Filter.** Response plot, key track and drive.
 4. **Envelopes.** Volume, pitch and filter are sub-tabs of one graph.
 5. **Tape.** Drive, head bump, wow, flutter, hiss, print, dry/wet, bypass.
@@ -26,11 +26,18 @@ The drum kit is synthesized. `src/drums/DrumSynth.h` builds each hit from oscill
 
 Insert 1 and insert 2 each take Off, Drive, Chorus, Delay or Crush. Master takes Off, Comp, Limit, Width or Tilt.
 
+## Modulation matrix
+
+The matrix has four additive slots. Sources are Off, LFO 1, LFO 2, Mod Wheel, Velocity and Key.
+Destinations are the engine's existing Off, Cutoff, Pitch, Shape, Level and FM routes. Slots on one
+destination sum, then the matrix contribution is clamped to one full-scale route. Off sources and
+zero amounts are exact no-ops. The matrix defaults are inert in all 103 factory presets.
+
 ## What is not built
 
 - No macOS binary has been compiled from this tree. The AU, the macOS VST3 and the macOS standalone have not been run. `auval` has not been run. Ableton and FL Studio have not loaded this build.
 - The plugin is unsigned and not notarised.
-- There is no modulation matrix. LFO 1, LFO 2 and the mod wheel each have one destination.
+- Multi-part synth routing is not built.
 - Preset save, bank and favorites are not parameters.
 - There is no sequencer, and swing is not a parameter.
 - The documented factory program lists from the reference machines are not in the plugin.

@@ -1407,8 +1407,10 @@ static_assert(kParamIns1Algo == 56 && kParamOutLevel == 74,
               "U10 appends 56..74");
 static_assert(kParamDrumSlotSelect == 75 && kParamDrumKitLevel == 84,
               "U11 appends 75..84");
-static_assert(kParamLfo2Rate == 85 && kParamLfo2Amount == 88 && kNumParams == 89,
+static_assert(kParamLfo2Rate == 85 && kParamLfo2Amount == 88,
               "U13 appends 85..88");
+static_assert(kParamMod1Source == 89 && kParamMod4Amount == 100 && kNumParams == 101,
+              "U15 appends 89..100");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -1540,6 +1542,28 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamDrumSlotSolo)->InitBool("Drum Slot Solo", false);
   GetParam(kParamDrumKitLevel)->InitDouble("Drum Kit Level", 0., -60., 6., 0.01, "dB");
   GetParam(kParamDrumKitLevel)->SetDisplayText(-60., "-inf");
+
+  // U15. Off sources, Off destinations and zero amounts make every new route inert.
+  GetParam(kParamMod1Source)->InitEnum(
+    "Mod1 Src", 0, {"Off", "LFO 1", "LFO 2", "Mod Wheel", "Velocity", "Key"});
+  GetParam(kParamMod1Dest)->InitEnum(
+    "Mod1 Dest", 0, {"Off", "Cutoff", "Pitch", "Shape", "Level", "FM"});
+  GetParam(kParamMod1Amount)->InitDouble("Mod1 Amt", 0., -100., 100., 0.1, "%");
+  GetParam(kParamMod2Source)->InitEnum(
+    "Mod2 Src", 0, {"Off", "LFO 1", "LFO 2", "Mod Wheel", "Velocity", "Key"});
+  GetParam(kParamMod2Dest)->InitEnum(
+    "Mod2 Dest", 0, {"Off", "Cutoff", "Pitch", "Shape", "Level", "FM"});
+  GetParam(kParamMod2Amount)->InitDouble("Mod2 Amt", 0., -100., 100., 0.1, "%");
+  GetParam(kParamMod3Source)->InitEnum(
+    "Mod3 Src", 0, {"Off", "LFO 1", "LFO 2", "Mod Wheel", "Velocity", "Key"});
+  GetParam(kParamMod3Dest)->InitEnum(
+    "Mod3 Dest", 0, {"Off", "Cutoff", "Pitch", "Shape", "Level", "FM"});
+  GetParam(kParamMod3Amount)->InitDouble("Mod3 Amt", 0., -100., 100., 0.1, "%");
+  GetParam(kParamMod4Source)->InitEnum(
+    "Mod4 Src", 0, {"Off", "LFO 1", "LFO 2", "Mod Wheel", "Velocity", "Key"});
+  GetParam(kParamMod4Dest)->InitEnum(
+    "Mod4 Dest", 0, {"Off", "Cutoff", "Pitch", "Shape", "Level", "FM"});
+  GetParam(kParamMod4Amount)->InitDouble("Mod4 Amt", 0., -100., 100., 0.1, "%");
 
   // Baked factory presets, grouped Family 01-05, neutral names only.
   AddFactoryPresets();
@@ -1740,6 +1764,24 @@ void Keith::SyncSynthParams()
   p.velToAmp = static_cast<float>(GetParam(kParamVelToAmp)->Value() / 100.);
   p.velToFilter = static_cast<float>(GetParam(kParamVelToFilter)->Value() / 100.);
   p.monoLegato = GetParam(kParamMonoLegato)->Int() != 0;
+
+  constexpr int modSources[keith::synth::kNumModSlots] = {
+    kParamMod1Source, kParamMod2Source, kParamMod3Source, kParamMod4Source
+  };
+  constexpr int modDestinations[keith::synth::kNumModSlots] = {
+    kParamMod1Dest, kParamMod2Dest, kParamMod3Dest, kParamMod4Dest
+  };
+  constexpr int modAmounts[keith::synth::kNumModSlots] = {
+    kParamMod1Amount, kParamMod2Amount, kParamMod3Amount, kParamMod4Amount
+  };
+  for (int slot = 0; slot < keith::synth::kNumModSlots; ++slot)
+  {
+    auto& route = p.modMatrix[slot];
+    route.source = static_cast<keith::synth::ModSource>(GetParam(modSources[slot])->Int());
+    route.destination =
+      static_cast<keith::synth::ModDest>(GetParam(modDestinations[slot])->Int());
+    route.amount = static_cast<float>(GetParam(modAmounts[slot])->Value() / 100.);
+  }
 
   mDSP.SetSynthParams(p);
 }

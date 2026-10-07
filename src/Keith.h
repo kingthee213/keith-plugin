@@ -155,6 +155,20 @@ enum EParams
   kParamLfo2Dest = 87,
   kParamLfo2Amount = 88,
 
+  // U15 appends. IDs 0-88 stay put.
+  kParamMod1Source = 89,
+  kParamMod1Dest = 90,
+  kParamMod1Amount = 91,
+  kParamMod2Source = 92,
+  kParamMod2Dest = 93,
+  kParamMod2Amount = 94,
+  kParamMod3Source = 95,
+  kParamMod3Dest = 96,
+  kParamMod3Amount = 97,
+  kParamMod4Source = 98,
+  kParamMod4Dest = 99,
+  kParamMod4Amount = 100,
+
   kNumParams
 };
 

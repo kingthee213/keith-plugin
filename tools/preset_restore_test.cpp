@@ -34,6 +34,15 @@ int main()
     std::vector<double> state(static_cast<size_t>(kNumParams));
     for (int param = 0; param < kNumParams; ++param)
       state[static_cast<size_t>(param)] = plugin->GetParam(param)->Value();
+    for (int param = kParamMod1Source; param <= kParamMod4Amount; ++param)
+    {
+      if (state[static_cast<size_t>(param)] != 0.)
+      {
+        std::fprintf(stderr, "preset %d (%s) has active modulation-matrix default at parameter %d\n",
+                     preset, plugin->GetPresetName(preset), param);
+        return 1;
+      }
+    }
     states.push_back(std::move(state));
   }
 

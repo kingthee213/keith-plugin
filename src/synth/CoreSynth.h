@@ -58,6 +58,34 @@ enum class ModDest : int
   Fm = 5   // U13: drive the FM oscillator depth
 };
 
+enum class ModSource : int
+{
+  Off = 0,
+  Lfo1 = 1,
+  Lfo2 = 2,
+  ModWheel = 3,
+  Velocity = 4,
+  Key = 5
+};
+
+constexpr int kNumModSlots = 4;
+
+struct ModRoute
+{
+  ModSource source = ModSource::Off;
+  ModDest destination = ModDest::Off;
+  float amount = 0.f;
+};
+
+struct ModSignals
+{
+  float lfo1 = 0.f;
+  float lfo2 = 0.f;
+  float modWheel = 0.f;
+  float velocity = 0.f;
+  float key = 0.f;
+};
+
 /** Live performance state that is not a stored parameter: the mod wheel arrives from CC1
  *  through the framework (VoiceAllocator forwards unhandled controllers to SynthVoice::SetControl). */
 struct RuntimeMod
@@ -80,6 +108,58 @@ inline void ApplyModRoute(ModDest dest, float amount, float& cutoffOct, float& p
     case ModDest::Off:
     default: break;
   }
+}
+
+inline float ModSourceValue(ModSource source, const ModSignals& signals)
+{
+  switch (source)
+  {
+    case ModSource::Lfo1: return signals.lfo1;
+    case ModSource::Lfo2: return signals.lfo2;
+    case ModSource::ModWheel: return signals.modWheel;
+    case ModSource::Velocity: return signals.velocity;
+    case ModSource::Key: return signals.key;
+    case ModSource::Off:
+    default: return 0.f;
+  }
+}
+
+/** Sum the four matrix slots through the existing destination router. The matrix contribution is
+ *  limited to one full-scale route per destination before it is added to the fixed routings. */
+inline bool ApplyModMatrix(const ModRoute (&routes)[kNumModSlots], const ModSignals& signals,
+                           float& cutoffOct, float& pitchSemi, float& shapeMod,
+                           float& levelMod, float& fmMod)
+{
+  float matrixCutoffOct = 0.f;
+  float matrixPitchSemi = 0.f;
+  float matrixShape = 0.f;
+  float matrixLevel = 0.f;
+  float matrixFm = 0.f;
+  bool active = false;
+
+  for (const ModRoute& route : routes)
+  {
+    if (route.source == ModSource::Off || route.destination == ModDest::Off || route.amount == 0.f)
+      continue;
+
+    const float source = std::clamp(ModSourceValue(route.source, signals), -1.f, 1.f);
+    if (source == 0.f)
+      continue;
+
+    ApplyModRoute(route.destination, source * std::clamp(route.amount, -1.f, 1.f),
+                  matrixCutoffOct, matrixPitchSemi, matrixShape, matrixLevel, &matrixFm);
+    active = true;
+  }
+
+  if (!active)
+    return false;
+
+  cutoffOct += std::clamp(matrixCutoffOct, -4.f, 4.f);
+  pitchSemi += std::clamp(matrixPitchSemi, -12.f, 12.f);
+  shapeMod += std::clamp(matrixShape, -0.5f, 0.5f);
+  levelMod += std::clamp(matrixLevel, -1.f, 1.f);
+  fmMod += std::clamp(matrixFm, -1.f, 1.f);
+  return true;
 }
 
 struct Params
@@ -151,6 +231,9 @@ struct Params
   float velToFilter = 0.f; // 0..1: velocity offsets cutoff, +/-2 octaves at full amount
 
   bool monoLegato = false; // mono only: a new key while another is held glides without re-attack
+
+  // --- U15 append: four additive source -> destination -> amount routes. Defaults are inert. ---
+  ModRoute modMatrix[kNumModSlots] {};
 };
 
 class Envelope
@@ -645,14 +728,24 @@ public:
     // --- U9 modulation: one LFO (per-voice, retriggered on note-on) and the mod wheel (CC1).
     // U13 adds an independent second LFO. Each route feeds exactly one DSP point; an Off
     // destination contributes nothing. ---
-    const float lfo = mLfo.Process(p.lfoRateHz, p.lfoShape) * p.lfoAmount;   // -1..1 * amount
-    const float lfo2 = mLfo2.Process(p.lfo2RateHz, p.lfo2Shape) * p.lfo2Amount; // -1..1 * amount
+    const float lfoValue = mLfo.Process(p.lfoRateHz, p.lfoShape);
+    const float lfo2Value = mLfo2.Process(p.lfo2RateHz, p.lfo2Shape);
+    const float lfo = lfoValue * p.lfoAmount;   // -1..1 * amount
+    const float lfo2 = lfo2Value * p.lfo2Amount; // -1..1 * amount
     const float mw = mod.modWheel * p.modWheelAmount;                        // 0..1 * amount
 
     float cutoffOct = 0.f, pitchMod = 0.f, shapeMod = 0.f, levelMod = 0.f, fmMod = 0.f;
     ApplyModRoute(p.lfoDest, lfo, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
     ApplyModRoute(p.lfo2Dest, lfo2, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
     ApplyModRoute(p.modWheelDest, mw, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    const ModSignals matrixSignals {
+      lfoValue,
+      lfo2Value,
+      mod.modWheel,
+      mVelocity,
+      std::clamp((mNote - 60.f) / 60.f, -1.f, 1.f)
+    };
+    ApplyModMatrix(p.modMatrix, matrixSignals, cutoffOct, pitchMod, shapeMod, levelMod, fmMod);
 
     const float pitchSemis = p.pitchAmount * pitchEnv + pitchMod;
     const float baseNote = mNote + pitchSemis;

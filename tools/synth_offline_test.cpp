@@ -12,6 +12,9 @@ using keith::synth::EngineMode;
 using keith::synth::FilterType;
 using keith::synth::LfoShape;
 using keith::synth::ModDest;
+using keith::synth::ModRoute;
+using keith::synth::ModSignals;
+using keith::synth::ModSource;
 using keith::synth::OfflineEngine;
 using keith::synth::Params;
 using keith::synth::PolyMode;
@@ -830,6 +833,169 @@ int main()
     Expect(MeanAbsDiff(fmPlain, fmSwing, static_cast<size_t>(sr / 20)) > 0.001,
            "lfo2_fm_moves_timbre");
     Expect(AllFinite(fmSwing), "lfo2_fm_stays_finite");
+  }
+
+  // U15 modulation matrix. These assertions exercise the same ApplyModMatrix helper used by
+  // Voice::Process, so each slot must move only the destination selected by the stored ModDest.
+  {
+    const ModSignals signals {0.5f, -0.75f, 0.8f, 0.6f, 0.4f};
+    const ModSource sources[4] = {
+      ModSource::Lfo1, ModSource::Lfo2, ModSource::ModWheel, ModSource::Velocity
+    };
+    const ModDest destinations[4] = {
+      ModDest::Cutoff, ModDest::Pitch, ModDest::Level, ModDest::Shape
+    };
+
+    for (int slot = 0; slot < 4; ++slot)
+    {
+      ModRoute routes[keith::synth::kNumModSlots] {};
+      routes[slot].source = sources[slot];
+      routes[slot].destination = destinations[slot];
+      routes[slot].amount = 0.75f;
+      float cutoff = 0.f, pitch = 0.f, shape = 0.f, level = 0.f, fm = 0.f;
+      const bool active = keith::synth::ApplyModMatrix(
+        routes, signals, cutoff, pitch, shape, level, fm);
+      const float values[5] = {cutoff, pitch, shape, level, fm};
+      const int target = destinations[slot] == ModDest::Cutoff ? 0 :
+                         destinations[slot] == ModDest::Pitch ? 1 :
+                         destinations[slot] == ModDest::Shape ? 2 : 3;
+      char positive[64];
+      char negative[64];
+      std::snprintf(positive, sizeof(positive), "mod_slot_%d_destination_moves", slot + 1);
+      std::snprintf(negative, sizeof(negative),
+                    "mod_slot_%d_unrelated_destination_unchanged", slot + 1);
+      Expect(active && std::fabs(values[target]) > 0.01f, positive);
+      Expect(values[(target + 1) % 5] == 0.f, negative);
+    }
+
+    ModRoute keyRoute[keith::synth::kNumModSlots] {};
+    keyRoute[0] = {ModSource::Key, ModDest::Fm, 1.f};
+    float cutoff = 0.f, pitch = 0.f, shape = 0.f, level = 0.f, fm = 0.f;
+    keith::synth::ApplyModMatrix(keyRoute, signals, cutoff, pitch, shape, level, fm);
+    Expect(fm == signals.key && cutoff == 0.f && pitch == 0.f &&
+           shape == 0.f && level == 0.f, "mod_key_source_routes_to_fm_only");
+  }
+
+  {
+    ModRoute routes[keith::synth::kNumModSlots] {};
+    routes[0] = {ModSource::Lfo1, ModDest::Cutoff, 1.f};
+    routes[1] = {ModSource::Velocity, ModDest::Cutoff, 0.5f};
+    const ModSignals signals {0.25f, 0.f, 0.f, 0.5f, 0.f};
+    float cutoff = 0.f, pitch = 0.f, shape = 0.f, level = 0.f, fm = 0.f;
+    keith::synth::ApplyModMatrix(routes, signals, cutoff, pitch, shape, level, fm);
+    Expect(std::fabs(cutoff - 2.f) < 1.0e-6f && pitch == 0.f && shape == 0.f &&
+           level == 0.f && fm == 0.f, "mod_slots_sum_on_shared_destination");
+
+    for (ModRoute& route : routes)
+      route = {ModSource::Lfo1, ModDest::Cutoff, 1.f};
+    cutoff = pitch = shape = level = fm = 0.f;
+    keith::synth::ApplyModMatrix(
+      routes, ModSignals {1.f, 1.f, 1.f, 1.f, 1.f},
+      cutoff, pitch, shape, level, fm);
+    Expect(cutoff == 4.f, "mod_shared_destination_sum_is_bounded");
+  }
+
+  {
+    ModRoute routes[keith::synth::kNumModSlots] {};
+    routes[0] = {ModSource::Off, ModDest::Cutoff, 1.f};
+    routes[1] = {ModSource::Lfo1, ModDest::Pitch, 0.f};
+    float cutoff = 0.25f, pitch = -0.5f, shape = 0.1f, level = 0.2f, fm = -0.3f;
+    const bool active = keith::synth::ApplyModMatrix(
+      routes, ModSignals {1.f, 1.f, 1.f, 1.f, 1.f},
+      cutoff, pitch, shape, level, fm);
+    Expect(!active && cutoff == 0.25f && pitch == -0.5f && shape == 0.1f &&
+           level == 0.2f && fm == -0.3f, "mod_off_and_zero_amount_are_inert");
+  }
+
+  {
+    Params maximum = SteadyPatch();
+    maximum.osc1Shape = 0.6f;
+    maximum.osc2Level = 0.8f;
+    maximum.fmAmount = 1.f;
+    maximum.filterCutoffHz = 1200.f;
+    maximum.filterReso = 1.f;
+    maximum.lfoRateHz = 30.f;
+    maximum.lfo2RateHz = 30.f;
+    maximum.modMatrix[0] = {ModSource::Lfo1, ModDest::Cutoff, 1.f};
+    maximum.modMatrix[1] = {ModSource::Lfo2, ModDest::Pitch, 1.f};
+    maximum.modMatrix[2] = {ModSource::ModWheel, ModDest::Level, 1.f};
+    maximum.modMatrix[3] = {ModSource::Key, ModDest::Fm, 1.f};
+    eng.Reset(sr);
+    eng.SetModWheel(1.f);
+    eng.SetParams(maximum);
+    const auto output = RenderHold(eng, 127, 1.f, sr);
+    Expect(AllFinite(output), "mod_max_all_slots_is_finite");
+  }
+
+  {
+    Params legacy = SteadyPatch();
+    legacy.osc1Shape = 0.25f;
+    legacy.osc2Level = 0.7f;
+    legacy.filterCutoffHz = 1800.f;
+    legacy.lfoRateHz = 3.f;
+    legacy.lfoDest = ModDest::Pitch;
+    legacy.lfoAmount = 0.35f;
+    legacy.lfo2RateHz = 5.f;
+    legacy.lfo2Dest = ModDest::Cutoff;
+    legacy.lfo2Amount = 0.4f;
+    legacy.modWheelDest = ModDest::Level;
+    legacy.modWheelAmount = 0.25f;
+
+    auto renderLegacy = [&](const Params& params) {
+      eng.Reset(sr);
+      eng.SetModWheel(0.8f);
+      eng.SetParams(params);
+      return RenderHold(eng, 60, 0.9f, sr / 2);
+    };
+    const auto before = renderLegacy(legacy);
+    Params matrixOff = legacy;
+    for (int slot = 0; slot < keith::synth::kNumModSlots; ++slot)
+    {
+      matrixOff.modMatrix[slot].source = ModSource::Off;
+      matrixOff.modMatrix[slot].destination = static_cast<ModDest>(1 + slot);
+      matrixOff.modMatrix[slot].amount = 1.f;
+    }
+    const auto after = renderLegacy(matrixOff);
+    Expect(Identical(before, after) && AllFinite(after),
+           "mod_matrix_does_not_disturb_existing_routings");
+  }
+
+  {
+    bool preserved = true;
+    for (int preset = 0; preset < 103; ++preset)
+    {
+      Params existing = SteadyPatch();
+      existing.osc1Shape = static_cast<float>(preset % 5) * 0.2f;
+      existing.osc2Level = static_cast<float>(preset % 4) * 0.15f;
+      existing.filterCutoffHz = 900.f + static_cast<float>(preset) * 120.f;
+      existing.masterLevel = 0.35f + static_cast<float>(preset % 3) * 0.1f;
+      existing.lfoDest = static_cast<ModDest>(preset % 6);
+      existing.lfoAmount = static_cast<float>((preset % 7) - 3) / 5.f;
+      existing.lfo2Dest = static_cast<ModDest>((preset + 2) % 6);
+      existing.lfo2Amount = static_cast<float>((preset % 5) - 2) / 4.f;
+      existing.modWheelDest = static_cast<ModDest>((preset + 4) % 6);
+      existing.modWheelAmount = 0.3f;
+
+      Params zeroAmounts = existing;
+      for (int slot = 0; slot < keith::synth::kNumModSlots; ++slot)
+      {
+        zeroAmounts.modMatrix[slot].source = static_cast<ModSource>(1 + (slot % 5));
+        zeroAmounts.modMatrix[slot].destination = static_cast<ModDest>(1 + (slot % 5));
+        zeroAmounts.modMatrix[slot].amount = 0.f;
+      }
+
+      auto renderPreset = [&](const Params& params) {
+        OfflineEngine presetEngine;
+        presetEngine.Reset(sr);
+        presetEngine.SetModWheel(0.7f);
+        presetEngine.SetParams(params);
+        return RenderHold(presetEngine, 48 + preset % 36, 0.8f, 2048);
+      };
+      const auto oldSound = renderPreset(existing);
+      const auto newSound = renderPreset(zeroAmounts);
+      preserved = preserved && Identical(oldSound, newSound) && AllFinite(newSound);
+    }
+    Expect(preserved, "mod_new_defaults_are_inert");
   }
 
   {

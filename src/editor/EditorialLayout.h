@@ -87,15 +87,17 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   text(source, box(kRingLabel), "RING", Mono(11, kPaper));
   tabs(source, box(kRingTabs), kParamOscRing, {"OFF", "ON"});
 
-  // LFO 1 and LFO 2 share the region (58,218)-(500,540). Sub-tabs keep each
-  // LFO at the full size of that region. Shape lists the five LfoShape values.
-  // Dest lists the six ModDest values, including FM.
+  // LFO 1, LFO 2 and the four-slot matrix share the region (58,218)-(500,540).
+  // Shape lists the five LfoShape values. Every destination list is the six-value
+  // ModDest set, including Off and FM.
   auto* lfoDeck = new KeithPageDeck(IRECT(58, 268, 500, 540));
   modulation->AddChildControl(lfoDeck);
   auto* lfo1 = lfoDeck->AddPage();
   auto* lfo2 = lfoDeck->AddPage();
-  modulation->AddChildControl(new KeithNavButton(IRECT(58, 218, 277, 262), "LFO 1", lfoDeck, 0));
-  modulation->AddChildControl(new KeithNavButton(IRECT(281, 218, 500, 262), "LFO 2", lfoDeck, 1));
+  auto* matrix = lfoDeck->AddPage();
+  modulation->AddChildControl(new KeithNavButton(IRECT(58, 218, 201, 262), "LFO 1", lfoDeck, 0));
+  modulation->AddChildControl(new KeithNavButton(IRECT(207, 218, 350, 262), "LFO 2", lfoDeck, 1));
+  modulation->AddChildControl(new KeithNavButton(IRECT(356, 218, 500, 262), "MATRIX", lfoDeck, 2));
   auto bindLfo = [&](IContainerBase* page, int rate, int shape, int dest, int amount) {
     freeKnob(page, kModRate, rate, "RATE");
     freeKnob(page, kModLfoAmount, amount, "AMOUNT", kGreen, true);
@@ -106,6 +108,29 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   };
   bindLfo(lfo1, kParamLfoRate, kParamLfoShape, kParamLfoDest, kParamLfoAmount);
   bindLfo(lfo2, kParamLfo2Rate, kParamLfo2Shape, kParamLfo2Dest, kParamLfo2Amount);
+  constexpr int matrixSources[] = {
+    kParamMod1Source, kParamMod2Source, kParamMod3Source, kParamMod4Source
+  };
+  constexpr int matrixDestinations[] = {
+    kParamMod1Dest, kParamMod2Dest, kParamMod3Dest, kParamMod4Dest
+  };
+  constexpr int matrixAmounts[] = {
+    kParamMod1Amount, kParamMod2Amount, kParamMod3Amount, kParamMod4Amount
+  };
+  constexpr const char* matrixRows[] = {"1", "2", "3", "4"};
+  for (int slot = 0; slot < keith::synth::kNumModSlots; ++slot)
+  {
+    const float top = 268.f + static_cast<float>(slot) * 68.f;
+    text(matrix, IRECT(58, top + 20.f, 82, top + 46.f), matrixRows[slot],
+         MonoBold(13, kMagenta));
+    matrix->AddChildControl(new KeithParamMenu(
+      box(ModMatrixSourceBox(slot)), matrixSources[slot], "SOURCE",
+      {"OFF", "LFO 1", "LFO 2", "MOD WHEEL", "VELOCITY", "KEY"}));
+    matrix->AddChildControl(new KeithParamMenu(
+      box(ModMatrixDestinationBox(slot)), matrixDestinations[slot], "DESTINATION",
+      {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"}));
+    freeKnob(matrix, ModMatrixAmountBox(slot), matrixAmounts[slot], "AMOUNT", kGreen, true);
+  }
   text(modulation, box(kModWheelHeader), "MOD WHEEL", Title(kHeadingPx, kPaper));
   text(modulation, box(kModWheelCc), "CC1", Mono(16, kPaper, EAlign::Far));
   freeKnob(modulation, kModWheelAmount, kParamModWheelAmount, "AMOUNT", kMagenta, true);
@@ -206,7 +231,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   patches->AddChildControl(new KeithArchive(IRECT(644,300,982,690), {
     {"SOURCE"},{"Morph: sine through pulse."},{"Drag up to increase."},{"Ctrl-drag: fine control."},
     {"Double-click: default."},
-    {"MODULATION"},{"LFO 1 / LFO 2 sub-tabs."},{"Mod wheel, velocity, legato."},
+    {"MODULATION"},{"LFO 1 / LFO 2 / matrix."},{"Four source / destination slots."},
     {"ENVELOPES"},{"Drag the four handles."},{"Click a value to type."},
     {"DRUMS"},{"Pads select; MIDI 36-51 plays."},{"Synthesized voices, no samples."},
     {"FX"},{"Insert 1 into Insert 2."},{"Then tape, then master."},

@@ -64,6 +64,21 @@ constexpr Box kModShapeLabel {58.f, 444.f, 148.f, 484.f};
 constexpr Box kModShapeTabs {150.f, 440.f, 500.f, 484.f};
 constexpr Box kModLfoDestLabel {58.f, 500.f, 148.f, 540.f};
 constexpr Box kModLfoDestTabs {150.f, 496.f, 500.f, 540.f};
+constexpr Box ModMatrixSourceBox(int slot)
+{
+  const float top = 268.f + static_cast<float>(slot) * 68.f;
+  return {88.f, top + 6.f, 214.f, top + 60.f};
+}
+constexpr Box ModMatrixDestinationBox(int slot)
+{
+  const float top = 268.f + static_cast<float>(slot) * 68.f;
+  return {220.f, top + 6.f, 346.f, top + 60.f};
+}
+constexpr Box ModMatrixAmountBox(int slot)
+{
+  const float top = 268.f + static_cast<float>(slot) * 68.f;
+  return {354.f, top, 500.f, top + 68.f};
+}
 constexpr Box kModWheelHeader {530.f, 218.f, 820.f, 264.f};
 constexpr Box kModWheelCc {830.f, 218.f, 980.f, 264.f};
 constexpr Box kModWheelAmount {530.f, 268.f, 682.f, 430.f};
@@ -148,6 +163,12 @@ inline constexpr Box kModulationBoxes[] = {
   kModLfoDestLabel, kModLfoDestTabs, kModWheelHeader, kModWheelCc, kModWheelAmount,
   kModWheelDestLabel, kModWheelDestTabs, kVelHeader, kVelAmp, kVelFilter,
   kLegatoLabel, kLegatoTabs
+};
+inline constexpr Box kModMatrixBoxes[] = {
+  ModMatrixSourceBox(0), ModMatrixDestinationBox(0), ModMatrixAmountBox(0),
+  ModMatrixSourceBox(1), ModMatrixDestinationBox(1), ModMatrixAmountBox(1),
+  ModMatrixSourceBox(2), ModMatrixDestinationBox(2), ModMatrixAmountBox(2),
+  ModMatrixSourceBox(3), ModMatrixDestinationBox(3), ModMatrixAmountBox(3)
 };
 inline constexpr Box kFilterBoxes[] = {kFilterHeader, kFilterPlot, kKeyTrack, kFilterDrive};
 inline constexpr Box kFxInsert1Boxes[] = {

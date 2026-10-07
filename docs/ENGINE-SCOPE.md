@@ -146,6 +146,38 @@ Clean-room mimic. No Surge source, wavetables, or filter coefficient tables.
 **GPL boundary:** `github.com/surge-synthesizer/surge` is never cloned into `third_party/`. Manual
 PDFs and factory demo recordings are the only inputs.
 
+### 3.2 Modulation matrix (U15)
+
+Four slots add source, destination and bipolar amount routing to the existing fixed LFO 1, LFO 2
+and mod-wheel paths. IDs 89-100 store the slots. All twelve parameters default to Off or 0, so the
+103 factory presets render exactly as they did before U15.
+
+| Source | Signal used by the matrix |
+|---|---|
+| Off | Exact no-op |
+| LFO 1 | Raw bipolar LFO 1 waveform, before its fixed-route amount |
+| LFO 2 | Raw bipolar LFO 2 waveform, before its fixed-route amount |
+| Mod Wheel | CC1, 0 to 1 |
+| Velocity | Note-on velocity, 0 to 1 |
+| Key | Bipolar key position around MIDI note 60, clamped to -1 to 1 |
+
+The matrix reuses `ModDest` and `ApplyModRoute` from `src/synth/CoreSynth.h`. It does not maintain a
+second destination list.
+
+| `ModDest` | Full-scale matrix range |
+|---|---|
+| Off | Exact no-op |
+| Cutoff | -4 to +4 octaves |
+| Pitch | -12 to +12 semitones |
+| Shape | -0.5 to +0.5 morph fraction |
+| Level | -1 to +1 linear level offset |
+| FM | -1 to +1 FM-depth offset |
+
+Slots that target the same destination sum before clamping. Each destination's matrix sum is limited
+to one full-scale route, then added to the fixed LFO 1, LFO 2 and mod-wheel contribution. This keeps
+stacked slots bounded without changing the pre-U15 path when the matrix is at its default. Source Off
+and amount 0 skip routing and do not change an accumulator.
+
 ---
 
 ## 4. OB-XF style engine (BRIEF §4.2) — future pass
@@ -185,7 +217,7 @@ Voice allocator: 16 voices shared across parts (exact voice budget TBD in implem
    Hybrid/Analog select, multimode filter, amp/pitch/filter envs, poly/mono/porta/unison. Not a full
    OB-Xf ladder or Surge WT/matrix yet.
 3. **Next composer pass:** Deeper Analog ladder / SEM behaviour + Hybrid wavetable morph fidelity.
-4. **Then:** Modulation matrix / LFO destinations.
+4. **U15 (landed):** Four-slot modulation matrix using the existing source DSP and `ModDest` routes.
 5. **U10 (landed):** Two patch inserts plus one master effect, with preset serialization and the
    material-free `07 FX` page.
 6. **U11 (landed):** 16-voice synthesized percussion engine, contiguous MIDI map and live pad

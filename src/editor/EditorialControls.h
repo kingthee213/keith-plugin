@@ -3,8 +3,10 @@
 #include "IPlugPluginBase.h"
 #include "../synth/CoreSynth.h"
 #include <functional>
+#include <initializer_list>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace keith { namespace ui {
 
@@ -87,6 +89,67 @@ private:
   bool mPaper;
   std::string mLabel;
   float mTextPad;
+};
+
+class KeithParamMenu : public IControl
+{
+public:
+  KeithParamMenu(const IRECT& r, int paramIdx, const char* label,
+                 std::initializer_list<const char*> options)
+    : IControl(r, paramIdx), mLabel(label)
+  {
+    for (const char* option : options)
+      mOptions.emplace_back(option);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const int selected = SelectedIndex();
+    const IRECT value(mRECT.L, mRECT.T + 16.f, mRECT.R, mRECT.B);
+    g.DrawText(Mono(9, kPaper, EAlign::Near), mLabel.c_str(),
+               IRECT(mRECT.L, mRECT.T, mRECT.R, mRECT.T + 14.f));
+    g.FillRect(kPanelAlt, value);
+    g.DrawRect(kLine, value, nullptr, 1.f);
+    g.DrawText(MonoBold(10, kPaper, EAlign::Near), mOptions[static_cast<size_t>(selected)].c_str(),
+               value.GetPadded(-7.f).GetReducedFromRight(16.f));
+    g.FillTriangle(kMagenta, value.R - 13.f, value.MH() - 2.f,
+                   value.R - 5.f, value.MH() - 2.f, value.R - 9.f, value.MH() + 3.f);
+  }
+
+  void OnMouseDown(float, float, const IMouseMod&) override
+  {
+    const int selected = SelectedIndex();
+    mMenu.Clear();
+    for (int i = 0; i < static_cast<int>(mOptions.size()); ++i)
+    {
+      const int flags = i == selected ? IPopupMenu::Item::kChecked : 0;
+      mMenu.AddItem(new IPopupMenu::Item(mOptions[static_cast<size_t>(i)].c_str(), flags, i));
+    }
+    GetUI()->CreatePopupMenu(*this, mMenu, mRECT);
+  }
+
+  void OnPopupMenuSelection(IPopupMenu* menu, int) override
+  {
+    if (!menu || !menu->GetChosenItem() || mOptions.size() < 2)
+      return;
+    const int selected = menu->GetChosenItem()->GetTag();
+    if (selected < 0 || selected >= static_cast<int>(mOptions.size()))
+      return;
+    SetValueFromUserInput(static_cast<double>(selected) /
+                          static_cast<double>(mOptions.size() - 1), 0);
+    GetUI()->SetAllControlsDirty();
+  }
+
+private:
+  int SelectedIndex() const
+  {
+    const IParam* param = GetParam();
+    return param ? std::clamp(param->Int(), 0, static_cast<int>(mOptions.size()) - 1) : 0;
+  }
+
+  std::string mLabel;
+  std::vector<std::string> mOptions;
+  IPopupMenu mMenu;
 };
 
 inline const char* FxKnobLabel(bool master, int algorithm, int knob)

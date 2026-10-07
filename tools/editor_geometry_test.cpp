@@ -42,6 +42,8 @@ int main()
   };
   checkGroup("modulation", keith::ui::kModulationBoxes,
              static_cast<int>(sizeof(keith::ui::kModulationBoxes) / sizeof(Box)));
+  checkGroup("mod matrix", keith::ui::kModMatrixBoxes,
+             static_cast<int>(sizeof(keith::ui::kModMatrixBoxes) / sizeof(Box)));
   checkGroup("filter", keith::ui::kFilterBoxes,
              static_cast<int>(sizeof(keith::ui::kFilterBoxes) / sizeof(Box)));
   checkGroup("FX insert 1", keith::ui::kFxInsert1Boxes,
