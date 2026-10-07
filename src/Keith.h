@@ -4,6 +4,11 @@
 
 const int kNumPresets = 1;
 
+enum EControlTags
+{
+  kCtrlTagKeyboard = 0
+};
+
 enum EParams
 {
   kParamGain = 0,
@@ -26,6 +31,10 @@ enum EParams
 #endif
 
 using namespace iplug;
+
+#if IPLUG_EDITOR
+using namespace igraphics;
+#endif
 
 class Keith final : public Plugin
 {

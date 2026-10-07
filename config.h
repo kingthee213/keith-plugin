@@ -23,12 +23,14 @@
 #define PLUG_DOES_MIDI_OUT 0
 #define PLUG_DOES_MPE 0
 #define PLUG_DOES_STATE_CHUNKS 0
-#define PLUG_HAS_UI 0
-#define PLUG_WIDTH 600
-#define PLUG_HEIGHT 400
+#define PLUG_HAS_UI 1
+#define PLUG_WIDTH 760
+#define PLUG_HEIGHT 560
 #define PLUG_FPS 60
 #define PLUG_SHARED_RESOURCES 0
 #define PLUG_HOST_RESIZE 0
+
+#define ROBOTO_FN "Roboto-Regular.ttf"
 
 #define AUV2_ENTRY Keith_Entry
 #define AUV2_ENTRY_STR "Keith_Entry"

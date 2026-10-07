@@ -20,12 +20,12 @@ find_package(iPlug2 REQUIRED)
 
 include_directories(src)
 
-set(KEITH_DEFINES NO_IGRAPHICS)
-
+# Ship an editor: hosts that get a UI-less VST3 show an empty wrapper, and the
+# standalone target needs a window to be usable at all.
 if(APPLE)
-  set(KEITH_FORMATS VST3 AU)
+  set(KEITH_FORMATS VST3 AU APP)
 else()
-  set(KEITH_FORMATS VST3)
+  set(KEITH_FORMATS VST3 APP)
 endif()
 
 iplug_add_plugin(${PROJECT_NAME}
@@ -34,10 +34,30 @@ iplug_add_plugin(${PROJECT_NAME}
     src/Keith.h
     src/Keith_DSP.h
     resources/resource.h
-  UI NONE
+  RESOURCES
+    resources/fonts/Roboto-Regular.ttf
+  UI IGRAPHICS
   FORMATS ${KEITH_FORMATS}
   LINK
     iPlug2::Extras::Synth
-  DEFINES ${KEITH_DEFINES}
-  EXCLUDE_FORMATS APP CLAP AAX AUV3 WAM WASM_DSP WASM_UI VST2
+  EXCLUDE_FORMATS CLAP AAX AUV3 WAM WASM_DSP WASM_UI VST2
 )
+
+# On Windows iPlug2 resolves resources at <bundle>/Contents/Resources (VST3)
+# and next to the executable (APP), but its CMake does not copy the RESOURCES
+# list there. Do it here, or the editor ships without its font.
+if(WIN32 AND TARGET Keith-vst3)
+  add_custom_command(TARGET Keith-vst3 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/Roboto-Regular.ttf"
+      "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources/Roboto-Regular.ttf"
+    COMMENT "Copying editor resources into Keith.vst3")
+endif()
+
+if(WIN32 AND TARGET Keith-app)
+  add_custom_command(TARGET Keith-app POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/Roboto-Regular.ttf"
+      "${CMAKE_BINARY_DIR}/out/Roboto-Regular.ttf"
+    COMMENT "Copying editor resources next to Keith.exe")
+endif()

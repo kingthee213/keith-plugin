@@ -63,14 +63,14 @@ Windows PowerShell:
 
 This clones iPlug2 at the pinned SHA and runs iPlug2’s SDK download scripts (VST3 SDK, etc.).
 
-## Build — Windows (x64 VST3)
+## Build — Windows (x64 VST3 + standalone)
 
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
-cmake --build build --config Release --target Keith-vst3
+cmake -S . -B build -G "Visual Studio 18 2026" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
+cmake --build build --config Release --target Keith-vst3 Keith-app
 ```
 
-Artefact: `build/out/Keith.vst3`
+Artefacts: `build/out/Keith.vst3` and `build/out/Keith.exe` (standalone).
 
 Install: copy the `.vst3` bundle to `C:\Program Files\Common Files\VST3` (see
 [`docs/INSTALL-WINDOWS.md`](docs/INSTALL-WINDOWS.md)).
@@ -98,11 +98,23 @@ macOS builds are CI-produced; load testing in Ableton Live requires a real Mac (
 After a Release Windows build:
 
 ```powershell
-pluginval --strictness-level 10 --validate-in-process --skip-gui-tests `
+pluginval --strictness-level 10 --validate-in-process^
   "build\out\Keith.vst3"
 ```
 
-`--skip-gui-tests` is appropriate while `PLUG_HAS_UI` is 0. Remove it once a UI ships.
+## Standalone
+
+`build/out/Keith.exe` runs the same engine without a host. Click the on-screen
+keyboard, or play from the computer keyboard: **A W S E D F T G Y H U J K O L**
+(one octave), **Z / X** shift the octave. Keep `Roboto-Regular.ttf` next to the
+exe, or the editor draws no text.
+
+## Test voice (pre-engine)
+
+Nine automatable parameters: **Gain** plus the global tape bus (saturation, head bump, wow,
+flutter, hiss, print-through, mix, bypass). Polyphonic sine oscillator → smoothed gain → tape
+bus → stereo out, with an editor that binds to those nine parameters and an on-screen keyboard.
+Replaced by the real engine in a later unit — no banks, drum map or preset browser yet.
 
 ## CI
 
@@ -114,11 +126,6 @@ pluginval --strictness-level 10 --validate-in-process --skip-gui-tests `
 | `macos-15-intel` | Intel Mac — universal AU + VST3 (`macos-13` retired; see BRIEF [A2]) |
 | `windows-latest` | Windows x64 VST3 |
 
-## Test voice (U1 only)
-
-One automatable parameter: **Gain** (0–100%). Polyphonic sine oscillator → smoothed gain →
-stereo out. Replaced by the real engine in a later unit.
-
 ## Licence notes
 
 - **Keith** plugin code: private handover; not published.
@@ -126,6 +133,8 @@ stereo out. Replaced by the real engine in a later unit.
   Copyright (c) the iPlug 2 developers.”*
 - **Bundled permissive dependencies** shipped with iPlug2: WDL, NanoVG, NanoSVG, RTAudio,
   RTMidi, Steinberg VST3 SDK (see iPlug2 `LICENSE.txt` and dependency folders).
+- **Roboto Regular** (`resources/fonts/Roboto-Regular.ttf`) — editor UI font, Apache License 2.0,
+  Copyright the Roboto project authors. Shipped with the plugin bundle and the standalone.
 - **Tape/analog DSP** (`src/fx/TapeAnalog.h`) — original Keith implementation. Algorithm ideas
   seeded from the Airwindows open-source library (MIT Licence, Copyright (c) 2018 Chris Johnson):
   modules **Tape**, **ToTape7**, **Flutter**, **Flutter2**, **Noise**, and **TapeDust**. No
