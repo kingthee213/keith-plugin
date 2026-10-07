@@ -2,6 +2,7 @@
 
 #include "MidiSynth.h"
 #include "Smoothers.h"
+#include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
 
@@ -211,6 +212,10 @@ public:
     mGlobalTape.Reset(sampleRate, blockSize);
     for (auto& tape : mPartTape)
       tape.Reset(sampleRate, blockSize);
+    mInsert1.Reset(sampleRate, blockSize);
+    mInsert2.Reset(sampleRate, blockSize);
+    mMasterFx.Reset(sampleRate, blockSize);
+    mOutLevel.Reset(sampleRate, static_cast<T>(1));
 
     mSynth.ForEachVoice([this](SynthVoice& voice) {
       static_cast<Voice&>(voice).SetSharedParams(&mSynthParams);
@@ -220,6 +225,8 @@ public:
   }
 
   using TapeParams = typename keith::fx::TapeAnalog<T>::Params;
+  using InsertParams = typename keith::fx::InsertEffect<T>::Params;
+  using MasterParams = typename keith::fx::MasterEffect<T>::Params;
 
   void SetGlobalTapeParams(const TapeParams& p)
   {
@@ -231,6 +238,11 @@ public:
     if (partIndex >= 0 && partIndex < kNumParts)
       mPartTape[partIndex].SetParams(p);
   }
+
+  void SetInsert1Params(const InsertParams& p) { mInsert1.SetParams(p); }
+  void SetInsert2Params(const InsertParams& p) { mInsert2.SetParams(p); }
+  void SetMasterFxParams(const MasterParams& p) { mMasterFx.SetParams(p); }
+  void SetOutLevel(double linear) { mOutLevel.SetLinear(static_cast<T>(linear)); }
 
   void SetSynthParams(const keith::synth::Params& p)
   {
@@ -255,6 +267,15 @@ public:
     mParamSmoother.ProcessBlock(mParamsToSmooth, mModulations.GetList(), nFrames);
     mSynth.ProcessBlock(mModulations.GetList(), outputs, 0, nOutputs, nFrames);
 
+    // Voices -> synth bus -> insert 1 -> insert 2 -> tape -> master FX ->
+    // output level -> the existing gain parameter.
+    mInsert1.ProcessBlock(outputs, nOutputs, nFrames);
+    mInsert2.ProcessBlock(outputs, nOutputs, nFrames);
+    mPartTape[0].ProcessBlock(outputs, nOutputs, nFrames);
+    mGlobalTape.ProcessBlock(outputs, nOutputs, nFrames);
+    mMasterFx.ProcessBlock(outputs, nOutputs, nFrames);
+    mOutLevel.ProcessBlock(outputs, nOutputs, nFrames);
+
     for (int s = 0; s < nFrames; ++s)
     {
       const T gain = mModulations.GetList()[kModGain][s];
@@ -263,8 +284,6 @@ public:
         outputs[1][s] *= gain;
     }
 
-    mPartTape[0].ProcessBlock(outputs, nOutputs, nFrames);
-    mGlobalTape.ProcessBlock(outputs, nOutputs, nFrames);
     mPerf.batchOpen = false;
     mPerf.batchCount = 0;
   }
@@ -363,6 +382,10 @@ private:
   keith::synth::Params mSynthParams {};
   keith::synth::RuntimeMod mRuntime {};
   KeithPerformance mPerf {};
+  keith::fx::InsertEffect<T> mInsert1;
+  keith::fx::InsertEffect<T> mInsert2;
   keith::fx::TapeAnalog<T> mGlobalTape;
   keith::fx::TapeAnalog<T> mPartTape[kNumParts] {};
+  keith::fx::MasterEffect<T> mMasterFx;
+  keith::fx::SmoothedGain<T> mOutLevel;
 };

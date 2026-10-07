@@ -3,8 +3,8 @@
 Contract between the editor lane and the composer / engine lane.
 **Stable ids.** The engine and host automation read these names; do not rename casually.
 
-Reconciled **U9 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
-U1/U4 host IDs **0–8** (Gain + tape bus) are preserved. U7 IDs **9–42** are preserved. U9 appends IDs **43–55**.
+Reconciled **U10 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
+U1/U4 host IDs **0–8** (Gain + tape bus), U7 IDs **9–42**, and U9 IDs **43–55** are preserved. U10 appends IDs **56–74**.
 
 Column meanings:
 
@@ -118,25 +118,25 @@ Column meanings:
 | `fx_tape_print` | Print | knob | 0-100 % | 0 % | fx | FX Tape Print | proposed | live - added U4 |
 | `fx_tape_mix` | Tape Mix | knob | 0-100 % | 40 % | fx | FX Tape Mix | proposed | live - added U4 |
 | `fx_tape_bypass` | Tape Byp | switch | off/on | off | fx | FX Tape Bypass | proposed | live - added U4 |
-| `fx_ins1_algo` | Ins1 Algo | list | algo enum (TBD) | 0 | fx | FX Insert1 Algo | proposed | not yet implemented |
-| `fx_ins1_a` | Ins1 A | knob | 0-100 % | 50 % | fx | FX Insert1 A | proposed | not yet implemented |
-| `fx_ins1_b` | Ins1 B | knob | 0-100 % | 50 % | fx | FX Insert1 B | proposed | not yet implemented |
-| `fx_ins1_c` | Ins1 C | knob | 0-100 % | 50 % | fx | FX Insert1 C | proposed | not yet implemented |
-| `fx_ins1_mix` | Ins1 Mix | knob | 0-100 % | 100 % | fx | FX Insert1 Mix | proposed | not yet implemented |
-| `fx_ins1_bypass` | Ins1 Byp | switch | off/on | off | fx | FX Insert1 Bypass | proposed | not yet implemented |
-| `fx_ins2_algo` | Ins2 Algo | list | algo enum (TBD) | 0 | fx | FX Insert2 Algo | proposed | not yet implemented |
-| `fx_ins2_a` | Ins2 A | knob | 0-100 % | 50 % | fx | FX Insert2 A | proposed | not yet implemented |
-| `fx_ins2_b` | Ins2 B | knob | 0-100 % | 50 % | fx | FX Insert2 B | proposed | not yet implemented |
-| `fx_ins2_c` | Ins2 C | knob | 0-100 % | 50 % | fx | FX Insert2 C | proposed | not yet implemented |
-| `fx_ins2_mix` | Ins2 Mix | knob | 0-100 % | 100 % | fx | FX Insert2 Mix | proposed | not yet implemented |
-| `fx_ins2_bypass` | Ins2 Byp | switch | off/on | off | fx | FX Insert2 Bypass | proposed | not yet implemented |
-| `fx_mst_algo` | Master Algo | list | algo enum (TBD) | 0 | fx | FX Master Algo | proposed | not yet implemented |
-| `fx_mst_a` | Master A | knob | 0-100 % | 50 % | fx | FX Master A | proposed | not yet implemented |
-| `fx_mst_b` | Master B | knob | 0-100 % | 50 % | fx | FX Master B | proposed | not yet implemented |
-| `fx_mst_c` | Master C | knob | 0-100 % | 50 % | fx | FX Master C | proposed | not yet implemented |
-| `fx_mst_mix` | Master Mix | knob | 0-100 % | 40 % | fx | FX Master Mix | proposed | not yet implemented |
-| `fx_mst_bypass` | Master Byp | switch | off/on | off | fx | FX Master Bypass | proposed | not yet implemented |
-| `fx_out_level` | Out Level | knob | -inf-+12 dB | 0 dB | fx | FX Out Level | proposed | not yet implemented |
+| `fx_ins1_algo` | Ins1 Algo | list | Off / Drive / Chorus / Delay / Crush | Off | fx | FX Insert1 Algo | proposed | live - added U10 |
+| `fx_ins1_a` | Ins1 A | knob | 0-100 % | 50 % | fx | FX Insert1 A | proposed | live - added U10 |
+| `fx_ins1_b` | Ins1 B | knob | 0-100 % | 50 % | fx | FX Insert1 B | proposed | live - added U10 |
+| `fx_ins1_c` | Ins1 C | knob | 0-100 % | 50 % | fx | FX Insert1 C | proposed | live - added U10 |
+| `fx_ins1_mix` | Ins1 Mix | knob | 0-100 % | 100 % | fx | FX Insert1 Mix | proposed | live - added U10 |
+| `fx_ins1_bypass` | Ins1 Byp | switch | Active / Bypass | Active | fx | FX Insert1 Bypass | proposed | live - added U10 |
+| `fx_ins2_algo` | Ins2 Algo | list | Off / Drive / Chorus / Delay / Crush | Off | fx | FX Insert2 Algo | proposed | live - added U10 |
+| `fx_ins2_a` | Ins2 A | knob | 0-100 % | 50 % | fx | FX Insert2 A | proposed | live - added U10 |
+| `fx_ins2_b` | Ins2 B | knob | 0-100 % | 50 % | fx | FX Insert2 B | proposed | live - added U10 |
+| `fx_ins2_c` | Ins2 C | knob | 0-100 % | 50 % | fx | FX Insert2 C | proposed | live - added U10 |
+| `fx_ins2_mix` | Ins2 Mix | knob | 0-100 % | 100 % | fx | FX Insert2 Mix | proposed | live - added U10 |
+| `fx_ins2_bypass` | Ins2 Byp | switch | Active / Bypass | Active | fx | FX Insert2 Bypass | proposed | live - added U10 |
+| `fx_mst_algo` | Mst Algo | list | Off / Comp / Limit / Width / Tilt | Off | fx | FX Master Algo | proposed | live - added U10 |
+| `fx_mst_a` | Mst A | knob | 0-100 % | 50 % | fx | FX Master A | proposed | live - added U10 |
+| `fx_mst_b` | Mst B | knob | 0-100 % | 50 % | fx | FX Master B | proposed | live - added U10 |
+| `fx_mst_c` | Mst C | knob | 0-100 % | 50 % | fx | FX Master C | proposed | live - added U10 |
+| `fx_mst_mix` | Mst Mix | knob | 0-100 % | 40 % | fx | FX Master Mix | proposed | live - added U10 |
+| `fx_mst_bypass` | Mst Byp | switch | Active / Bypass | Active | fx | FX Master Bypass | proposed | live - added U10 |
+| `fx_out_level` | Out Level | knob | -inf-+12 dB | 0 dB | fx | FX Out Level | proposed | live - added U10 |
 
 ---
 
@@ -166,7 +166,7 @@ From `src/Keith.h` / `src/Keith.cpp`:
 
 **Migration note:** No existing IDs moved. Synth params are new appends. Pitch envelope rows (`synth_pitch_*`) and pulse-width rows (`synth_osc1_pw`, `synth_osc2_pw`) are new vs the U5 intent table (U5 listed filter ADSR but not pitch ADSR / PW).
 
-`kNumParams` at the U7 checkpoint was **43**. U9 below is the current map.
+`kNumParams` at the U7 checkpoint was **43**. U9 below records the next append checkpoint.
 
 ---
 
@@ -196,22 +196,57 @@ DSP owner is `src/synth/CoreSynth.h` (`Voice::Process`, `Lfo`, `HeldKeyTracker`)
 
 ---
 
-## Row counts (U9 reconcile)
+## U10 code surface (source of truth for `live`)
+
+Appended after ID 55. Insert 1 and Insert 2 share the same algorithm set. Every algorithm defaults
+to Off, both bypass controls default to Active, and output level defaults to 0 dB.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---|---|---|---|
+| `kParamIns1Algo` | 56 | FX Insert1 Algo | `fx_ins1_algo` | Off |
+| `kParamIns1A` | 57 | FX Insert1 A | `fx_ins1_a` | 50 % |
+| `kParamIns1B` | 58 | FX Insert1 B | `fx_ins1_b` | 50 % |
+| `kParamIns1C` | 59 | FX Insert1 C | `fx_ins1_c` | 50 % |
+| `kParamIns1Mix` | 60 | FX Insert1 Mix | `fx_ins1_mix` | 100 % |
+| `kParamIns1Bypass` | 61 | FX Insert1 Bypass | `fx_ins1_bypass` | Active |
+| `kParamIns2Algo` | 62 | FX Insert2 Algo | `fx_ins2_algo` | Off |
+| `kParamIns2A` | 63 | FX Insert2 A | `fx_ins2_a` | 50 % |
+| `kParamIns2B` | 64 | FX Insert2 B | `fx_ins2_b` | 50 % |
+| `kParamIns2C` | 65 | FX Insert2 C | `fx_ins2_c` | 50 % |
+| `kParamIns2Mix` | 66 | FX Insert2 Mix | `fx_ins2_mix` | 100 % |
+| `kParamIns2Bypass` | 67 | FX Insert2 Bypass | `fx_ins2_bypass` | Active |
+| `kParamMstAlgo` | 68 | FX Master Algo | `fx_mst_algo` | Off |
+| `kParamMstA` | 69 | FX Master A | `fx_mst_a` | 50 % |
+| `kParamMstB` | 70 | FX Master B | `fx_mst_b` | 50 % |
+| `kParamMstC` | 71 | FX Master C | `fx_mst_c` | 50 % |
+| `kParamMstMix` | 72 | FX Master Mix | `fx_mst_mix` | 40 % |
+| `kParamMstBypass` | 73 | FX Master Bypass | `fx_mst_bypass` | Active |
+| `kParamOutLevel` | 74 | FX Out Level | `fx_out_level` | 0 dB |
+
+`src/fx/PatchEffects.h` owns the insert and master algorithms. `src/Keith_DSP.h` owns the chain
+order. `src/Keith.cpp` maps host values to DSP parameters and stores all 75 values in each baked
+preset chunk. `src/editor/EditorialLayout.h` exposes the material-free `07 FX` page.
+
+`kNumParams` = **75**.
+
+---
+
+## Row counts (U10 reconcile)
 
 | Metric | Count |
 |---|---|
 | Total rows | **111** |
-| Real parameters (`kNumParams`, IDs 0–55) | **56** |
+| Real parameters (`kNumParams`, IDs 0–74) | **75** |
 | Host preset action, not a parameter (`preset_family`) | **1** |
-| Rows `not yet implemented` | **54** |
-| Rows added this pass (new ids) | **10** (sync, ring, key track, drive, LFO shape, LFO dest, mod amount, vel to amp, vel to filter, mono legato) |
-| Rows flipped to `live` this pass | **3** (`synth_lfo_rate`, `synth_lfo_amount`, `synth_mod_wheel`) |
+| Rows `not yet implemented` | **35** |
+| Rows added this pass (new ids) | **19** (`fx_ins1_*`, `fx_ins2_*`, `fx_mst_*`, `fx_out_level`) |
+| Rows flipped to `live` this pass | **19** |
 
 ---
 
 ## Notes for the editor lane
 
-1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0–55. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0–74. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
 2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
-3. Deferred intentionally: `synth_part`, all `drum_*`, all `preset_*`, insert/master FX, `fx_out_level`. One LFO and CC1 shipped in U9. A modulation matrix did not.
+3. Deferred intentionally: `synth_part`, all `drum_*`, all remaining `preset_*`, and the drum engine. One LFO and CC1 shipped in U9. A modulation matrix did not.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.

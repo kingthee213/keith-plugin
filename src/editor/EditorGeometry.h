@@ -37,16 +37,16 @@ struct Box
   }
 };
 
-// Page well and the six-button nav. Space Mono Bold's advance is 612/1000 em
+// Page well and the seven-button nav. Space Mono Bold's advance is 612/1000 em
 // (resources/fonts/SpaceMono-Bold.ttf), so a 15px glyph is 9.18px wide.
 constexpr Box kPageWell {34.f, 204.f, 1004.f, 718.f};
 constexpr Box kNavBar {34.f, 144.f, 1022.f, 185.f};
-constexpr int kNavCount = 6;
-constexpr float kNavGap = 8.f;
-constexpr float kNavTextPad = 6.f;
+constexpr int kNavCount = 7;
+constexpr float kNavGap = 4.f;
+constexpr float kNavTextPad = 4.f;
 constexpr float kNavFontPx = 15.f;
 constexpr float kSpaceMonoBoldEm = 0.612f;
-constexpr int kNavLabelChars[] = {10, 14, 10, 13, 8, 11}; // "01  SOURCE" .. "06  LIBRARY"
+constexpr int kNavLabelChars[] = {10, 14, 10, 13, 8, 11, 6}; // "01  SOURCE" .. "07  FX"
 
 inline Box NavCell(int index)
 {
@@ -80,6 +80,32 @@ constexpr Box kFilterHeader {58.f, 218.f, 360.f, 264.f};
 constexpr Box kFilterPlot {58.f, 268.f, 700.f, 680.f};
 constexpr Box kKeyTrack {740.f, 280.f, 960.f, 460.f};
 constexpr Box kFilterDrive {740.f, 490.f, 960.f, 680.f};
+
+// FX page. Every knob has a flat native body; this page has no baked material.
+constexpr Box kFxIns1Region {50.f, 218.f, 354.f, 700.f};
+constexpr Box kFxIns1Algo {50.f, 265.f, 354.f, 305.f};
+constexpr Box kFxIns1A {50.f, 318.f, 146.f, 472.f};
+constexpr Box kFxIns1B {154.f, 318.f, 250.f, 472.f};
+constexpr Box kFxIns1C {258.f, 318.f, 354.f, 472.f};
+constexpr Box kFxIns1Mix {104.f, 490.f, 300.f, 622.f};
+constexpr Box kFxIns1Bypass {50.f, 650.f, 354.f, 690.f};
+
+constexpr Box kFxIns2Region {374.f, 218.f, 678.f, 700.f};
+constexpr Box kFxIns2Algo {374.f, 265.f, 678.f, 305.f};
+constexpr Box kFxIns2A {374.f, 318.f, 470.f, 472.f};
+constexpr Box kFxIns2B {478.f, 318.f, 574.f, 472.f};
+constexpr Box kFxIns2C {582.f, 318.f, 678.f, 472.f};
+constexpr Box kFxIns2Mix {428.f, 490.f, 624.f, 622.f};
+constexpr Box kFxIns2Bypass {374.f, 650.f, 678.f, 690.f};
+
+constexpr Box kFxMasterRegion {698.f, 218.f, 992.f, 700.f};
+constexpr Box kFxMasterAlgo {698.f, 265.f, 992.f, 305.f};
+constexpr Box kFxMasterA {698.f, 318.f, 790.f, 472.f};
+constexpr Box kFxMasterB {799.f, 318.f, 891.f, 472.f};
+constexpr Box kFxMasterC {900.f, 318.f, 992.f, 472.f};
+constexpr Box kFxMasterMix {698.f, 490.f, 838.f, 622.f};
+constexpr Box kFxOutLevel {852.f, 490.f, 992.f, 622.f};
+constexpr Box kFxMasterBypass {698.f, 650.f, 992.f, 690.f};
 
 // Source-page switches in the open band between the two mixer rows.
 // Mixer knob rects are the baked placements; these switches must not cover them.
@@ -124,6 +150,16 @@ inline constexpr Box kModulationBoxes[] = {
   kLegatoLabel, kLegatoTabs
 };
 inline constexpr Box kFilterBoxes[] = {kFilterHeader, kFilterPlot, kKeyTrack, kFilterDrive};
+inline constexpr Box kFxInsert1Boxes[] = {
+  kFxIns1Algo, kFxIns1A, kFxIns1B, kFxIns1C, kFxIns1Mix, kFxIns1Bypass
+};
+inline constexpr Box kFxInsert2Boxes[] = {
+  kFxIns2Algo, kFxIns2A, kFxIns2B, kFxIns2C, kFxIns2Mix, kFxIns2Bypass
+};
+inline constexpr Box kFxMasterBoxes[] = {
+  kFxMasterAlgo, kFxMasterA, kFxMasterB, kFxMasterC, kFxMasterMix, kFxOutLevel,
+  kFxMasterBypass
+};
 inline constexpr Box kSourceSwitchBoxes[] = {kSyncLabel, kSyncTabs, kRingLabel, kRingTabs};
 inline constexpr Box kMixerKnobBoxes[] = {kMixerSub, kMixerNoise, kMixerFm, kMixerLevel};
 } }

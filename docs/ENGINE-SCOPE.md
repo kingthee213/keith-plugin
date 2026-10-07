@@ -186,11 +186,49 @@ Voice allocator: 16 voices shared across parts (exact voice budget TBD in implem
    OB-Xf ladder or Surge WT/matrix yet.
 3. **Next composer pass:** Deeper Analog ladder / SEM behaviour + Hybrid wavetable morph fidelity.
 4. **Then:** Modulation matrix / LFO destinations.
-5. **Then:** Part routing, drum engine, Family-01 insert FX chains (data-driven from bank lists).
+5. **U10 (landed):** Two patch inserts plus one master effect, with preset serialization and the
+   material-free `07 FX` page.
+6. **Then:** Part routing, drum engine, and data-driven Family-01 chain assignments from bank lists.
 
 ---
 
-## 7. Licence audit checklist (engine)
+## 7. Patch insert and master FX (U10)
+
+The real processing order is:
+
+**voices -> synth bus -> Insert 1 -> Insert 2 -> tape bus -> Master FX -> output level -> existing gain**
+
+Insert 1 and Insert 2 each select one of these algorithms:
+
+| Algorithm | A | B | C | DSP |
+|---|---|---|---|---|
+| Off | Not used | Not used | Not used | Exact pass-through |
+| Drive | Drive | Tone | Bias | Biased soft saturation followed by a variable low-pass tone stage |
+| Chorus | Rate | Depth | Spread | Stereo modulated delay with independent phase on each side |
+| Delay | Time | Feedback | Tone | Bounded ping-pong feedback delay with a filtered repeat path |
+| Crush | Bits | Rate | Jitter | Amplitude quantization plus sample-rate reduction with bounded clock jitter |
+
+The master stage selects one of these algorithms:
+
+| Algorithm | A | B | C | DSP |
+|---|---|---|---|---|
+| Off | Not used | Not used | Not used | Exact pass-through |
+| Comp | Threshold | Ratio | Release | Linked-stereo downward compressor with fixed 5 ms attack |
+| Limit | Ceiling | Release | Input | Linked-stereo peak limiter with instantaneous gain reduction |
+| Width | Width | Mono Freq | Balance | Mid/side width, low-side removal below the selected frequency, and stereo balance |
+| Tilt | Tilt | Pivot | Drive | Complementary low/high tilt around a variable pivot, followed by optional saturation |
+
+Each stage has a true dry/wet control. Off and settled bypass states copy the input exactly.
+Continuous parameters and route transitions smooth over 5 ms. Delay memory is allocated during
+reset, never inside `ProcessBlock`; feedback is capped and each stage rejects non-finite output.
+
+All 19 host parameters live at IDs 56-74. Baked presets store all 75 host values. Bell Pad,
+Motion Pad, and Hard Kit carry explicit U10 chain deltas; every other preset inherits the inert
+Off defaults.
+
+---
+
+## 8. Licence audit checklist (engine)
 
 - [x] No Freakshow / Mishby code or assets
 - [x] No Surge or OB-Xf source in tree

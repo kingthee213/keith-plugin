@@ -44,6 +44,12 @@ int main()
              static_cast<int>(sizeof(keith::ui::kModulationBoxes) / sizeof(Box)));
   checkGroup("filter", keith::ui::kFilterBoxes,
              static_cast<int>(sizeof(keith::ui::kFilterBoxes) / sizeof(Box)));
+  checkGroup("FX insert 1", keith::ui::kFxInsert1Boxes,
+             static_cast<int>(sizeof(keith::ui::kFxInsert1Boxes) / sizeof(Box)));
+  checkGroup("FX insert 2", keith::ui::kFxInsert2Boxes,
+             static_cast<int>(sizeof(keith::ui::kFxInsert2Boxes) / sizeof(Box)));
+  checkGroup("FX master", keith::ui::kFxMasterBoxes,
+             static_cast<int>(sizeof(keith::ui::kFxMasterBoxes) / sizeof(Box)));
   checkGroup("source switches", keith::ui::kSourceSwitchBoxes,
              static_cast<int>(sizeof(keith::ui::kSourceSwitchBoxes) / sizeof(Box)));
 
@@ -82,7 +88,7 @@ int main()
     keith::ui::OswaldAdvance(keith::ui::kOswaldResponseUnits, keith::ui::kHeadingPx) <= keith::ui::kFilterHeader.W() &&
     keith::ui::kWordmarkBox.H() >= wordmarkMetric &&
     keithAdvance <= keith::ui::kWordmarkBox.W();
-  std::printf("%s six nav labels fit at 15px Space Mono Bold\n", nav ? "PASS" : "FAIL");
+  std::printf("%s seven nav labels fit at 15px Space Mono Bold\n", nav ? "PASS" : "FAIL");
   std::printf("%s Oswald headings fit (heading metric %.2f in %.0f, wordmark metric %.2f in %.0f, KEITH advance %.2f in %.0f)\n",
               headings ? "PASS" : "FAIL", headingMetric, keith::ui::kModLfoHeader.H(),
               wordmarkMetric, keith::ui::kWordmarkBox.H(), keithAdvance, keith::ui::kWordmarkBox.W());

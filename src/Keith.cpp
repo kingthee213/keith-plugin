@@ -44,6 +44,8 @@ const PresetDelta kPresetDeltas[] = {
   {2, kParamFmAmount, 25},     {2, kParamFilterCutoff, 6000}, {2, kParamAmpAttack, 400},
   {2, kParamAmpDecay, 2500},   {2, kParamAmpSustain, 60},  {2, kParamAmpRelease, 2500},
   {2, kParamUnisonVoices, 3},  {2, kParamUnisonDetune, 22}, {2, kParamSynthMasterLevel, -3},
+  {2, kParamIns1Algo, 3},      {2, kParamIns1A, 45},       {2, kParamIns1B, 32},
+  {2, kParamIns1C, 68},        {2, kParamIns1Mix, 24},
 
   // Family 02 / 001 Neon Pluck
   {3, kParamOsc1Shape, 70},    {3, kParamOsc2Shape, 40},   {3, kParamOsc2Pitch, 12},
@@ -92,7 +94,10 @@ const PresetDelta kPresetDeltas[] = {
   {9, kParamAmpDecay, 3000},   {9, kParamAmpSustain, 70},  {9, kParamAmpRelease, 3500},
   {9, kParamFiltAttack, 1200}, {9, kParamFiltDecay, 3000}, {9, kParamFiltSustain, 60},
   {9, kParamFiltRelease, 3000}, {9, kParamLfoRate, 0.25}, {9, kParamLfoDest, 1},
-  {9, kParamLfoAmount, 40},
+  {9, kParamLfoAmount, 40},     {9, kParamIns2Algo, 2},    {9, kParamIns2A, 24},
+  {9, kParamIns2B, 58},         {9, kParamIns2C, 82},      {9, kParamIns2Mix, 35},
+  {9, kParamMstAlgo, 3},        {9, kParamMstA, 72},       {9, kParamMstB, 28},
+  {9, kParamMstC, 50},          {9, kParamMstMix, 55},
 
   // Family 04 / 002 Slow Drone
   {10, kParamOsc1Shape, 5},        {10, kParamOsc2Shape, 50},     {10, kParamOsc2Pitch, -12},
@@ -115,6 +120,10 @@ const PresetDelta kPresetDeltas[] = {
   {12, kParamAmpDecay, 160},       {12, kParamAmpSustain, 0},     {12, kParamAmpRelease, 120},
   {12, kParamPitchAmount, -18},    {12, kParamPitchAttack, 0.5},  {12, kParamPitchDecay, 90},
   {12, kParamPitchSustain, 0},     {12, kParamPitchRelease, 90},  {12, kParamTapeSat, 45},
+  {12, kParamIns1Algo, 1},         {12, kParamIns1A, 62},         {12, kParamIns1B, 68},
+  {12, kParamIns1C, 54},           {12, kParamIns1Mix, 42},       {12, kParamMstAlgo, 1},
+  {12, kParamMstA, 38},            {12, kParamMstB, 65},          {12, kParamMstC, 32},
+  {12, kParamMstMix, 70},          {12, kParamOutLevel, -1.5},
 
   // Family 05 / 002 Dry Kit
   {13, kParamOsc1Shape, 92},       {13, kParamOsc1PW, 40},        {13, kParamOsc2Shape, 88},
@@ -213,8 +222,10 @@ void Keith::AddFactoryPresets()
 
 static_assert(kParamFilterType == 25 && kParamFilterCutoff == 26 && kParamFilterReso == 27,
               "KeithFilterResponse is bound to these host ids");
-static_assert(kParamOscSync == 43 && kParamMonoLegato == 55 && kNumParams == 56,
+static_assert(kParamOscSync == 43 && kParamMonoLegato == 55,
               "U9 appends 43..55");
+static_assert(kParamIns1Algo == 56 && kParamOutLevel == 74 && kNumParams == 75,
+              "U10 appends 56..74");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -301,6 +312,30 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamVelToFilter)->InitDouble("Synth Vel To Filter", 0., 0., 100., 0.1, "%");
   GetParam(kParamMonoLegato)->InitEnum("Synth Mono Legato", 0, {"Retrig", "Legato"});
 
+  // U10. Off algorithms make every new default inert for the existing 15 presets.
+  GetParam(kParamIns1Algo)->InitEnum("FX Insert1 Algo", 0, {"Off", "Drive", "Chorus", "Delay", "Crush"});
+  GetParam(kParamIns1A)->InitDouble("FX Insert1 A", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns1B)->InitDouble("FX Insert1 B", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns1C)->InitDouble("FX Insert1 C", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns1Mix)->InitDouble("FX Insert1 Mix", 100., 0., 100., 0.1, "%");
+  GetParam(kParamIns1Bypass)->InitEnum("FX Insert1 Bypass", 0, {"Active", "Bypass"});
+
+  GetParam(kParamIns2Algo)->InitEnum("FX Insert2 Algo", 0, {"Off", "Drive", "Chorus", "Delay", "Crush"});
+  GetParam(kParamIns2A)->InitDouble("FX Insert2 A", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns2B)->InitDouble("FX Insert2 B", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns2C)->InitDouble("FX Insert2 C", 50., 0., 100., 0.1, "%");
+  GetParam(kParamIns2Mix)->InitDouble("FX Insert2 Mix", 100., 0., 100., 0.1, "%");
+  GetParam(kParamIns2Bypass)->InitEnum("FX Insert2 Bypass", 0, {"Active", "Bypass"});
+
+  GetParam(kParamMstAlgo)->InitEnum("FX Master Algo", 0, {"Off", "Comp", "Limit", "Width", "Tilt"});
+  GetParam(kParamMstA)->InitDouble("FX Master A", 50., 0., 100., 0.1, "%");
+  GetParam(kParamMstB)->InitDouble("FX Master B", 50., 0., 100., 0.1, "%");
+  GetParam(kParamMstC)->InitDouble("FX Master C", 50., 0., 100., 0.1, "%");
+  GetParam(kParamMstMix)->InitDouble("FX Master Mix", 40., 0., 100., 0.1, "%");
+  GetParam(kParamMstBypass)->InitEnum("FX Master Bypass", 0, {"Active", "Bypass"});
+  GetParam(kParamOutLevel)->InitDouble("FX Out Level", 0., -60., 12., 0.01, "dB");
+  GetParam(kParamOutLevel)->SetDisplayText(-60., "-inf");
+
   // Baked factory presets (15, grouped Family 01-05, neutral names only).
   AddFactoryPresets();
 
@@ -327,6 +362,20 @@ void Keith::OnIdle()
     mLastPreset = current;
     pGraphics->SetAllControlsDirty();
   }
+
+  const int fxAlgo[3] = {
+    GetParam(kParamIns1Algo)->Int(),
+    GetParam(kParamIns2Algo)->Int(),
+    GetParam(kParamMstAlgo)->Int()
+  };
+  for (int i = 0; i < 3; ++i)
+  {
+    if (fxAlgo[i] != mLastFxAlgo[i])
+    {
+      mLastFxAlgo[i] = fxAlgo[i];
+      pGraphics->SetAllControlsDirty();
+    }
+  }
 }
 #endif
 
@@ -341,6 +390,7 @@ void Keith::OnReset()
   mDSP.Reset(GetSampleRate(), GetBlockSize());
   SyncTapeParams();
   SyncSynthParams();
+  SyncFxParams();
   mDSP.SetGain(GetParam(kParamGain)->Value());
 }
 
@@ -360,6 +410,12 @@ void Keith::OnParamChange(int paramIdx)
   if (paramIdx >= kParamTapeSat && paramIdx <= kParamTapeBypass)
   {
     SyncTapeParams();
+    return;
+  }
+
+  if (paramIdx >= kParamIns1Algo && paramIdx <= kParamOutLevel)
+  {
+    SyncFxParams();
     return;
   }
 
@@ -448,5 +504,38 @@ void Keith::SyncSynthParams()
   p.monoLegato = GetParam(kParamMonoLegato)->Int() != 0;
 
   mDSP.SetSynthParams(p);
+}
+
+void Keith::SyncFxParams()
+{
+  KeithDSP<sample>::InsertParams insert1 {};
+  insert1.algorithm = static_cast<keith::fx::InsertAlgorithm>(GetParam(kParamIns1Algo)->Int());
+  insert1.a = static_cast<sample>(GetParam(kParamIns1A)->Value() / 100.);
+  insert1.b = static_cast<sample>(GetParam(kParamIns1B)->Value() / 100.);
+  insert1.c = static_cast<sample>(GetParam(kParamIns1C)->Value() / 100.);
+  insert1.mix = static_cast<sample>(GetParam(kParamIns1Mix)->Value() / 100.);
+  insert1.bypass = GetParam(kParamIns1Bypass)->Int() != 0;
+  mDSP.SetInsert1Params(insert1);
+
+  KeithDSP<sample>::InsertParams insert2 {};
+  insert2.algorithm = static_cast<keith::fx::InsertAlgorithm>(GetParam(kParamIns2Algo)->Int());
+  insert2.a = static_cast<sample>(GetParam(kParamIns2A)->Value() / 100.);
+  insert2.b = static_cast<sample>(GetParam(kParamIns2B)->Value() / 100.);
+  insert2.c = static_cast<sample>(GetParam(kParamIns2C)->Value() / 100.);
+  insert2.mix = static_cast<sample>(GetParam(kParamIns2Mix)->Value() / 100.);
+  insert2.bypass = GetParam(kParamIns2Bypass)->Int() != 0;
+  mDSP.SetInsert2Params(insert2);
+
+  KeithDSP<sample>::MasterParams master {};
+  master.algorithm = static_cast<keith::fx::MasterAlgorithm>(GetParam(kParamMstAlgo)->Int());
+  master.a = static_cast<sample>(GetParam(kParamMstA)->Value() / 100.);
+  master.b = static_cast<sample>(GetParam(kParamMstB)->Value() / 100.);
+  master.c = static_cast<sample>(GetParam(kParamMstC)->Value() / 100.);
+  master.mix = static_cast<sample>(GetParam(kParamMstMix)->Value() / 100.);
+  master.bypass = GetParam(kParamMstBypass)->Int() != 0;
+  mDSP.SetMasterFxParams(master);
+
+  const double outDb = GetParam(kParamOutLevel)->Value();
+  mDSP.SetOutLevel(keith::synth::DbToLinear(static_cast<float>(outDb)));
 }
 #endif

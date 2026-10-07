@@ -22,10 +22,12 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   auto* shape = pages->AddPage();
   auto* tape = pages->AddPage();
   auto* library = pages->AddPage();
+  auto* fx = pages->AddPage();
   source->AddChildControl(new KeithWorkspaceMaterial(SOURCE_MATERIAL_FN));
   tape->AddChildControl(new KeithWorkspaceMaterial(TAPE_MATERIAL_FN));
   const char* pageNames[] = {
-    "01  SOURCE", "02  MODULATION", "03  FILTER", "04  ENVELOPES", "05  TAPE", "06  LIBRARY"
+    "01  SOURCE", "02  MODULATION", "03  FILTER", "04  ENVELOPES", "05  TAPE", "06  LIBRARY",
+    "07  FX"
   };
   auto box = [](Box b) { return IRECT(b.l, b.t, b.r, b.b); };
   for (int i = 0; i < kNavCount; ++i)
@@ -146,6 +148,32 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   tabs(tape, IRECT(72,626,244,670), kParamTapeBypass, {"ACTIVE", "BYPASS"});
   text(tape, IRECT(788,626,982,670), "POST SYNTH", MonoBold(13,kPaper));
 
+  const int ins1Algo = kParamIns1Algo;
+  const int ins2Algo = kParamIns2Algo;
+  const int masterAlgo = kParamMstAlgo;
+  fx->AddChildControl(new KeithPanelControl(box(kFxIns1Region), "INSERT 1", kPanel, kGreen));
+  fx->AddChildControl(new KeithPanelControl(box(kFxIns2Region), "INSERT 2", kPanel, kMagenta));
+  fx->AddChildControl(new KeithPanelControl(box(kFxMasterRegion), "MASTER", kPanel, kPaper));
+  tabs(fx, box(kFxIns1Algo), ins1Algo, {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  tabs(fx, box(kFxIns2Algo), ins2Algo, {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  tabs(fx, box(kFxMasterAlgo), masterAlgo, {"OFF", "COMP", "LIMIT", "WIDTH", "TILT"});
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1A), kParamIns1A, ins1Algo, 0, false, kGreen));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1B), kParamIns1B, ins1Algo, 1, false, kGreen));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1C), kParamIns1C, ins1Algo, 2, false, kGreen));
+  freeKnob(fx, kFxIns1Mix, kParamIns1Mix, "DRY / WET", kPaper);
+  tabs(fx, box(kFxIns1Bypass), kParamIns1Bypass, {"ACTIVE", "BYPASS"});
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2A), kParamIns2A, ins2Algo, 0, false, kMagenta));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2B), kParamIns2B, ins2Algo, 1, false, kMagenta));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2C), kParamIns2C, ins2Algo, 2, false, kMagenta));
+  freeKnob(fx, kFxIns2Mix, kParamIns2Mix, "DRY / WET", kPaper);
+  tabs(fx, box(kFxIns2Bypass), kParamIns2Bypass, {"ACTIVE", "BYPASS"});
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterA), kParamMstA, masterAlgo, 0, true, kPaper));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterB), kParamMstB, masterAlgo, 1, true, kPaper));
+  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterC), kParamMstC, masterAlgo, 2, true, kPaper));
+  freeKnob(fx, kFxMasterMix, kParamMstMix, "DRY / WET", kGreen);
+  tabs(fx, box(kFxMasterBypass), kParamMstBypass, {"ACTIVE", "BYPASS"});
+  freeKnob(fx, kFxOutLevel, kParamOutLevel, "OUT LEVEL", kMagenta, true);
+
   text(library, IRECT(60,226,620,260), "PATCH LIBRARY", MonoBold(22,kPaper));
   text(library, IRECT(658,226,976,260), "CONTROL NOTES", MonoBold(16,kPaper));
   std::vector<KeithArchive::Row> rows;
@@ -158,7 +186,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     {"Double-click: default."},{"ENVELOPES"},{"Drag the four handles."},{"Click a value to type."},
     {"TAPE"},{"Dry/wet blends the bus."},{"MODULATION"},{"One LFO, CC1, velocity."},
     {"CONTENT"},{"15 original synth patches."},
-    {"Factory ROMs not included."},{"Drum sampler not built."},{"Insert FX not built."},{"Mod matrix not built."}
+    {"Factory ROMs not included."},{"Drum sampler not built."},{"FX chain: page 07."},{"Mod matrix not built."}
   }));
 
   // The channel strip is always reachable while navigating source, shape or tape.

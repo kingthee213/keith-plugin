@@ -1,8 +1,10 @@
 // Offline core-synth verification — not linked into the plugin binary.
+#include "../src/fx/PatchEffects.h"
 #include "../src/synth/CoreSynth.h"
 
 #include <cmath>
 #include <cstdio>
+#include <set>
 #include <vector>
 
 using keith::synth::EngineMode;
@@ -12,6 +14,11 @@ using keith::synth::ModDest;
 using keith::synth::OfflineEngine;
 using keith::synth::Params;
 using keith::synth::PolyMode;
+using keith::fx::InsertAlgorithm;
+using keith::fx::InsertEffect;
+using keith::fx::MasterAlgorithm;
+using keith::fx::MasterEffect;
+using keith::fx::SmoothedGain;
 
 static int gPass = 0;
 static int gFail = 0;
@@ -130,6 +137,58 @@ static double GoertzelMag(const std::vector<float>& x, size_t start, size_t coun
   }
   const double power = s1 * s1 + s2 * s2 - coeff * s1 * s2;
   return power > 0. ? std::sqrt(power) : 0.;
+}
+
+struct StereoBuffer
+{
+  explicit StereoBuffer(size_t frames = 0) : left(frames), right(frames) {}
+  std::vector<float> left;
+  std::vector<float> right;
+};
+
+template<typename Effect>
+static StereoBuffer ProcessEffect(Effect& effect, const typename Effect::Params& params,
+                                  const StereoBuffer& input, double sampleRate)
+{
+  StereoBuffer output = input;
+  effect.SetParams(params);
+  effect.Reset(sampleRate, 64);
+  float* channels[2] = {output.left.data(), output.right.data()};
+  effect.ProcessBlock(channels, 2, static_cast<int>(output.left.size()));
+  return output;
+}
+
+static StereoBuffer SineStereo(int frames, double sampleRate, double leftHz, double rightHz,
+                               float amplitude = 0.5f)
+{
+  StereoBuffer out(static_cast<size_t>(frames));
+  for (int i = 0; i < frames; ++i)
+  {
+    out.left[static_cast<size_t>(i)] =
+      amplitude * std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * leftHz * i / sampleRate));
+    out.right[static_cast<size_t>(i)] =
+      amplitude * std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * rightHz * i / sampleRate));
+  }
+  return out;
+}
+
+static double Mean(const std::vector<float>& x, size_t start, size_t count)
+{
+  double sum = 0.;
+  for (size_t i = 0; i < count; ++i)
+    sum += x[start + i];
+  return count ? sum / static_cast<double>(count) : 0.;
+}
+
+static double StereoDifferenceRms(const StereoBuffer& x, size_t start, size_t count)
+{
+  double sum = 0.;
+  for (size_t i = 0; i < count; ++i)
+  {
+    const double difference = x.left[start + i] - x.right[start + i];
+    sum += difference * difference;
+  }
+  return count ? std::sqrt(sum / static_cast<double>(count)) : 0.;
 }
 
 static Params SteadyPatch()
@@ -895,6 +954,395 @@ int main()
         break;
     }
     Expect(ok, "u9_param_sweep_finite");
+  }
+
+  // U10 insert and master effects. Every algorithm gets an audible measurement and a
+  // negative assertion that rules out an unrelated or no-op implementation.
+  {
+    const StereoBuffer input = SineStereo(sr, sr, 1000., 1000., 0.18f);
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params drive {};
+    drive.algorithm = InsertAlgorithm::Drive;
+    drive.a = 1.f;
+    drive.b = 1.f;
+    drive.c = 0.5f;
+    drive.mix = 1.f;
+    const StereoBuffer output = ProcessEffect(effect, drive, input, sr);
+    const size_t start = static_cast<size_t>(sr / 10);
+    const size_t count = static_cast<size_t>(sr / 2);
+    const double dryFundamental = GoertzelMag(input.left, start, count, 1000., sr);
+    const double dryThird = GoertzelMag(input.left, start, count, 3000., sr);
+    const double wetFundamental = GoertzelMag(output.left, start, count, 1000., sr);
+    const double wetThird = GoertzelMag(output.left, start, count, 3000., sr);
+    const double dryRatio = dryThird / std::max(1.0e-12, dryFundamental);
+    const double wetRatio = wetThird / std::max(1.0e-12, wetFundamental);
+    Expect(wetRatio > dryRatio + 0.01, "drive_adds_harmonics");
+
+    const int dryCrossings = CountZeroCrossings(input.left, start, count);
+    const int wetCrossings = CountZeroCrossings(output.left, start, count);
+    Expect(std::abs(wetCrossings - dryCrossings) < 4, "drive_does_not_retune");
+  }
+
+  {
+    const StereoBuffer input = SineStereo(sr, sr, 440., 440., 0.35f);
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params chorus {};
+    chorus.algorithm = InsertAlgorithm::Chorus;
+    chorus.a = 0.8f;
+    chorus.b = 1.f;
+    chorus.c = 1.f;
+    chorus.mix = 1.f;
+    const StereoBuffer output = ProcessEffect(effect, chorus, input, sr);
+    const size_t start = static_cast<size_t>(sr / 10);
+    const size_t count = static_cast<size_t>(sr / 2);
+    Expect(StereoDifferenceRms(output, start, count) > 0.05, "chorus_modulates_delay");
+    Expect(std::fabs(Mean(output.left, start, count)) < 0.002 &&
+           std::fabs(Mean(output.right, start, count)) < 0.002,
+           "chorus_does_not_add_dc");
+  }
+
+  {
+    StereoBuffer impulse(static_cast<size_t>(sr));
+    impulse.left[0] = 1.f;
+    impulse.right[0] = 1.f;
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params delay {};
+    delay.algorithm = InsertAlgorithm::Delay;
+    delay.a = 0.5f;
+    delay.b = 0.f;
+    delay.c = 1.f;
+    delay.mix = 1.f;
+    const StereoBuffer output = ProcessEffect(effect, delay, impulse, sr);
+    const int expected = static_cast<int>((0.02 + 0.25 * 0.98) * sr);
+    const size_t around = static_cast<size_t>(expected);
+    const double repeatPeak = PeakAbs(std::vector<float>(
+      output.left.begin() + static_cast<ptrdiff_t>(around - 2),
+      output.left.begin() + static_cast<ptrdiff_t>(around + 3)));
+    Expect(repeatPeak > 0.5, "delay_repeats_at_set_time");
+    Expect(PeakAbs(std::vector<float>(output.left.begin() + 1,
+                                     output.left.begin() + static_cast<ptrdiff_t>(around - 4))) < 1.0e-7,
+           "delay_has_no_early_repeat");
+  }
+
+  {
+    StereoBuffer ramp(1024);
+    for (size_t i = 0; i < ramp.left.size(); ++i)
+    {
+      const float value = static_cast<float>(i) / static_cast<float>(ramp.left.size() - 1) * 2.f - 1.f;
+      ramp.left[i] = value;
+      ramp.right[i] = value;
+    }
+
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params crush {};
+    crush.algorithm = InsertAlgorithm::Crush;
+    crush.a = 0.f;
+    crush.b = 1.f;
+    crush.c = 0.f;
+    crush.mix = 1.f;
+    const StereoBuffer lowBits = ProcessEffect(effect, crush, ramp, sr);
+    std::set<int> levels;
+    for (float value : lowBits.left)
+      levels.insert(static_cast<int>(std::lround(value * 100000.f)));
+    Expect(levels.size() <= 32 && levels.size() >= 12, "crush_quantises_levels");
+
+    crush.a = 1.f;
+    const StereoBuffer highBits = ProcessEffect(effect, crush, ramp, sr);
+    const double lowError = MeanAbsDiff(lowBits.left, ramp.left, 0);
+    const double highError = MeanAbsDiff(highBits.left, ramp.left, 0);
+    Expect(highError < lowError * 0.05, "crush_bits_control_reduces_error");
+  }
+
+  {
+    StereoBuffer input(static_cast<size_t>(sr));
+    for (int i = 0; i < sr; ++i)
+    {
+      const float amplitude = i < sr / 2 ? 0.1f : 0.9f;
+      const float value = amplitude *
+        std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * 500.0 * i / sr));
+      input.left[static_cast<size_t>(i)] = value;
+      input.right[static_cast<size_t>(i)] = value;
+    }
+
+    MasterEffect<float> effect;
+    MasterEffect<float>::Params compressor {};
+    compressor.algorithm = MasterAlgorithm::Compressor;
+    compressor.a = 0.5f;
+    compressor.b = 1.f;
+    compressor.c = 0.4f;
+    compressor.mix = 1.f;
+    const StereoBuffer output = ProcessEffect(effect, compressor, input, sr);
+    const size_t window = static_cast<size_t>(sr / 5);
+    const double dryRange = Rms(input.left, static_cast<size_t>(sr * 3 / 4), window) /
+                            Rms(input.left, static_cast<size_t>(sr / 4), window);
+    const double wetRange = Rms(output.left, static_cast<size_t>(sr * 3 / 4), window) /
+                            Rms(output.left, static_cast<size_t>(sr / 4), window);
+    Expect(wetRange < dryRange * 0.45, "comp_reduces_dynamic_range");
+
+    const StereoBuffer quiet = SineStereo(sr / 4, sr, 300., 300., 0.2f);
+    compressor.a = 1.f;
+    const StereoBuffer untouched = ProcessEffect(effect, compressor, quiet, sr);
+    Expect(Identical(quiet.left, untouched.left) && Identical(quiet.right, untouched.right),
+           "comp_below_threshold_is_unchanged");
+  }
+
+  {
+    const StereoBuffer hot = SineStereo(sr / 2, sr, 220., 220., 2.f);
+    MasterEffect<float> effect;
+    MasterEffect<float>::Params limiter {};
+    limiter.algorithm = MasterAlgorithm::Limiter;
+    limiter.a = 0.5f;
+    limiter.b = 0.5f;
+    limiter.c = 0.f;
+    limiter.mix = 1.f;
+    const StereoBuffer bounded = ProcessEffect(effect, limiter, hot, sr);
+    const double ceiling = std::pow(10.0, -9.0 / 20.0);
+    Expect(PeakAbs(bounded.left) <= ceiling + 1.0e-6, "limit_bounds_peak");
+
+    const StereoBuffer quiet = SineStereo(sr / 4, sr, 220., 220., 0.2f);
+    limiter.a = 1.f;
+    const StereoBuffer untouched = ProcessEffect(effect, limiter, quiet, sr);
+    Expect(Identical(quiet.left, untouched.left) && Identical(quiet.right, untouched.right),
+           "limit_below_ceiling_is_unchanged");
+  }
+
+  {
+    StereoBuffer input(static_cast<size_t>(sr / 2));
+    for (size_t i = 0; i < input.left.size(); ++i)
+    {
+      const float common = 0.35f *
+        std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * 400.0 * i / sr));
+      const float side = 0.15f *
+        std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * 900.0 * i / sr));
+      input.left[i] = common + side;
+      input.right[i] = common - side;
+    }
+
+    MasterEffect<float> effect;
+    MasterEffect<float>::Params width {};
+    width.algorithm = MasterAlgorithm::Width;
+    width.a = 1.f;
+    width.b = 0.f;
+    width.c = 0.5f;
+    width.mix = 1.f;
+    const StereoBuffer widened = ProcessEffect(effect, width, input, sr);
+    const size_t start = static_cast<size_t>(sr / 20);
+    const size_t count = widened.left.size() - start;
+    Expect(StereoDifferenceRms(widened, start, count) >
+             StereoDifferenceRms(input, start, count) * 1.7,
+           "width_changes_stereo_correlation");
+
+    const StereoBuffer mono = SineStereo(sr / 4, sr, 500., 500., 0.3f);
+    const StereoBuffer monoOut = ProcessEffect(effect, width, mono, sr);
+    Expect(Identical(mono.left, monoOut.left) && Identical(mono.right, monoOut.right),
+           "width_does_not_invent_side_from_mono");
+  }
+
+  {
+    StereoBuffer input(static_cast<size_t>(sr));
+    for (int i = 0; i < sr; ++i)
+    {
+      const float value =
+        0.2f * std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * 100.0 * i / sr)) +
+        0.2f * std::sin(static_cast<float>(2.0 * 3.14159265358979323846 * 5000.0 * i / sr));
+      input.left[static_cast<size_t>(i)] = value;
+      input.right[static_cast<size_t>(i)] = value;
+    }
+
+    MasterEffect<float> effect;
+    MasterEffect<float>::Params tilt {};
+    tilt.algorithm = MasterAlgorithm::Tilt;
+    tilt.a = 0.5f;
+    tilt.b = 0.5f;
+    tilt.c = 0.f;
+    tilt.mix = 1.f;
+    const StereoBuffer flat = ProcessEffect(effect, tilt, input, sr);
+    tilt.a = 1.f;
+    const StereoBuffer bright = ProcessEffect(effect, tilt, input, sr);
+    const size_t start = static_cast<size_t>(sr / 10);
+    const size_t count = static_cast<size_t>(sr / 2);
+    const double flatRatio = GoertzelMag(flat.left, start, count, 5000., sr) /
+                             GoertzelMag(flat.left, start, count, 100., sr);
+    const double brightRatio = GoertzelMag(bright.left, start, count, 5000., sr) /
+                               GoertzelMag(bright.left, start, count, 100., sr);
+    if (!(brightRatio > flatRatio * 3.0))
+      std::printf("  tilt high/low ratio flat %g bright %g\n", flatRatio, brightRatio);
+    Expect(brightRatio > flatRatio * 3.0, "tilt_changes_spectral_balance");
+    Expect(MeanAbsDiff(flat.left, input.left, start) < 1.0e-6,
+           "tilt_center_without_drive_is_neutral");
+  }
+
+  {
+    const StereoBuffer input = SineStereo(sr / 4, sr, 321., 654., 0.4f);
+    InsertEffect<float> insert;
+    InsertEffect<float>::Params insertOff {};
+    insertOff.algorithm = InsertAlgorithm::Off;
+    insertOff.a = insertOff.b = insertOff.c = 1.f;
+    insertOff.mix = 1.f;
+    const StereoBuffer insertOutput = ProcessEffect(insert, insertOff, input, sr);
+
+    MasterEffect<float> master;
+    MasterEffect<float>::Params masterOff {};
+    masterOff.algorithm = MasterAlgorithm::Off;
+    masterOff.a = masterOff.b = masterOff.c = 1.f;
+    masterOff.mix = 1.f;
+    const StereoBuffer masterOutput = ProcessEffect(master, masterOff, input, sr);
+    Expect(Identical(input.left, insertOutput.left) && Identical(input.right, insertOutput.right) &&
+           Identical(input.left, masterOutput.left) && Identical(input.right, masterOutput.right),
+           "fx_off_is_exact_passthrough");
+
+    insertOff.algorithm = InsertAlgorithm::Drive;
+    insertOff.bypass = true;
+    const StereoBuffer insertBypass = ProcessEffect(insert, insertOff, input, sr);
+    masterOff.algorithm = MasterAlgorithm::Limiter;
+    masterOff.bypass = true;
+    const StereoBuffer masterBypass = ProcessEffect(master, masterOff, input, sr);
+    Expect(Identical(input.left, insertBypass.left) && Identical(input.right, insertBypass.right) &&
+           Identical(input.left, masterBypass.left) && Identical(input.right, masterBypass.right),
+           "fx_bypass_is_exact_passthrough");
+  }
+
+  {
+    const StereoBuffer input = SineStereo(sr / 4, sr, 271., 419., 0.25f);
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params drive {};
+    drive.algorithm = InsertAlgorithm::Drive;
+    drive.a = 0.8f;
+    drive.b = 0.7f;
+    drive.c = 0.6f;
+    drive.mix = 0.f;
+    const StereoBuffer dry = ProcessEffect(effect, drive, input, sr);
+    Expect(Identical(input.left, dry.left) && Identical(input.right, dry.right),
+           "fx_mix_zero_is_exact_passthrough");
+
+    drive.mix = 1.f;
+    const StereoBuffer wet = ProcessEffect(effect, drive, input, sr);
+    drive.mix = 0.5f;
+    const StereoBuffer half = ProcessEffect(effect, drive, input, sr);
+    bool trueBlend = true;
+    for (size_t i = 0; i < input.left.size(); ++i)
+    {
+      const float expectedL = input.left[i] + (wet.left[i] - input.left[i]) * 0.5f;
+      const float expectedR = input.right[i] + (wet.right[i] - input.right[i]) * 0.5f;
+      trueBlend = trueBlend && std::fabs(half.left[i] - expectedL) < 1.0e-7f &&
+                  std::fabs(half.right[i] - expectedR) < 1.0e-7f;
+    }
+    Expect(trueBlend, "fx_mix_is_true_dry_wet");
+  }
+
+  {
+    StereoBuffer unity = SineStereo(sr / 8, sr, 440., 660., 0.2f);
+    const StereoBuffer input = unity;
+    SmoothedGain<float> outLevel;
+    outLevel.Reset(sr, 1.f);
+    float* unityChannels[2] = {unity.left.data(), unity.right.data()};
+    outLevel.ProcessBlock(unityChannels, 2, static_cast<int>(unity.left.size()));
+    Expect(Identical(input.left, unity.left) && Identical(input.right, unity.right),
+           "fx_out_level_zero_db_is_inert");
+
+    StereoBuffer boosted = input;
+    const float plusTwelve = static_cast<float>(std::pow(10.0, 12.0 / 20.0));
+    outLevel.Reset(sr, plusTwelve);
+    float* boostChannels[2] = {boosted.left.data(), boosted.right.data()};
+    outLevel.ProcessBlock(boostChannels, 2, static_cast<int>(boosted.left.size()));
+    const double ratio = Rms(boosted.left, 0, boosted.left.size()) /
+                         Rms(input.left, 0, input.left.size());
+    Expect(std::fabs(ratio - plusTwelve) < 1.0e-5, "fx_out_level_applies_db_gain");
+  }
+
+  {
+    InsertEffect<float>::Params insert1 {};
+    InsertEffect<float>::Params insert2 {};
+    MasterEffect<float>::Params master {};
+    const double outLevelDb = 0.;
+    const bool fields =
+      insert1.algorithm == InsertAlgorithm::Off && insert1.a == 0.5f && insert1.b == 0.5f &&
+      insert1.c == 0.5f && insert1.mix == 1.f && !insert1.bypass &&
+      insert2.algorithm == InsertAlgorithm::Off && insert2.a == 0.5f && insert2.b == 0.5f &&
+      insert2.c == 0.5f && insert2.mix == 1.f && !insert2.bypass &&
+      master.algorithm == MasterAlgorithm::Off && master.a == 0.5f && master.b == 0.5f &&
+      master.c == 0.5f && master.mix == 0.4f && !master.bypass && outLevelDb == 0.;
+    Expect(fields, "fx_new_defaults_match_inert_values");
+
+    const StereoBuffer input = SineStereo(sr / 3, sr, 333., 777., 0.4f);
+    StereoBuffer output = input;
+    InsertEffect<float> first;
+    InsertEffect<float> second;
+    MasterEffect<float> final;
+    first.SetParams(insert1);
+    second.SetParams(insert2);
+    final.SetParams(master);
+    first.Reset(sr, 64);
+    second.Reset(sr, 64);
+    final.Reset(sr, 64);
+    SmoothedGain<float> outLevel;
+    outLevel.Reset(sr, 1.f);
+    float* channels[2] = {output.left.data(), output.right.data()};
+    const int frames = static_cast<int>(output.left.size());
+    first.ProcessBlock(channels, 2, frames);
+    second.ProcessBlock(channels, 2, frames);
+    final.ProcessBlock(channels, 2, frames);
+    outLevel.ProcessBlock(channels, 2, frames);
+    Expect(Identical(input.left, output.left) && Identical(input.right, output.right),
+           "fx_new_defaults_are_inert");
+  }
+
+  {
+    StereoBuffer output = SineStereo(sr * 2, sr, 97., 613., 4.f);
+    InsertEffect<float> first;
+    InsertEffect<float>::Params delay {};
+    delay.algorithm = InsertAlgorithm::Delay;
+    delay.a = delay.b = delay.c = delay.mix = 1.f;
+    first.SetParams(delay);
+    first.Reset(sr, 64);
+
+    InsertEffect<float> second;
+    InsertEffect<float>::Params crush {};
+    crush.algorithm = InsertAlgorithm::Crush;
+    crush.a = crush.b = crush.c = crush.mix = 1.f;
+    second.SetParams(crush);
+    second.Reset(sr, 64);
+
+    MasterEffect<float> master;
+    MasterEffect<float>::Params limiter {};
+    limiter.algorithm = MasterAlgorithm::Limiter;
+    limiter.a = limiter.b = limiter.c = limiter.mix = 1.f;
+    master.SetParams(limiter);
+    master.Reset(sr, 64);
+
+    SmoothedGain<float> outLevel;
+    outLevel.Reset(sr, static_cast<float>(std::pow(10.0, 12.0 / 20.0)));
+    float* channels[2] = {output.left.data(), output.right.data()};
+    const int frames = static_cast<int>(output.left.size());
+    first.ProcessBlock(channels, 2, frames);
+    second.ProcessBlock(channels, 2, frames);
+    master.ProcessBlock(channels, 2, frames);
+    outLevel.ProcessBlock(channels, 2, frames);
+    Expect(AllFinite(output.left) && AllFinite(output.right) &&
+             PeakAbs(output.left) <= 64. && PeakAbs(output.right) <= 64.,
+           "fx_chain_all_max_is_finite");
+  }
+
+  {
+    InsertEffect<float> effect;
+    InsertEffect<float>::Params drive {};
+    drive.algorithm = InsertAlgorithm::Drive;
+    drive.a = 0.f;
+    drive.b = 1.f;
+    drive.c = 0.5f;
+    drive.mix = 1.f;
+    effect.SetParams(drive);
+    effect.Reset(sr, 64);
+    std::vector<float> left(2048, 0.2f);
+    std::vector<float> right(2048, 0.2f);
+    float* channels[2] = {left.data(), right.data()};
+    effect.ProcessBlock(channels, 2, 1024);
+    drive.a = 1.f;
+    effect.SetParams(drive);
+    float* changedChannels[2] = {left.data() + 1024, right.data() + 1024};
+    effect.ProcessBlock(changedChannels, 2, 1024);
+    const double firstChanged = std::fabs(static_cast<double>(left[1024]) - left[1023]);
+    Expect(firstChanged < 0.01, "fx_parameter_changes_are_smoothed");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);

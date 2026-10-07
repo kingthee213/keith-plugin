@@ -111,6 +111,29 @@ enum EParams
   kParamVelToFilter = 54,
   kParamMonoLegato = 55,
 
+  // U10 appends. IDs 0–55 stay put.
+  kParamIns1Algo = 56,
+  kParamIns1A = 57,
+  kParamIns1B = 58,
+  kParamIns1C = 59,
+  kParamIns1Mix = 60,
+  kParamIns1Bypass = 61,
+
+  kParamIns2Algo = 62,
+  kParamIns2A = 63,
+  kParamIns2B = 64,
+  kParamIns2C = 65,
+  kParamIns2Mix = 66,
+  kParamIns2Bypass = 67,
+
+  kParamMstAlgo = 68,
+  kParamMstA = 69,
+  kParamMstB = 70,
+  kParamMstC = 71,
+  kParamMstMix = 72,
+  kParamMstBypass = 73,
+  kParamOutLevel = 74,
+
   kNumParams
 };
 
@@ -148,11 +171,13 @@ public:
 private:
   void SyncTapeParams();
   void SyncSynthParams();
+  void SyncFxParams();
   KeithDSP<sample> mDSP;
 #endif
 
 #if IPLUG_EDITOR
 private:
   int mLastPreset = -1;
+  int mLastFxAlgo[3] {-1, -1, -1};
 #endif
 };

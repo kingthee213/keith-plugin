@@ -92,9 +92,11 @@ def main():
         cancel(existing[0])
 
     def nav(index):
-        # Six cells across kNavBar (34, 144, 1022, 185), gap 8.
-        width = (1022 - 34 - 8 * 5) / 6
-        x = int(34 + index * (width + 8) + width / 2)
+        # Cells across kNavBar (34, 144, 1022, 185). Keep these in step with
+        # kNavCount / kNavGap in src/editor/EditorGeometry.h: seven cells, gap 4.
+        count, gap = 7, 4
+        width = (1022 - 34 - gap * (count - 1)) / count
+        x = int(34 + index * (width + gap) + width / 2)
         click(x, 164)
 
     nav(0)  # 01 Source.
@@ -138,6 +140,16 @@ def main():
     click(932, 450)  # OSC SYNC, SYNC tab.
     click(834, 450)  # OSC SYNC, FREE tab.
 
+    nav(6)  # 07 FX.
+    click(922, 612)  # Out Level readout.
+    out_before = read(field())
+    out_target = 6.0 if abs(out_before - 3.0) < 0.001 else 3.0
+    enter(field(), out_target)
+    click(922, 612)
+    out_after = read(field())
+    assert out_after == out_target, out_after
+    cancel(field())
+
     nav(3)  # 04 Envelopes, default volume envelope.
     click(170, 249)  # Explicitly select volume rather than cached pitch/filter.
     click(200, 630)
@@ -154,6 +166,7 @@ def main():
                       'cutoff_numeric_roundtrip': cutoff,
                       'lfo_rate_numeric_roundtrip': [rate_before, rate_after],
                       'filter_drive_numeric_roundtrip': [drive_before, drive_after],
+                      'fx_out_level_numeric_roundtrip': [out_before, out_after],
                       'volume_attack_numeric_roundtrip': [attack_before, attack_after]}))
 
 

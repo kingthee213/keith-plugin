@@ -241,6 +241,7 @@ public:
 
   /** The current display string, e.g. "25.0 %" or "LP24". Filled outside Draw. */
   const char* GetValueStr() const { return mValueStr.Get(); }
+  void SetLabel(const char* label) { mLabel.Set(label); }
 
 protected:
   IRECT GetKnobDragBounds() override { return mWidgetBounds; }

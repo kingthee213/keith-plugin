@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-level gate for the Keith editor surface (U8).
+"""Source-level gate for the Keith editor surface (through U10).
 
 Proves three things without a host or a GUI:
 
@@ -162,6 +162,16 @@ def main():
     missing_deltas = [name for name in u9_deltas if name not in serialized]
     check("U9 preset deltas serialize key track, LFO and drive",
           not missing_deltas, ", ".join(missing_deltas) if missing_deltas else "present")
+
+    u10_deltas = [
+        "kParamIns1Algo", "kParamIns1A", "kParamIns1B", "kParamIns1C", "kParamIns1Mix",
+        "kParamIns2Algo", "kParamIns2A", "kParamIns2B", "kParamIns2C", "kParamIns2Mix",
+        "kParamMstAlgo", "kParamMstA", "kParamMstB", "kParamMstC", "kParamMstMix",
+        "kParamOutLevel",
+    ]
+    missing_u10 = [name for name in u10_deltas if name not in serialized]
+    check("U10 preset deltas serialize insert, master and output settings",
+          not missing_u10, ", ".join(missing_u10) if missing_u10 else "present")
 
     failed = [name for name, ok, _ in results if not ok]
     print()

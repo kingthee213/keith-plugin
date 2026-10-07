@@ -76,7 +76,7 @@ public:
     const IColor ground = kPanel;
     const IColor ink = kPaper;
     g.FillRect(active ? ink : ground, mRECT);
-    g.DrawText(MonoBold(15, active ? ground : ink), mLabel.c_str(), mRECT.GetPadded(-mTextPad));
+    g.DrawText(MonoBold(kNavFontPx, active ? ground : ink), mLabel.c_str(), mRECT.GetPadded(-mTextPad));
     if (active) g.FillRect(kMagenta, mRECT.GetFromLeft(4));
     else g.DrawLine(ink.WithOpacity(0.25f), mRECT.L, mRECT.B, mRECT.R, mRECT.B, nullptr, 1);
   }
@@ -87,6 +87,54 @@ private:
   bool mPaper;
   std::string mLabel;
   float mTextPad;
+};
+
+inline const char* FxKnobLabel(bool master, int algorithm, int knob)
+{
+  static const char* insertLabels[5][3] = {
+    {"NOT USED", "NOT USED", "NOT USED"},
+    {"DRIVE", "TONE", "BIAS"},
+    {"RATE", "DEPTH", "SPREAD"},
+    {"TIME", "FEEDBACK", "TONE"},
+    {"BITS", "RATE", "JITTER"}
+  };
+  static const char* masterLabels[5][3] = {
+    {"NOT USED", "NOT USED", "NOT USED"},
+    {"THRESHOLD", "RATIO", "RELEASE"},
+    {"CEILING", "RELEASE", "INPUT"},
+    {"WIDTH", "MONO FREQ", "BALANCE"},
+    {"TILT", "PIVOT", "DRIVE"}
+  };
+  const int safeAlgorithm = std::clamp(algorithm, 0, 4);
+  const int safeKnob = std::clamp(knob, 0, 2);
+  return master ? masterLabels[safeAlgorithm][safeKnob]
+                : insertLabels[safeAlgorithm][safeKnob];
+}
+
+class KeithFxKnobControl : public KeithKnobControl
+{
+public:
+  KeithFxKnobControl(const IRECT& bounds, int paramIdx, int algorithmParam, int knob,
+                     bool master, const IColor& accent)
+  : KeithKnobControl(bounds, paramIdx, "NOT USED", accent, true, false, 4.0, 24.f, true)
+  , mAlgorithmParam(algorithmParam)
+  , mKnob(knob)
+  , mMaster(master)
+  {
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
+    SetLabel(FxKnobLabel(mMaster, algorithm, mKnob));
+    KeithKnobControl::Draw(g);
+  }
+
+private:
+  int mAlgorithmParam;
+  int mKnob;
+  bool mMaster;
 };
 
 class KeithWorkspaceMaterial : public IControl

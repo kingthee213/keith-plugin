@@ -43,6 +43,7 @@ iplug_add_plugin(${PROJECT_NAME}
     src/editor/KeithControls.h
     src/editor/KeithTheme.h
     src/synth/CoreSynth.h
+    src/fx/PatchEffects.h
     src/fx/TapeAnalog.h
     resources/resource.h
   RESOURCES
