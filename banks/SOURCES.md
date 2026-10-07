@@ -34,10 +34,10 @@ No exceptions, no "we'll fill it in later", no patch whose origin nobody can nam
 
 | Family | Shipped label | Reference machine (internal only) | Order | Status |
 |---|---|---|---|---|
-| 01 | Family 01 | Triton | 1st — establishes patch + FX-chain format | not started |
-| 02 | Family 02 | Triton Extreme | 2nd — reuses Family 01 structure | not started |
-| 03 | Family 03 | Korg M1 | 3rd — simpler PCM/AI engine | not started |
-| 04 | Family 04 | Korg Wavestation | 4th — wave-sequencing, its own engine | not started |
+| 01 | Family 01 | Triton | 1st — establishes patch + FX-chain format | factory lists enumerated (U2); no bank data built |
+| 02 | Family 02 | Triton Extreme | 2nd — reuses Family 01 structure | factory lists enumerated (U2); no bank data built |
+| 03 | Family 03 | Korg M1 | 3rd — simpler PCM/AI engine | factory lists enumerated (U2); no bank data built |
+| 04 | Family 04 | Korg Wavestation | 4th — wave-sequencing, its own engine | factory lists enumerated (U2); no bank data built |
 
 ## Factory list enumeration (content lane fills this in first)
 
@@ -46,10 +46,10 @@ real totals before building any patch. Do not invent names or counts.**
 
 | Family | Factory programs (count) | Drum kits / drum sounds (count) | FX chain data found? | Documents used | Reported by |
 |---|---|---|---|---|---|
-| 01 | TBD | TBD | TBD | TBD | TBD |
-| 02 | TBD | TBD | TBD | TBD | TBD |
-| 03 | TBD | TBD | TBD | TBD | TBD |
-| 04 | TBD | TBD | TBD | TBD | TBD |
+| 01 | **777 documented program rows** - banks A-D **512**, plus GM bank G **265** (128 GM programs `G001`-`G128` and 137 `g(1)`-`g(9)`/`g(d)` variant rows the document itself prints). Combinations: **512** (banks A-D). | **16** factory drum kits (000-015) **+ 9** GM kits (00-08). The per-key high/low drumsample mapping is printed for every kit (88 key rows each). PCM: **425** multisamples, **413** drumsamples. | **Yes for algorithms and routing** - 103 effect algorithms (000-102) and the slot routing (IFX1-5 chain -> MFX1-2 send/return -> master EQ) are published. **No for per-program chains** - no document states which insert/master effects a given factory program uses. | `TRITON Voice Name List` (korg.com, product TRITON, doc id 1652); `TRITON Parameter Guide` (doc id 1648) | keith-omp (U2) |
+| 02 | **1,609 documented program rows** - banks A-D **512**, GM bank G **265** (128 GM + 137 variant rows), banks H-M **768**, bank N **64** (`N000`-`N063`; the document prints only that half of bank N). Combinations: **1,280** (banks A-D and H-M). | **50** factory drum kits (000-045, 128-131) **+ 9** GM kits (144-152). Per-key mapping printed for every kit (87-90 key rows each, as the document prints them). PCM: **442** multisample rows (425 distinct numbers, listed in named groups) and **1,233** drumsample rows (417 distinct numbers, grouped). | **Yes for algorithms and routing** - same catalogue (000-102); IFX1/IFX5 and MFX select 000-089 (90 types), IFX2-4 select 000-102 (103, double-size effects), plus Valve Force. **No for per-program chains.** | `TRITON Extreme Voice Name List` (korg.com, product TRITON Extreme); `TRITON Extreme Parameter Guide` (doc id 2423) | keith-omp (U2) |
+| 03 | **100 programs** and **100 combinations** (the document's 00-99 grids). | **Not documented.** The owner's manual shows one *example* drum-kit key assignment to illustrate the parameter; no factory kit list or drum-sound list is published in any document found. No pad mapping documented. | **Yes for algorithms and routing** - 33 effect types with names, 2 effect systems, serial or parallel placement, 4 inputs (A-D) / 4 outputs. **No for per-program chains.** | `M1 Voice Name List` (archive.org korg-m-1-voice.name.list); `M1 Owner's Manual` (archive.org synthmanual_M1_owners_manual) | keith-omp (U2) |
+| 04 | **105 patches** (banks ROM/RAM1/RAM2, 35 each) and **150 performances** (same three banks, 50 each). | **Not documented.** The Voice Name List has no drum section and the machine has no drum-kit concept; no document labels any wave as a drum sound. No pad mapping documented. | **Partially.** Routing is documented (MDE processor, FX1/FX2 serial or parallel, buses A-D, 55 effect programs over ~26 basic types). The 56-row effect program list was recovered from two independent scans; 8 rows read differently between them and are flagged in the family file. **No per-patch chains.** | `WAVESTATION Voice Name List` (korg.com, doc id 1564); `WAVESTATION Reference Guide` (doc id 1563) plus the archive.org Wavestation A/D Reference Guide scan | keith-omp (U2) |
 
 ## Ledger
 
