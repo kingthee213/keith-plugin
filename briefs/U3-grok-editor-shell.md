@@ -1,7 +1,7 @@
 # U3 — grok — editor / UI shell and visual language
 
 **Lane:** `keith-grok` (Cursor, `cursor-grok-4.5-high`). **Repo:** `D:/TYH_R10/dev/keith-plugin`.
-**Read first, in this order:** `BRIEF.md` §10 (interface) and §7 (FX), `../preferences.md` run rules,
+**Read first, in this order:** `BRIEF.md` §10 (interface) and §7 (FX), `C:/Users/noaha/.agents/orchestrate/keith-plugin/preferences.md` run rules,
 `docs/UNIT-PLAN.md`.
 
 ## Scope of this pass — the shell and the language. Not the DSP, not the banks.

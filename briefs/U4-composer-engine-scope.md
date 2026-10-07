@@ -4,7 +4,7 @@
 so its scope is on the record; it starts only after U1's build system is green and committed, because
 there is nothing to put DSP into until then.
 
-**Read first:** `BRIEF.md` §3 (sonic foundation), §4 (synth engine), §7 (FX), `../preferences.md` run
+**Read first:** `BRIEF.md` §3 (sonic foundation), §4 (synth engine), §7 (FX), `C:/Users/noaha/.agents/orchestrate/keith-plugin/preferences.md` run
 rules, `docs/UNIT-PLAN.md`.
 
 ## Deliverable of the first engine pass — the scoping document, then the tape/analog block

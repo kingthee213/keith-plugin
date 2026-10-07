@@ -1,12 +1,17 @@
 # keith-plugin — gates and pane map
 
+Herdr workspace **w16** ("keith"), repo `D:/TYH_R10/dev/keith-plugin`, branch `main`.
+
 ## Agent → pane map (this run)
 
-| Agent | Lane | Model | Pane id | Tab | Status |
+| Agent | Lane | Model (from pane footer) | Pane id | Tab | Status |
 |---|---|---|---|---|---|
-| keith-composer | composer | composer-2.5 | TBD | | not dispatched |
-| keith-grok | ui | cursor-grok-4.5-high | TBD | | not dispatched |
-| keith-omp | content | deepseek-flash | TBD | | not dispatched |
+| keith-composer | composer | Composer 2.5 | w16:p5 | w16:t5 | dispatched, working |
+| keith-grok | ui | Grok 4.5 High | w16:p3 | w16:t3 | dispatched, working |
+| keith-omp | content | DeepSeek-V4.1-Flash | w16:p4 | w16:t4 | dispatched, working |
+
+`CURSOR_API_KEY` / `DEEPSEEK_API_KEY` are not in the Windows user environment; they are exported into
+each pane from `%LOCALAPPDATA%\hermes\.env` before the agent starts. A fresh pane needs this again.
 
 ## Unit gates
 

@@ -2,7 +2,7 @@
 
 **Lane:** `keith-omp` (OMP, `deepseek-flash`). **Repo:** `D:/TYH_R10/dev/keith-plugin`.
 **Read first, in this order:** `BRIEF.md` §6 (content) and §6.5 (naming), `banks/SOURCES.md` (the
-ledger and its hard rules), `../preferences.md` run rules, `docs/UNIT-PLAN.md`.
+ledger and its hard rules), `C:/Users/noaha/.agents/orchestrate/keith-plugin/preferences.md` run rules, `docs/UNIT-PLAN.md`.
 
 ## Scope of this pass — enumerate and count. Build nothing.
 

@@ -1,7 +1,7 @@
 # U1 — composer — iPlug2 skeleton and build system
 
 **Lane:** `keith-composer` (Cursor, `composer-2.5`). **Repo:** `D:/TYH_R10/dev/keith-plugin`.
-**Read first, in this order:** `BRIEF.md` (locked spec), `../preferences.md` run rules,
+**Read first, in this order:** `BRIEF.md` (locked spec), `C:/Users/noaha/.agents/orchestrate/keith-plugin/preferences.md` run rules,
 `docs/UNIT-PLAN.md`.
 
 ## Scope of this pass — the build system, nothing else
