@@ -3,6 +3,7 @@
 #include "MidiSynth.h"
 #include "Oscillator.h"
 #include "Smoothers.h"
+#include "fx/TapeAnalog.h"
 
 using namespace iplug;
 
@@ -72,6 +73,8 @@ public:
 
   void Reset(double sampleRate, int blockSize)
   {
+    mSampleRate = sampleRate;
+    mBlockSize = blockSize;
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
     mSynth.Reset();
     mModulationsData.Resize(blockSize * kNumKeithModulations);
@@ -82,6 +85,23 @@ public:
 
     mParamSmoother.SetSmoothTime(10., sampleRate);
     mParamSmoother.SetValue(static_cast<T>(mParamsToSmooth[kModGain]));
+
+    mGlobalTape.Reset(sampleRate, blockSize);
+    for (auto& tape : mPartTape)
+      tape.Reset(sampleRate, blockSize);
+  }
+
+  using TapeParams = typename keith::fx::TapeAnalog<T>::Params;
+
+  void SetGlobalTapeParams(const TapeParams& p)
+  {
+    mGlobalTape.SetParams(p);
+  }
+
+  void SetPartTapeParams(int partIndex, const TapeParams& p)
+  {
+    if (partIndex >= 0 && partIndex < kNumParts)
+      mPartTape[partIndex].SetParams(p);
   }
 
   void ProcessBlock(T** outputs, int nOutputs, int nFrames)
@@ -99,6 +119,12 @@ public:
       if (nOutputs > 1)
         outputs[1][s] *= gain;
     }
+
+    // Per-part tape (part 0 = primary synth bus)
+    mPartTape[0].ProcessBlock(outputs, nOutputs, nFrames);
+
+    // Global tape bus
+    mGlobalTape.ProcessBlock(outputs, nOutputs, nFrames);
   }
 
   void ProcessMidiMsg(const IMidiMsg& msg)
@@ -112,9 +138,16 @@ public:
   }
 
 private:
+  static constexpr int kNumParts = 4;
+
+  double mSampleRate = 44100.;
+  int mBlockSize = 64;
   MidiSynth mSynth {VoiceAllocator::kPolyModePoly, MidiSynth::kDefaultBlockSize};
   WDL_TypedBuf<T> mModulationsData;
   WDL_PtrList<T> mModulations;
   LogParamSmooth<T, kNumKeithModulations> mParamSmoother;
   sample mParamsToSmooth[kNumKeithModulations] {};
+
+  keith::fx::TapeAnalog<T> mGlobalTape;
+  keith::fx::TapeAnalog<T> mPartTape[kNumParts] {};
 };

@@ -7,6 +7,17 @@ const int kNumPresets = 1;
 enum EParams
 {
   kParamGain = 0,
+
+  // Global tape bus (PARAM-MANIFEST fx_tape_*)
+  kParamTapeSat,
+  kParamTapeBump,
+  kParamTapeWow,
+  kParamTapeFlutter,
+  kParamTapeHiss,
+  kParamTapePrint,
+  kParamTapeMix,
+  kParamTapeBypass,
+
   kNumParams
 };
 
@@ -28,6 +39,7 @@ public:
   void OnParamChange(int paramIdx) override;
 
 private:
+  void SyncTapeParams();
   KeithDSP<sample> mDSP;
 #endif
 };

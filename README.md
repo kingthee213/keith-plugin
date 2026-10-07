@@ -126,6 +126,10 @@ stereo out. Replaced by the real engine in a later unit.
   Copyright (c) the iPlug 2 developers.”*
 - **Bundled permissive dependencies** shipped with iPlug2: WDL, NanoVG, NanoSVG, RTAudio,
   RTMidi, Steinberg VST3 SDK (see iPlug2 `LICENSE.txt` and dependency folders).
+- **Tape/analog DSP** (`src/fx/TapeAnalog.h`) — original Keith implementation. Algorithm ideas
+  seeded from the Airwindows open-source library (MIT Licence, Copyright (c) 2018 Chris Johnson):
+  modules **Tape**, **ToTape7**, **Flutter**, **Flutter2**, **Noise**, and **TapeDust**. No
+  Airwindows source code is included in this repository. See `docs/ENGINE-SCOPE.md` §2.2.
 
 Do not ingest GPL synth sources (Surge, OB-Xf), Freakshow code, or non-permissive sample
 content — see `BRIEF.md`.
