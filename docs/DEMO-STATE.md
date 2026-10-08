@@ -71,28 +71,26 @@ control, synth recreation gate 40 passed 0 failed.
   for `Keith.vst3` and `Keith.app`, so its printed install paths are wrong even though the build itself
   is correct.
 
-## Caught by the final sweep, not yet fixed
+## The orphaned parameter, and the guard that found it
 
-`tools/editor_surface_check.py` drops from 17 passed to 15 passed, 2 failed. It reports eleven
-parameters with no surface: `kParamAmpAttackCurve`, `kParamAmpAttackKey`, `kParamAmpDecay`,
-`kParamAmpDecayCurve`, `kParamAmpDecayKey`, `kParamAmpSustain`, `kParamFiltDecay`,
-`kParamFiltSustain`, `kParamStereoDelay`, `kParamStereoDelayKey`, `kParamVelToAmp`.
+`tools/editor_surface_check.py` dipped from 17 passed to 15 passed, 2 failed during this session. It
+named eleven parameters with no surface. Both halves are done and the check is back to 17 of 17.
 
-Read against the enum in `src/Keith.h`, ten of those are fine and one is not.
+`kParamVelToAmp` (id 53) was the one real orphan. The geometry already reserved a rectangle for it, in
+the FILTER panel's third row paired with `kParamVelToFilter`, so that panel drew one knob where two
+were planned and the row was off balance. Only the attach was missing. It is now a `VEL` knob beside
+`FILT`, and the panel reads as three rows of two.
 
-- Ten are attached at runtime. `EditorialLayout.h` lines 94, 96 and 98 attach controls with numeric
-  range loops, `kParamAmpAttack` through `kParamAmpRelease` (29 to 32), `kParamFiltAttack` through
-  `kParamFiltRelease` (39 to 42) and `kParamNoiseKey` through `kParamStereoSpread` (101 to 108), so
-  `kParamAmpDecay` (30) and `kParamStereoDelay` (106) and the rest do get controls. The guard searches
-  the editor text for each parameter's name and cannot see a range, so it reports them missing.
-- **`kParamVelToAmp` (id 53) is genuinely orphaned.** It sits in no range and is named nowhere in the
-  editor, so it has no control on the surface. Velocity to amp is a normal thing to want on a synth.
+The other ten are attached by numeric range loops, `kParamAmpAttack` through `kParamAmpRelease` (29 to
+32), `kParamFiltAttack` through `kParamFiltRelease` (39 to 42) and `kParamNoiseKey` through
+`kParamStereoSpread` (101 to 108). The guard searched the editor text for each parameter's name and
+could not see a range, so it reported reachable parameters as missing. That is the wrong answer, and
+it would have hidden a real orphan sitting beside them.
 
-The guard went blind when W6 replaced named attach calls with the range loops. It fails loudly rather
-than silently, which is why it was caught, but it can no longer catch a genuinely orphaned parameter
-inside those three ranges. Both halves need doing: give `kParamVelToAmp` a control, and teach the guard
-to expand a numeric range against the enum instead of searching for names. The second half is the one
-that matters, because the guard is what stops the next silent orphan.
+The guard now expands a range against the enum, in one helper used by both of its reachability tests.
+`tools/guard_self_test.py` proves it still bites. It removes the velocity attach, runs the guard, and
+restores the file. The guard passes with the attach in place and fails naming `kParamVelToAmp` without
+it.
 
 ## Demo path
 

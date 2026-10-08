@@ -89,6 +89,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamFilterEnv, "ENV", kGreen, true);
   freeKnob(kParamFilterKeyTrack, "KEY");
   freeKnob(kParamVelToFilter, ControlFor(kParamVelToFilter).label, kGreen, true);
+  freeKnob(kParamVelToAmp, ControlFor(kParamVelToAmp).label, kGreen, true);
 
   // AMP — ADSR knobs plus amp-modifier knobs in the strip beside the skyline.
   for (int p = kParamAmpAttack; p <= kParamAmpRelease; ++p)
