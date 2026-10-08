@@ -6,8 +6,10 @@
 #include <cstring>
 #include <vector>
 
-// Clean-room subtractive / hybrid voice core for Keith.
-// No Surge, OB-Xf, or Freakshow code. Standard oscillator / SVF / ADSR maths only.
+// Subtractive / hybrid voice core for Keith.
+// Hybrid path: TPT SVF multimode filter (unchanged).
+// Analog path: OB-Xf-derived 4-pole ladder (Filter.h apply4Pole), sub square osc,
+// pitch drift (OscillatorBlock.h oscPitchNoise + Voice.h slop), HF rolloff (Voice.h brightness).
 
 namespace keith {
 namespace synth {
@@ -518,6 +520,114 @@ private:
   float mZ1 = 0.f, mZ2 = 0.f, mZ3 = 0.f, mZ4 = 0.f;
   float mLp = 0.f, mBp = 0.f, mHp = 0.f;
 };
+/** 4-pole transistor-ladder low-pass adapted from OB-Xf Filter::apply4Pole (Filter.h). */
+class LadderFilter
+{
+public:
+  void Reset()
+  {
+    mPole1 = mPole2 = mPole3 = mPole4 = 0.f;
+  }
+
+  void SetSampleRate(double sr)
+  {
+    mSampleRate = sr > 1. ? sr : 44100.;
+    const float rcRate = std::sqrt(44000.f / static_cast<float>(mSampleRate));
+    mResCorrection = (970.f / 44000.f) * rcRate;
+    mResCorrectionInv = 1.f / mResCorrection;
+  }
+
+  float Process(float sample, float cutoffHz, float reso01)
+  {
+    cutoffHz = std::clamp(cutoffHz, 20.f, static_cast<float>(mSampleRate * 0.45));
+    const float res = std::clamp(reso01, 0.f, 1.f);
+    const float res4Pole = 3.5f * res;
+
+    float g = std::tan(cutoffHz / static_cast<float>(mSampleRate) *
+                         static_cast<float>(detail::kPi));
+    const float lpc = g / (1.f + g);
+    const float y0 = ResolveFeedback4Pole(sample, g, lpc, res4Pole);
+
+    double v = (y0 - mPole1) * lpc;
+    double resPole = v + mPole1;
+    mPole1 = resPole + v;
+    mPole1 = std::atan(static_cast<float>(mPole1) * mResCorrection) * mResCorrectionInv;
+
+    const float goveroneplusg = g / (1.f + g);
+    const float y1 = static_cast<float>(resPole);
+    const float y4 = TptPole(mPole2, y1, goveroneplusg, mPole3, mPole4);
+
+    return y4 * (1.f + res4Pole * 0.45f);
+  }
+
+private:
+  static float TptPole(float& state, float input, float gOver1pG, float& state2, float& state3)
+  {
+    const float y2 = TptProcessScaled(state, input, gOver1pG);
+    const float y3 = TptProcessScaled(state2, y2, gOver1pG);
+    return TptProcessScaled(state3, y3, gOver1pG);
+  }
+
+  static float TptProcessScaled(float& state, float input, float gOver1pG)
+  {
+    const double v = (input - state) * gOver1pG;
+    const double res = v + state;
+    state = static_cast<float>(res + v);
+    return static_cast<float>(res);
+  }
+
+  float ResolveFeedback4Pole(float sample, float g, float lpc, float res4Pole) const
+  {
+    const float ml = 1.f / (1.f + g);
+    const float S = (lpc * (lpc * (lpc * mPole1 + mPole2) + mPole3) + mPole4) * ml;
+    const float G = lpc * lpc * lpc * lpc;
+    return (sample - res4Pole * S) / (1.f + res4Pole * G);
+  }
+
+  double mSampleRate = 44100.;
+  float mPole1 = 0.f;
+  float mPole2 = 0.f;
+  float mPole3 = 0.f;
+  float mPole4 = 0.f;
+  float mResCorrection = 1.f;
+  float mResCorrectionInv = 1.f;
+};
+
+/** Square sub one octave down — distinct band under the fundamental, not a level bump. */
+class SubSquareOsc
+{
+public:
+  void Reset(float phase = 0.f)
+  {
+    mPhase = phase - std::floor(phase);
+    mLp = 0.f;
+  }
+
+  void SetSampleRate(double sr)
+  {
+    mSampleRate = sr > 1. ? sr : 44100.;
+    mLpCoef = std::exp(-2.f * static_cast<float>(detail::kPi) * 140.f /
+                       static_cast<float>(mSampleRate));
+  }
+
+  float Process(float freqHz)
+  {
+    freqHz = std::clamp(freqHz, 20.f, static_cast<float>(mSampleRate * 0.45));
+    mPhase += freqHz / static_cast<float>(mSampleRate);
+    if (mPhase >= 1.f)
+      mPhase -= std::floor(mPhase);
+    const float square = mPhase < 0.5f ? 1.f : -1.f;
+    mLp += mLpCoef * (square - mLp);
+    return mLp;
+  }
+
+private:
+  double mSampleRate = 44100.;
+  float mPhase = 0.f;
+  float mLp = 0.f;
+  float mLpCoef = 0.99f;
+};
+
 
 inline float MidiNoteToHz(float note)
 {
@@ -640,7 +750,12 @@ public:
   {
     mSampleRate = sr > 1. ? sr : 44100.;
     mSub.SetSampleRate(mSampleRate);
+    mAnalogSub.SetSampleRate(mSampleRate);
     mFilter.SetSampleRate(mSampleRate);
+    mLadder.SetSampleRate(mSampleRate);
+    mAnalogBrightHz = std::min(4200.f, static_cast<float>(mSampleRate * 0.5f) - 10.f);
+    mAnalogBrightCoef = std::tan(mAnalogBrightHz * static_cast<float>(detail::kPi) /
+                                 static_cast<float>(mSampleRate));
     mAmpEnv.SetSampleRate(mSampleRate);
     mPitchEnv.SetSampleRate(mSampleRate);
     mFiltEnv.SetSampleRate(mSampleRate);
@@ -658,7 +773,14 @@ public:
   void Reset()
   {
     mSub.Reset(0.11f);
+    mAnalogSub.Reset(0.11f);
     mFilter.Reset();
+    mLadder.Reset();
+    mVoiceDetuneSemi = 0.f;
+    mPitchDriftSemi = 0.f;
+    mPitchDriftTarget = 0.f;
+    mAnalogBrightState = 0.f;
+    mAnalogFloor = 0.f;
     mAmpEnv.HardReset();
     mPitchEnv.HardReset();
     mFiltEnv.HardReset();
@@ -689,7 +811,13 @@ public:
     mPitchEnv.NoteOn(1.f);
     mFiltEnv.NoteOn(1.f);
     mSub.Reset(0.11f);
+    mAnalogSub.Reset(0.11f);
     mFilter.Reset();
+    mLadder.Reset();
+    mVoiceDetuneSemi = VoiceDetuneForIndex(mNote);
+    mPitchDriftSemi = 0.f;
+    mPitchDriftTarget = 0.f;
+    mAnalogBrightState = 0.f;
     mLfo.Reset();
     mLfo2.Reset();
     ClearStereoDelay();
@@ -754,6 +882,12 @@ public:
 
   void ProcessFrame(const Params& p, const RuntimeMod& mod, float& left, float& right)
   {
+    if (p.engine == EngineMode::Analog)
+    {
+      ProcessFrameAnalog(p, mod, left, right);
+      return;
+    }
+
     if (!mActive && !mAmpEnv.Busy())
     {
       left = 0.f;
@@ -798,8 +932,8 @@ public:
     const float pitchSemis = p.pitchAmount * pitchEnv + pitchMod;
     const float baseNote = mNote + pitchSemis;
 
-    const float fmScale = (p.engine == EngineMode::Hybrid) ? 1.25f : 0.85f;
-    const float shapeBias = (p.engine == EngineMode::Analog) ? -0.05f : 0.05f;
+    const float fmScale = 1.25f;
+    const float shapeBias = 0.05f;
 
     const int unison = std::clamp(p.unisonVoices, 1, kMaxUnison);
     const float detuneCents = p.unisonDetune * 35.f; // up to ~35 cents spread
@@ -881,8 +1015,161 @@ public:
     float filtered = mFilter.Process(mix, cutoff, p.filterReso, p.filterType);
     if (p.directLevel > 0.f)
       filtered += tonal * p.directLevel;
-    if (p.engine == EngineMode::Analog)
-      filtered = filtered * 0.92f + mAnalogSoft * 0.08f;
+
+    const float velAmp = 1.f + p.velToAmp * (mVelocity - 0.5f) * 2.f;
+    const float tremolo = std::max(0.f, 1.f + levelMod);
+    const float mono = filtered * amp * velAmp * tremolo * p.masterLevel;
+    left = mono;
+    if (p.stereoSpread == 0.f)
+    {
+      right = mono;
+      return;
+    }
+
+    const float spread = std::clamp(p.stereoSpread, -1.f, 1.f);
+    float delayMs = std::max(0.f, p.stereoDelayMs);
+    if (p.stereoDelayKey != 0.f)
+    {
+      const float oct = (mNote - 60.f) / 12.f;
+      delayMs *= std::pow(2.f, std::clamp(p.stereoDelayKey * oct, -4.f, 4.f));
+    }
+    delayMs = std::min(delayMs, 40.f);
+    const float delayed = WriteStereoDelay(mono, delayMs * 0.001f * static_cast<float>(mSampleRate));
+    const float mag = std::fabs(spread);
+    const float side = spread >= 0.f ? delayed : -delayed;
+    right = mono * (1.f - mag) + side * mag;
+  }
+
+
+  void ProcessFrameAnalog(const Params& p, const RuntimeMod& mod, float& left, float& right)
+  {
+    AdvancePitchDrift();
+
+    if (!mActive && !mAmpEnv.Busy())
+    {
+      const float floor = AnalogNoiseSample() * AnalogFloorGain();
+      left = floor;
+      right = floor;
+      return;
+    }
+
+    const float amp = mAmpEnv.Process();
+    if (!mAmpEnv.Busy())
+    {
+      mActive = false;
+      const float floor = AnalogNoiseSample() * AnalogFloorGain();
+      left = floor;
+      right = floor;
+      return;
+    }
+
+    const float pitchEnv = mPitchEnv.Process();
+    const float filtEnv = mFiltEnv.Process();
+
+    const float lfoValue = mLfo.Process(p.lfoRateHz, p.lfoShape);
+    const float lfo2Value = mLfo2.Process(p.lfo2RateHz, p.lfo2Shape);
+    const float lfo = lfoValue * p.lfoAmount;
+    const float lfo2 = lfo2Value * p.lfo2Amount;
+    const float mw = mod.modWheel * p.modWheelAmount;
+
+    float cutoffOct = 0.f, pitchMod = 0.f, shapeMod = 0.f, levelMod = 0.f, fmMod = 0.f;
+    ApplyModRoute(p.lfoDest, lfo, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    ApplyModRoute(p.lfo2Dest, lfo2, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    ApplyModRoute(p.modWheelDest, mw, cutoffOct, pitchMod, shapeMod, levelMod, &fmMod);
+    const ModSignals matrixSignals {
+      lfoValue,
+      lfo2Value,
+      mod.modWheel,
+      mVelocity,
+      std::clamp((mNote - 60.f) / 60.f, -1.f, 1.f)
+    };
+    ApplyModMatrix(p.modMatrix, matrixSignals, cutoffOct, pitchMod, shapeMod, levelMod, fmMod);
+
+    const float pitchSemis = p.pitchAmount * pitchEnv + pitchMod;
+    const float driftSemi = mVoiceDetuneSemi + mPitchDriftSemi;
+    const float baseNote = mNote + pitchSemis + driftSemi;
+
+    const int unison = std::clamp(p.unisonVoices, 1, kMaxUnison);
+    const float detuneCents = p.unisonDetune * 28.f;
+
+    float mix = 0.f;
+    const float norm = 1.f / static_cast<float>(unison);
+
+    for (int u = 0; u < unison; ++u)
+    {
+      float detuneSemi = 0.f;
+      if (unison > 1)
+      {
+        const float t = (static_cast<float>(u) / static_cast<float>(unison - 1)) * 2.f - 1.f;
+        detuneSemi = (t * detuneCents) / 100.f;
+      }
+
+      const float note1 = baseNote + p.osc1Pitch + detuneSemi;
+      const float note2 = baseNote + p.osc2Pitch - detuneSemi * 0.85f;
+      float f1 = MidiNoteToHz(note1);
+      const float f2 = MidiNoteToHz(note2);
+
+      const float osc1Shape = std::clamp(p.osc1Shape - 0.14f + shapeMod, 0.f, 1.f);
+      const float osc2Shape = std::clamp(p.osc2Shape - 0.14f + shapeMod, 0.f, 1.f);
+
+      const float osc2 = mUniOsc2[u].Process(f2, osc2Shape, p.osc2PW);
+
+      if (p.oscSync && mUniOsc2[u].Wrapped())
+        mUniOsc1[u].SyncReset();
+
+      const float fmEff = p.fmAmount + fmMod;
+      f1 *= (1.f + osc2 * fmEff * 0.85f * 4.f);
+      const float osc1 = mUniOsc1[u].Process(f1, osc1Shape, p.osc1PW);
+
+      float voice = osc1 * p.osc1Level + osc2 * p.osc2Level;
+      if (p.oscRing)
+        voice += osc1 * osc2;
+
+      mix += voice * norm;
+    }
+
+    const float subFreq = MidiNoteToHz(baseNote - 12.f);
+    const float sub = mAnalogSub.Process(subFreq);
+    const float subGain = p.subLevel > 0.f ? p.subLevel : 0.35f;
+    mix += sub * subGain * 1.55f;
+
+    mNoise = mNoise * 1664525u + 1013904223u;
+    const float noise = (static_cast<float>(mNoise >> 8) / 8388608.f) - 1.f;
+    float noiseGain = p.noiseLevel + 0.018f;
+    if (p.noiseKey != 0.f)
+    {
+      const float oct = (mNote - 60.f) / 12.f;
+      noiseGain *= std::pow(2.f, std::clamp(p.noiseKey * oct, -6.f, 6.f));
+      if (noiseGain > 8.f)
+        noiseGain = 8.f;
+    }
+    mix += noise * noiseGain;
+
+    const float driveGain = 1.f + 7.f * p.filterDrive;
+    mix = std::tanh(mix * 0.9f * driveGain) * (1.f / (1.f + 1.6f * p.filterDrive));
+
+    const float keyOct = p.filterKeyCurve == 0.f
+      ? p.filterKeyTrack * (mNote - 60.f) / 12.f
+      : p.filterKeyTrack * (mNote - 60.f) / 12.f
+        + p.filterKeyCurve * ((mNote - 60.f) / 12.f) * ((mNote - 60.f) / 12.f);
+    const float velOct = p.velToFilter * (mVelocity - 0.5f) * 4.f;
+    float cutoff = p.filterCutoffHz * std::pow(2.f, keyOct + velOct + cutoffOct);
+    const float envOct = p.filterEnvAmt * filtEnv * 4.f;
+    cutoff *= std::pow(2.f, envOct);
+    cutoff = std::clamp(cutoff, 20.f, static_cast<float>(mSampleRate * 0.45));
+
+    float filtered = 0.f;
+    if (p.filterType == FilterType::BP || p.filterType == FilterType::HP)
+      filtered = mFilter.Process(mix, cutoff, p.filterReso, p.filterType);
+    else
+      filtered = mLadder.Process(mix, cutoff, p.filterReso);
+
+    if (p.directLevel > 0.f)
+      filtered += mix * p.directLevel;
+
+    filtered = AnalogBrightness(filtered);
+    filtered = AnalogBrightness(filtered);
+    filtered = filtered * 0.93f + mAnalogSoft * 0.07f;
     mAnalogSoft = filtered;
 
     const float velAmp = 1.f + p.velToAmp * (mVelocity - 0.5f) * 2.f;
@@ -909,13 +1196,58 @@ public:
     right = mono * (1.f - mag) + side * mag;
   }
 
+  static float VoiceDetuneForIndex(float note)
+  {
+    const uint32_t seed = static_cast<uint32_t>(note * 17.31f) * 1664525u + 1013904223u;
+    const float white = (static_cast<float>(seed >> 8) / 8388608.f) - 1.f;
+    return white * 0.11f;
+  }
+
+  void AdvancePitchDrift()
+  {
+    mDriftNoise = mDriftNoise * 1664525u + 1013904223u;
+    const float white = (static_cast<float>(mDriftNoise >> 8) / 8388608.f) - 1.f;
+    mPitchDriftTarget += white * (1.2f / static_cast<float>(mSampleRate));
+    mPitchDriftTarget = std::clamp(mPitchDriftTarget, -0.18f, 0.18f);
+    const float smooth = 1.f - std::exp(-0.35f / static_cast<float>(mSampleRate));
+    mPitchDriftSemi += (mPitchDriftTarget - mPitchDriftSemi) * smooth;
+  }
+
+  float AnalogNoiseSample()
+  {
+    mFloorNoise = mFloorNoise * 1664525u + 1013904223u;
+    return (static_cast<float>(mFloorNoise >> 8) / 8388608.f) - 1.f;
+  }
+
+  static float AnalogFloorGain() { return 0.00045f; }
+
+  float AnalogBrightness(float sample)
+  {
+    const double v = (sample - mAnalogBrightState) * mAnalogBrightCoef / (1.f + mAnalogBrightCoef);
+    const double res = v + mAnalogBrightState;
+    mAnalogBrightState = static_cast<float>(res + v);
+    return static_cast<float>(res);
+  }
+
+
 private:
   static constexpr int kMaxUnison = 8;
   double mSampleRate = 44100.;
   Oscillator mSub;
+  SubSquareOsc mAnalogSub;
   Oscillator mUniOsc1[kMaxUnison];
   Oscillator mUniOsc2[kMaxUnison];
   MultiFilter mFilter;
+  LadderFilter mLadder;
+  float mVoiceDetuneSemi = 0.f;
+  float mPitchDriftSemi = 0.f;
+  float mPitchDriftTarget = 0.f;
+  uint32_t mDriftNoise = 0x9e3779b9u;
+  uint32_t mFloorNoise = 0x85ebca6bu;
+  float mAnalogBrightState = 0.f;
+  float mAnalogBrightCoef = 0.f;
+  float mAnalogBrightHz = 7200.f;
+  float mAnalogFloor = 0.f;
   Envelope mAmpEnv;
   Envelope mPitchEnv;
   Envelope mFiltEnv;

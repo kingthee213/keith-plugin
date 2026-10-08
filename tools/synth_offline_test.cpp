@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdio>
 #include <set>
+#include <cstdint>
+#include <cstring>
 #include <vector>
 
 using keith::synth::EngineMode;
@@ -232,6 +234,112 @@ static double StereoDifferenceRms(const StereoBuffer& x, size_t start, size_t co
     sum += difference * difference;
   }
   return count ? std::sqrt(sum / static_cast<double>(count)) : 0.;
+}
+
+
+static uint64_t Fnv1aHash(const std::vector<float>& buf)
+{
+  uint64_t h = 14695981039346656037ull;
+  for (float f : buf)
+  {
+    uint32_t bits = 0;
+    std::memcpy(&bits, &f, sizeof(bits));
+    h ^= bits;
+    h *= 1099511628211ull;
+  }
+  return h;
+}
+
+static double RmsDbfs(double rms)
+{
+  if (rms <= 0.)
+    return -120.;
+  return 20.0 * std::log10(rms);
+}
+
+static double BandEnergyBelow120(const std::vector<float>& x, size_t start, size_t count, double sr)
+{
+  const double freqs[] = {35., 55., 75., 95., 115.};
+  double sum = 0.;
+  for (double f : freqs)
+    sum += GoertzelMag(x, start, count, f, sr);
+  return sum;
+}
+
+static double SpectralCentroidHz(const std::vector<float>& x, size_t start, size_t count, double sr)
+{
+  const double freqs[] = {55., 110., 220., 440., 880., 1760., 3520., 7040.};
+  double weighted = 0.;
+  double total = 0.;
+  for (double f : freqs)
+  {
+    const double mag = GoertzelMag(x, start, count, f, sr);
+    weighted += f * mag;
+    total += mag;
+  }
+  return total > 1.0e-12 ? weighted / total : 0.;
+}
+
+static Params AnalogComparePatch()
+{
+  Params p {};
+  p.osc1Shape = 0.65f;
+  p.osc1Level = 1.f;
+  p.osc2Level = 0.6f;
+  p.osc2Shape = 0.25f;
+  p.subLevel = 0.55f;
+  p.noiseLevel = 0.02f;
+  p.filterCutoffHz = 4500.f;
+  p.filterReso = 0.42f;
+  p.filterEnvAmt = 0.25f;
+  p.ampAttackMs = 8.f;
+  p.ampDecayMs = 180.f;
+  p.ampSustain = 0.85f;
+  p.ampReleaseMs = 350.f;
+  p.masterLevel = 1.f;
+  p.unisonVoices = 2;
+  p.unisonDetune = 0.35f;
+  return p;
+}
+
+static Params HybridRegressionPatch()
+{
+  Params p {};
+  p.engine = EngineMode::Hybrid;
+  p.osc1Shape = 0.7f;
+  p.osc1Level = 1.f;
+  p.osc2Level = 0.5f;
+  p.osc2Shape = 0.3f;
+  p.subLevel = 0.4f;
+  p.noiseLevel = 0.05f;
+  p.filterCutoffHz = 4000.f;
+  p.filterReso = 0.35f;
+  p.filterEnvAmt = 0.3f;
+  p.ampAttackMs = 5.f;
+  p.ampDecayMs = 200.f;
+  p.ampSustain = 0.75f;
+  p.ampReleaseMs = 400.f;
+  p.masterLevel = 0.85f;
+  p.unisonVoices = 3;
+  p.unisonDetune = 0.4f;
+  return p;
+}
+
+static std::vector<float> RenderHybridRegressionPatch(int sr)
+{
+  Params p = HybridRegressionPatch();
+  OfflineEngine eng;
+  eng.Reset(sr);
+  eng.SetParams(p);
+  eng.NoteOn(48, 0.9f);
+  std::vector<float> buf;
+  buf.reserve(static_cast<size_t>(sr + sr / 2));
+  for (int i = 0; i < sr + sr / 2; ++i)
+    buf.push_back(eng.Process());
+  eng.NoteOff(48);
+  for (int i = 0; i < sr / 4; ++i)
+    buf.push_back(eng.Process());
+  return buf;
 }
 
 static Params SteadyPatch()
@@ -2010,6 +2118,72 @@ int main()
     const double dark = holdRms(0.f, 48);
     const double bentLow = holdRms(0.6f, 48);
     Expect(bentLow != dark, "filter_key_curve_bends_lower_notes");
+  }
+
+
+  // W1 analog engine verification contract
+  {
+    constexpr uint64_t kHybridRegressionHash = 15578503562098217975ull;
+    constexpr double kSub120Margin = 1.35;
+    constexpr double kAnalogFloorMinDbfs = -90.0;
+
+    const auto hybridBuf = RenderHybridRegressionPatch(sr);
+    Expect(Fnv1aHash(hybridBuf) == kHybridRegressionHash, "hybrid_regression_hash_unchanged");
+
+    Params base = AnalogComparePatch();
+    OfflineEngine hybrid;
+    OfflineEngine analog;
+    hybrid.Reset(sr);
+    analog.Reset(sr);
+    Params hybridPatch = base;
+    hybridPatch.engine = EngineMode::Hybrid;
+    Params analogPatch = base;
+    analogPatch.engine = EngineMode::Analog;
+    hybrid.SetParams(hybridPatch);
+    analog.SetParams(analogPatch);
+
+    const auto noteBuf = [&](OfflineEngine& eng) {
+      return RenderHold(eng, 48, 0.9f, sr + sr / 4);
+    };
+    const auto hybridNote = noteBuf(hybrid);
+    const auto analogNote = noteBuf(analog);
+    const size_t winStart = static_cast<size_t>(sr / 8);
+    const size_t winCount = static_cast<size_t>(sr / 2);
+
+    const double hybridSub = BandEnergyBelow120(hybridNote, winStart, winCount, sr);
+    const double analogSub = BandEnergyBelow120(analogNote, winStart, winCount, sr);
+    if (!(analogSub > hybridSub * kSub120Margin))
+      std::printf("  analog_sub120 %g hybrid_sub120 %g ratio %g\n", analogSub, hybridSub,
+                  hybridSub > 0. ? analogSub / hybridSub : 0.);
+    Expect(analogSub > hybridSub * kSub120Margin, "analog_more_energy_below_120hz");
+
+    hybrid.Reset(sr);
+    analog.Reset(sr);
+    hybrid.SetParams(hybridPatch);
+    analog.SetParams(analogPatch);
+    const auto idleRms = [&](OfflineEngine& eng) {
+      std::vector<float> buf(static_cast<size_t>(sr / 2), 0.f);
+      for (size_t i = 0; i < buf.size(); ++i)
+        buf[i] = eng.Process();
+      return Rms(buf, static_cast<size_t>(sr / 8), buf.size() - static_cast<size_t>(sr / 8));
+    };
+    const double hybridIdleDb = RmsDbfs(idleRms(hybrid));
+    const double analogIdleDb = RmsDbfs(idleRms(analog));
+    if (!(analogIdleDb > hybridIdleDb && analogIdleDb > kAnalogFloorMinDbfs))
+      std::printf("  analog_idle_db %g hybrid_idle_db %g\n", analogIdleDb, hybridIdleDb);
+    Expect(analogIdleDb > hybridIdleDb, "analog_idle_noise_floor_higher");
+    Expect(analogIdleDb > kAnalogFloorMinDbfs, "analog_idle_noise_above_minus_90_dbfs");
+
+    const double hybridCentroid = SpectralCentroidHz(hybridNote, winStart, winCount, sr);
+    const double analogCentroid = SpectralCentroidHz(analogNote, winStart, winCount, sr);
+    if (!(analogCentroid < hybridCentroid))
+      std::printf("  analog_centroid %g hybrid_centroid %g\n", analogCentroid, hybridCentroid);
+    Expect(analogCentroid < hybridCentroid, "analog_spectral_centroid_darker");
+
+    const double analogPeak = PeakAbs(analogNote);
+    if (!(analogPeak < 1.0))
+      std::printf("  analog_peak %g\n", analogPeak);
+    Expect(analogPeak < 1.0, "analog_peak_under_0_dbfs");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);
