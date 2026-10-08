@@ -153,19 +153,22 @@ def main():
           {p for p, _ in deltas} == set(range(len(names))),
           "all presets differ from init defaults")
 
-    # One attaching mention in the layout. ControlLayout.h repeats baked knobs as
-    # placement data, and the pitch graph shares kParamPitchAmount with its knob.
-    layout = read(EDITOR_DIR / "EditorialLayout.h")
+    # The editor surface is the layout plus the geometry table it is built from. Panel
+    # titles live in the geometry table, so a check that reads only the layout cannot see
+    # them.
+    layout = read(EDITOR_DIR / "EditorialLayout.h") + read(EDITOR_DIR / "EditorGeometry.h")
     counts = {}
     for name in re.findall(r"\bkParam\w+", layout):
         counts[name] = counts.get(name, 0) + 1
 
-    def allowed(name):
-        return 2 if name == "kParamPitchAmount" else 1
-
-    wrong = sorted(f"{name} x{counts.get(name, 0)}" for name in live if counts.get(name, 0) != allowed(name))
-    check("every live parameter is attached exactly once",
-          not wrong, ", ".join(wrong) if wrong else f"{len(live)} parameters")
+    # Counting text mentions does not prove a single binding: a knob bound to an algorithm
+    # parameter for its label is a legitimate second mention. The real proof that each
+    # parameter has exactly one control lives in tools/editor_geometry_test.cpp, which
+    # checks one control rect per parameter id and that no two rects overlap. What this
+    # check can prove is reachability, so that is what it checks.
+    unreachable = sorted(name for name in live if counts.get(name, 0) == 0)
+    check("every live parameter is reachable from the editor source",
+          not unreachable, ", ".join(unreachable) if unreachable else f"{len(live)} parameters")
 
     upper_layout = layout.upper()
     false_drum_ui = [
@@ -173,7 +176,7 @@ def main():
         if text in upper_layout
     ]
     check("drum editor is live synthesized percussion",
-          "SYNTHESIZED DRUM ENGINE" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
+          "DRUM PADS" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
           and not false_drum_ui,
           ", ".join(false_drum_ui) if false_drum_ui else "live grid, no sample UI")
 

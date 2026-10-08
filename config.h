@@ -45,9 +45,6 @@
 // Editor faces. OFL 1.1 fonts embedded via resources/main.rc (standalone) and copied
 // into the bundle on macOS; see README licence notes.
 #define CHASSIS_FN "chassis.png"
-#define SOURCE_MATERIAL_FN "workspace-source.png"
-#define PITCH_MATERIAL_FN "workspace-pitch.png"
-#define TAPE_MATERIAL_FN "workspace-tape.png"
 #define BANGERS_FN "Bangers-Regular.ttf"
 #define OSWALD_FN "Oswald-Bold.ttf"
 #define SPACEMONO_FN "SpaceMono-Regular.ttf"

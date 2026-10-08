@@ -21,8 +21,13 @@ constexpr const char* kFontMonoBold = "SpaceMonoBold";
 // Editorial punk palette: tar-black ground, paper labels, acid paint and oxidised red.
 // Native markings sit over original physically rendered materials (tools/render_materials.py).
 const IColor kInk(255, 0x0A, 0x0A, 0x0A);
-const IColor kPanel(255, 0x16, 0x16, 0x15);
-const IColor kPanelAlt(255, 0x27, 0x27, 0x24);
+const IColor kWood(255, 0x6B, 0x4A, 0x2E);
+const IColor kCharcoal(255, 0x2A, 0x2D, 0x30);
+const IColor kTealPanel(255, 0x2F, 0x5C, 0x58);
+const IColor kOlivePanel(255, 0x6B, 0x6A, 0x45);
+const IColor kHotPink(255, 0xFF, 0x4FA3, 0xD1);
+const IColor kPanel(255, 0x2A, 0x2D, 0x30);
+const IColor kPanelAlt(255, 0x35, 0x38, 0x3C);
 const IColor kLine(255, 0x02, 0x02, 0x02);
 const IColor kPaper(255, 0xEA, 0xE1, 0xCD);
 const IColor kGreen(255, 0xB7, 0xFF, 0x1A);

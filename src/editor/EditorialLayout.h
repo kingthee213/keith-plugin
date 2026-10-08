@@ -3,296 +3,241 @@
 #include "ControlLayout.h"
 
 namespace keith { namespace ui {
+
+inline IRECT CRect(int param)
+{
+  const auto& c = ControlFor(param);
+  return IRECT(c.rect.l, c.rect.t, c.rect.r, c.rect.b);
+}
+
 inline void BuildEditorial(Keith& plugin, IGraphics* g)
 {
   g->AttachCornerResizer(EUIResizerMode::Scale, false);
   g->EnableMouseOver(true);
-  g->AttachPanelBackground(kInk);
+  g->AttachPanelBackground(kWood);
   g->LoadFont("Bangers", BANGERS_FN);
   g->LoadFont(kFontTitle, OSWALD_FN);
   g->LoadFont(kFontMono, SPACEMONO_FN);
   g->LoadFont(kFontMonoBold, SPACEMONO_BOLD_FN);
   g->AttachControl(new KeithArtwork(g->GetBounds()));
 
-  auto* pages = new KeithPageDeck(IRECT(kPageWell.l, kPageWell.t, kPageWell.r, kPageWell.b));
-  g->AttachControl(pages);
-  auto* source = pages->AddPage();
-  auto* modulation = pages->AddPage();
-  auto* filterPage = pages->AddPage();
-  auto* shape = pages->AddPage();
-  auto* tape = pages->AddPage();
-  auto* library = pages->AddPage();
-  auto* fx = pages->AddPage();
-  source->AddChildControl(new KeithWorkspaceMaterial(SOURCE_MATERIAL_FN));
-  tape->AddChildControl(new KeithWorkspaceMaterial(TAPE_MATERIAL_FN));
-  const char* pageNames[] = {
-    "01  SOURCE", "02  MODULATION", "03  FILTER", "04  ENVELOPES", "05  TAPE", "06  LIBRARY",
-    "07  FX"
-  };
-  auto box = [](Box b) { return IRECT(b.l, b.t, b.r, b.b); };
-  for (int i = 0; i < kNavCount; ++i)
-    g->AttachControl(new KeithNavButton(box(NavCell(i)), pageNames[i], pages, i, false, kNavTextPad));
-
-  g->AttachControl(new KeithTextControl(IRECT(334, 30, 870, 53), "PATCH / FAMILY 01-05", Mono(12, kPaper)));
-  g->AttachControl(new KeithPresetMenu(IRECT(334, 58, 938, 109)), kCtrlTagPresetManager);
-  auto step = [&plugin, g](int direction) {
-    plugin.RestorePreset((plugin.GetCurrentPresetIdx() + direction + plugin.NPresets()) % plugin.NPresets());
-    g->SetAllControlsDirty();
-  };
-  const IVStyle button = HardButton(kPanelAlt, kPaper, 18);
-  g->AttachControl(new IVButtonControl(IRECT(950, 58, 995, 109), [step](IControl*) { step(-1); }, "<", button));
-  g->AttachControl(new IVButtonControl(IRECT(1006, 58, 1051, 109), [step](IControl*) { step(1); }, ">", button));
-  const int outputParam = kParamGain;
-  g->AttachControl(new KeithKnobControl(PlacementFor(outputParam).Bounds(), outputParam, "OUTPUT", kPaper));
-
-  auto text = [](IContainerBase* page, const IRECT& r, const char* s, IText style) {
-    page->AddChildControl(new KeithTextControl(r, s, style));
-  };
-  auto knob = [](IContainerBase* page, int param, const char* label,
-                 IColor color = kGreen, bool bipolar = false) {
-    const auto& position = PlacementFor(param);
-    page->AddChildControl(new KeithKnobControl(position.Bounds(), param, label, color, true, bipolar, 4.0, position.radius));
-  };
-  auto tabs = [](IContainerBase* page, const IRECT& r, int param, std::initializer_list<const char*> choices) {
-    auto style = HardButton(kPanel, kPaper, 12).WithValueText(MonoBold(12, kPaper));
-    style.colorSpec.mColors[kPR] = kMagenta;
-    page->AddChildControl(new IVTabSwitchControl(r, param, choices, "", style, EVShape::Rectangle));
-  };
-  auto freeKnob = [](IContainerBase* page, Box b, int param, const char* label,
-                     IColor color = kGreen, bool bipolar = false) {
-    page->AddChildControl(new KeithKnobControl(IRECT(b.l, b.t, b.r, b.b), param, label, color,
-                                               true, bipolar, 4.0, 24.f, true));
+  auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
+                  bool native = true) {
+    const auto& pos = PlacementFor(param);
+    g->AttachControl(new KeithKnobControl(pos.Bounds(), param, label, color, true, bipolar, 4.0,
+                                         pos.radius, native));
   };
 
-  // A continuous source workspace, with oversized morph controls and a side mixer.
-  auto oscillator = [&](float y, const char* number, int morph, int pitch, int level, int width, IColor color) {
-    text(source, IRECT(58, y, 210, y+30), number, MonoBold(22, kPaper));
-    knob(source, morph, "MORPH", color, false);
-    source->AddChildControl(new KeithWaveform(IRECT(252, y+30, 712, y+107), morph, width, color));
-    source->AddChildControl(new KeithShapeReadoutControl(IRECT(528, y, 712, y+24), morph,
-                                                       Mono(12, kPaper, EAlign::Far)));
-    knob(source, pitch, "TUNE", color, true);
-    knob(source, level, "LEVEL", color);
-    knob(source, width, "PULSE WIDTH", color);
+  auto freeKnob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false) {
+    const auto& c = ControlFor(param);
+    const float r = std::min(c.rect.W(), c.rect.H()) * 0.42f;
+    g->AttachControl(new KeithKnobControl(CRect(param), param, label, color, true, bipolar, 4.0, r,
+                                         true));
   };
-  oscillator(224, "OSC / 01", kParamOsc1Shape, kParamOsc1Pitch, kParamOsc1Level, kParamOsc1PW, kGreen);
-  oscillator(460, "OSC / 02", kParamOsc2Shape, kParamOsc2Pitch, kParamOsc2Level, kParamOsc2PW, kMagenta);
-  text(source, IRECT(786, 224, 974, 254), "SOURCE MIX", MonoBold(16,kPaper));
-  knob(source, kParamSubLevel, "SUB");
-  knob(source, kParamNoiseLevel, "NOISE");
-  knob(source, kParamFmAmount, "FM", kMagenta);
-  knob(source, kParamSynthMasterLevel, "SYNTH LEVEL", kPaper, true);
-  text(source, box(kSyncLabel), "OSC SYNC", Mono(11, kPaper));
-  tabs(source, box(kSyncTabs), kParamOscSync, {"FREE", "SYNC"});
-  text(source, box(kRingLabel), "RING", Mono(11, kPaper));
-  tabs(source, box(kRingTabs), kParamOscRing, {"OFF", "ON"});
 
-  // LFO 1, LFO 2 and the four-slot matrix share the region (58,218)-(500,540).
-  // Shape lists the five LfoShape values. Every destination list is the six-value
-  // ModDest set, including Off and FM.
-  auto* lfoDeck = new KeithPageDeck(IRECT(58, 268, 500, 540));
-  modulation->AddChildControl(lfoDeck);
-  auto* lfo1 = lfoDeck->AddPage();
-  auto* lfo2 = lfoDeck->AddPage();
-  auto* matrix = lfoDeck->AddPage();
-  modulation->AddChildControl(new KeithNavButton(IRECT(58, 218, 201, 262), "LFO 1", lfoDeck, 0));
-  modulation->AddChildControl(new KeithNavButton(IRECT(207, 218, 350, 262), "LFO 2", lfoDeck, 1));
-  modulation->AddChildControl(new KeithNavButton(IRECT(356, 218, 500, 262), "MATRIX", lfoDeck, 2));
-  auto bindLfo = [&](IContainerBase* page, int rate, int shape, int dest, int amount) {
-    freeKnob(page, kModRate, rate, "RATE");
-    freeKnob(page, kModLfoAmount, amount, "AMOUNT", kGreen, true);
-    text(page, box(kModShapeLabel), "SHAPE", Mono(12, kPaper));
-    tabs(page, box(kModShapeTabs), shape, {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
-    text(page, box(kModLfoDestLabel), "DEST", Mono(12, kPaper));
-    tabs(page, box(kModLfoDestTabs), dest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+  auto tabs = [&](int param, std::initializer_list<const char*> choices) {
+    auto style = HardButton(kPanel, kPaper, 10).WithValueText(MonoBold(10, kPaper));
+    style.colorSpec.mColors[kPR] = kHotPink;
+    g->AttachControl(new IVTabSwitchControl(CRect(param), param, choices, "", style,
+                                             EVShape::Rectangle));
   };
-  bindLfo(lfo1, kParamLfoRate, kParamLfoShape, kParamLfoDest, kParamLfoAmount);
-  bindLfo(lfo2, kParamLfo2Rate, kParamLfo2Shape, kParamLfo2Dest, kParamLfo2Amount);
-  constexpr int matrixSources[] = {
-    kParamMod1Source, kParamMod2Source, kParamMod3Source, kParamMod4Source
+
+  auto menu = [&](int param, const char* label, std::initializer_list<const char*> options) {
+    g->AttachControl(new KeithParamMenu(CRect(param), param, label, options));
   };
-  constexpr int matrixDestinations[] = {
-    kParamMod1Dest, kParamMod2Dest, kParamMod3Dest, kParamMod4Dest
+
+  auto fader = [&](int param, const char* label) {
+    g->AttachControl(new KeithFaderControl(CRect(param), param, label, kHotPink));
   };
-  constexpr int matrixAmounts[] = {
-    kParamMod1Amount, kParamMod2Amount, kParamMod3Amount, kParamMod4Amount
+
+  auto fxKnob = [&](int param, int algoParam, int knobIndex, bool master, IColor color) {
+    g->AttachControl(new KeithFxKnobControl(CRect(param), param, algoParam, knobIndex, master,
+                                            color));
   };
-  constexpr const char* matrixRows[] = {"1", "2", "3", "4"};
+
+  // OSCILLATORS — two oscillators plus a mixer column (not a third osc).
+  g->AttachControl(new KeithTextControl(IRECT(kPanelOsc.l + 8, kPanelOsc.t + 4, kPanelOsc.r - 8,
+                                               kPanelOsc.t + 22),
+                                        "OSCILLATORS", MonoBold(11, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(222, 28, 280, 44), "OSC 1", MonoBold(10, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(278, 28, 336, 44), "OSC 2", MonoBold(10, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(334, 28, 406, 44), "MIX", MonoBold(10, kPaper)));
+  g->AttachControl(new KeithWaveform(IRECT(222, 52, 278, 92), kParamOsc1Shape, kParamOsc1PW,
+                                     kGreen));
+  g->AttachControl(new KeithWaveform(IRECT(278, 52, 336, 92), kParamOsc2Shape, kParamOsc2PW,
+                                     kMagenta));
+  freeKnob(kParamOsc1Shape, "SHAPE", kGreen);
+  freeKnob(kParamOsc1Pitch, "TUNE", kGreen, true);
+  freeKnob(kParamOsc1Level, "LEVEL", kGreen);
+  freeKnob(kParamOsc1PW, "PW", kGreen);
+  tabs(kParamOscSync, {"FREE", "SYNC"});
+  freeKnob(kParamOsc2Shape, "SHAPE", kMagenta);
+  freeKnob(kParamOsc2Pitch, "TUNE", kMagenta, true);
+  freeKnob(kParamOsc2Level, "LEVEL", kMagenta);
+  freeKnob(kParamOsc2PW, "PW", kMagenta);
+  tabs(kParamOscRing, {"OFF", "ON"});
+  freeKnob(kParamSubLevel, "SUB");
+  freeKnob(kParamNoiseLevel, "NOISE");
+  freeKnob(kParamFmAmount, "FM", kMagenta);
+
+  // FILTER
+  g->AttachControl(new KeithTextControl(IRECT(kPanelFilter.l + 8, kPanelFilter.t + 4,
+                                               kPanelFilter.r - 8, kPanelFilter.t + 22),
+                                        "FILTER", MonoBold(11, kPaper)));
+  tabs(kParamFilterType, {"LP24", "LP12", "BP", "HP"});
+  freeKnob(kParamFilterCutoff, "CUTOFF", kGreen);
+  freeKnob(kParamFilterReso, "RESO");
+  freeKnob(kParamFilterEnv, "ENV", kGreen, true);
+  freeKnob(kParamFilterKeyTrack, "KEY");
+  freeKnob(kParamFiltAttack, "F ATK");
+  freeKnob(kParamFiltDecay, "F DEC");
+  freeKnob(kParamFiltSustain, "F SUS");
+  freeKnob(kParamFiltRelease, "F REL");
+
+  // AMP — ADSR faders plus compact modifier row.
+  g->AttachControl(new KeithTextControl(IRECT(kPanelAmp.l + 8, kPanelAmp.t + 4, kPanelAmp.r - 8,
+                                               kPanelAmp.t + 22),
+                                        "AMP", MonoBold(11, kPaper)));
+  fader(kParamAmpAttack, "A");
+  fader(kParamAmpDecay, "D");
+  fader(kParamAmpSustain, "S");
+  fader(kParamAmpRelease, "R");
+  freeKnob(kParamNoiseKey, "N KEY", kGreen, true);
+  freeKnob(kParamAmpAttackKey, "A KEY", kGreen, true);
+  freeKnob(kParamAmpAttackCurve, "A BND", kGreen, true);
+  freeKnob(kParamAmpDecayKey, "D KEY", kGreen, true);
+  freeKnob(kParamAmpDecayCurve, "D BND", kGreen, true);
+  freeKnob(kParamStereoDelay, "ST DL");
+  freeKnob(kParamStereoDelayKey, "ST TR", kGreen, true);
+  freeKnob(kParamStereoSpread, "ST WD", kGreen, true);
+  freeKnob(kParamDirectLevel, "DIRECT");
+  freeKnob(kParamFilterKeyCurve, "C BND", kGreen, true);
+
+  // LFO 1 + LFO 2 stacked.
+  g->AttachControl(new KeithTextControl(IRECT(kPanelLfo.l + 8, kPanelLfo.t + 4, kPanelLfo.r - 8,
+                                               kPanelLfo.t + 22),
+                                        "LFO", MonoBold(11, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(776, 24, 868, 38), "LFO 1", MonoBold(9, kHotPink)));
+  g->AttachControl(new KeithTextControl(IRECT(776, 134, 868, 148), "LFO 2",
+                                        MonoBold(9, kHotPink)));
+  g->AttachControl(new KeithWaveform(IRECT(872, 60, 950, 100), kParamLfoRate, kParamLfoShape,
+                                     kHotPink));
+  freeKnob(kParamLfoRate, "RATE");
+  freeKnob(kParamLfoAmount, "DEPTH", kGreen, true);
+  menu(kParamLfoShape, "SHAPE", {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
+  menu(kParamLfoDest, "DEST", {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+  freeKnob(kParamLfo2Rate, "RATE");
+  freeKnob(kParamLfo2Amount, "DEPTH", kGreen, true);
+  menu(kParamLfo2Shape, "SHAPE", {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
+  menu(kParamLfo2Dest, "DEST", {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+  freeKnob(kParamModWheelAmount, "MW AMT", kMagenta, true);
+  menu(kParamModWheelDest, "MW DST", {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+
+  // MOD MATRIX
+  g->AttachControl(new KeithTextControl(IRECT(kPanelMod.l + 8, kPanelMod.t + 4, kPanelMod.r - 8,
+                                               kPanelMod.t + 22),
+                                        "MOD MATRIX", MonoBold(11, kPaper)));
+  constexpr int matrixSources[] = {kParamMod1Source, kParamMod2Source, kParamMod3Source,
+                                   kParamMod4Source};
+  constexpr int matrixDestinations[] = {kParamMod1Dest, kParamMod2Dest, kParamMod3Dest,
+                                        kParamMod4Dest};
+  constexpr int matrixAmounts[] = {kParamMod1Amount, kParamMod2Amount, kParamMod3Amount,
+                                   kParamMod4Amount};
   for (int slot = 0; slot < keith::synth::kNumModSlots; ++slot)
   {
-    const float top = 268.f + static_cast<float>(slot) * 68.f;
-    text(matrix, IRECT(58, top + 20.f, 82, top + 46.f), matrixRows[slot],
-         MonoBold(13, kMagenta));
-    matrix->AddChildControl(new KeithParamMenu(
-      box(ModMatrixSourceBox(slot)), matrixSources[slot], "SOURCE",
-      {"OFF", "LFO 1", "LFO 2", "MOD WHEEL", "VELOCITY", "KEY"}));
-    matrix->AddChildControl(new KeithParamMenu(
-      box(ModMatrixDestinationBox(slot)), matrixDestinations[slot], "DESTINATION",
-      {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"}));
-    freeKnob(matrix, ModMatrixAmountBox(slot), matrixAmounts[slot], "AMOUNT", kGreen, true);
+    menu(matrixSources[slot], "SOURCE",
+         {"OFF", "LFO 1", "LFO 2", "MOD WHEEL", "VELOCITY", "KEY"});
+    menu(matrixDestinations[slot], "DEST",
+         {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+    freeKnob(matrixAmounts[slot], "AMT", kGreen, true);
   }
-  text(modulation, box(kModWheelHeader), "MOD WHEEL", Title(kHeadingPx, kPaper));
-  text(modulation, box(kModWheelCc), "CC1", Mono(16, kPaper, EAlign::Far));
-  freeKnob(modulation, kModWheelAmount, kParamModWheelAmount, "AMOUNT", kMagenta, true);
-  text(modulation, box(kModWheelDestLabel), "DEST", Mono(12, kPaper));
-  tabs(modulation, box(kModWheelDestTabs), kParamModWheelDest, {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
-  text(modulation, box(kVelHeader), "VELOCITY", Title(kHeadingPx, kPaper));
-  freeKnob(modulation, kVelAmp, kParamVelToAmp, "TO AMP");
-  freeKnob(modulation, kVelFilter, kParamVelToFilter, "TO FILTER", kGreen);
-  text(modulation, box(kLegatoLabel), "MONO LEGATO", Mono(11, kPaper));
-  tabs(modulation, box(kLegatoTabs), kParamMonoLegato, {"RETRIG", "LEGATO"});
+  freeKnob(kParamVelToAmp, "V AMP");
+  freeKnob(kParamVelToFilter, "V FLT");
 
-  text(filterPage, box(kFilterHeader), "RESPONSE", Title(kHeadingPx, kPaper));
-  filterPage->AddChildControl(new KeithFilterResponse(box(kFilterPlot)));
-  freeKnob(filterPage, kKeyTrack, kParamFilterKeyTrack, "KEY TRACK");
-  freeKnob(filterPage, kFilterDrive, kParamFilterDrive, "DRIVE", kMagenta);
+  // Middle row: artwork plate (painted in chassis), sampler + drums.
+  g->AttachControl(new KeithTextControl(IRECT(kPanelSample.l + 8, kPanelSample.t + 4,
+                                               kPanelSample.r - 8, kPanelSample.t + 22),
+                                        "ANALOG REPLICA / DRUMS / LOADED SOUNDS",
+                                        MonoBold(10, kPaper)));
+  g->AttachControl(new KeithPresetMenu(IRECT(710, 300, 988, 340)));
+  constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
+                                 kParamPitchRelease, kParamPitchAmount};
+  for (int p : pitchParams)
+    freeKnob(p, "P", kMagenta, p == kParamPitchAmount);
+  freeKnob(kParamDrumSlotLevel, "LVL", kGreen, true);
+  freeKnob(kParamDrumSlotPan, "PAN", kGreen, true);
+  freeKnob(kParamDrumSlotTune, "TUNE", kMagenta, true);
+  freeKnob(kParamDrumSlotDecay, "DECAY");
+  freeKnob(kParamDrumSlotFilter, "FILT");
+  freeKnob(kParamDrumSlotDrive, "DRIVE", kMagenta);
+  tabs(kParamDrumSlotMute, {"OFF", "MUTE"});
+  tabs(kParamDrumSlotSolo, {"OFF", "SOLO"});
+  freeKnob(kParamDrumKitLevel, "KIT", kPaper, true);
+  g->AttachControl(new KeithPadGridControl(CRect(kParamDrumSlotSelect), kParamDrumSlotSelect));
 
-  // One large envelope desk, rather than three miniature plots competing for room.
-  auto* envelopes = new KeithPageDeck(IRECT(50, 275, 988, 704));
-  shape->AddChildControl(envelopes);
-  auto* amp = envelopes->AddPage();
-  auto* pitch = envelopes->AddPage();
-  pitch->AddChildControl(new KeithWorkspaceMaterial(PITCH_MATERIAL_FN));
-  auto* filter = envelopes->AddPage();
-  shape->AddChildControl(new KeithNavButton(IRECT(58,225,340,262), "VOLUME", envelopes,0));
-  shape->AddChildControl(new KeithNavButton(IRECT(358,225,640,262), "PITCH", envelopes,1));
-  shape->AddChildControl(new KeithNavButton(IRECT(658,225,940,262), "FILTER", envelopes,2));
-  const IRECT plot(74, 300, 980, 500);
-  auto voiceKnob = [](IContainerBase* page, float x, int param, const char* label, bool bipolar) {
-    page->AddChildControl(new KeithKnobControl(IRECT(x, 508, x + 100, 690), param, label,
-                                               kGreen, true, bipolar, 4.0, 16.f, true));
-  };
-  voiceKnob(amp, 40, kParamAmpAttackKey, "ATK KEY", true);
-  voiceKnob(amp, 144, kParamAmpAttackCurve, "ATK BEND", true);
-  voiceKnob(amp, 248, kParamAmpDecayKey, "DEC KEY", true);
-  voiceKnob(amp, 352, kParamAmpDecayCurve, "DEC BEND", true);
-  voiceKnob(amp, 456, kParamNoiseKey, "NOISE KEY", true);
-  voiceKnob(amp, 560, kParamDirectLevel, "DIRECT", false);
-  voiceKnob(amp, 664, kParamStereoDelay, "ST DELAY", false);
-  voiceKnob(amp, 768, kParamStereoDelayKey, "ST TRACK", true);
-  voiceKnob(amp, 872, kParamStereoSpread, "ST WIDTH", true);
-  amp->AddChildControl(new KeithEnvelopeControl(plot, kParamAmpAttack, kParamAmpDecay,
-    kParamAmpSustain, kParamAmpRelease, kNoParameter, kGreen));
-  pitch->AddChildControl(new KeithEnvelopeControl(plot, kParamPitchAttack, kParamPitchDecay,
-    kParamPitchSustain, kParamPitchRelease, kParamPitchAmount, kMagenta));
-  voiceKnob(filter, 40, kParamFilterKeyCurve, "CUT BEND", true);
-  filter->AddChildControl(new KeithEnvelopeControl(plot, kParamFiltAttack, kParamFiltDecay,
-    kParamFiltSustain, kParamFiltRelease, kNoParameter, kGreen));
-  text(amp, IRECT(828,328,980,358), "AMPLITUDE", MonoBold(13,kPaper));
-  text(amp, IRECT(828,370,980,400), "A / D / S / R", Mono(12,kPaper));
-  text(amp, IRECT(828,418,980,450), "DRAG HANDLES", Mono(12,kPaper));
-  text(amp, IRECT(828,454,980,486), "CLICK VALUES", Mono(12,kPaper));
-  knob(pitch, kParamPitchAmount, "PITCH DEPTH", kMagenta, true);
-  text(filter, IRECT(828,328,980,358), "FILTER CONTOUR", MonoBold(12,kPaper));
-  text(filter, IRECT(828,388,980,418), "DEPTH AT RIGHT", Mono(12,kPaper));
-  text(shape, IRECT(74,674,978,699), "TIME HANDLES / NORMALIZED SHAPE / CLICK A VALUE FOR PRECISE ENTRY", Mono(11,kPaper));
+  // VINTAGE ANALOG MODELING
+  g->AttachControl(new KeithTextControl(IRECT(kPanelVintage.l + 8, kPanelVintage.t + 4,
+                                               kPanelVintage.r - 8, kPanelVintage.t + 22),
+                                        "VINTAGE ANALOG MODELING", MonoBold(10, kPaper)));
+  tabs(kParamEngine, {"HYBRID", "ANALOG"});
+  freeKnob(kParamTapeBump, "TONE", kMagenta);
+  freeKnob(kParamFilterDrive, "COMP", kMagenta);
+  freeKnob(kParamTapeSat, "DIST", kMagenta);
 
-  // Tape follows its audible path, with large drive and mix at the two ends.
-  text(tape, IRECT(62,228,974,268), "TAPE / GLOBAL BUS", MonoBold(24,kPaper));
-  knob(tape, kParamTapeSat, "DRIVE", kMagenta, false);
-  knob(tape, kParamTapeMix, "DRY / WET", kPaper, false);
-  knob(tape, kParamTapeBump, "HEAD BUMP", kMagenta);
-  knob(tape, kParamTapeWow, "WOW", kMagenta);
-  knob(tape, kParamTapeFlutter, "FLUTTER", kMagenta);
-  knob(tape, kParamTapeHiss, "HISS", kMagenta);
-  knob(tape, kParamTapePrint, "PRINT", kMagenta);
-  tabs(tape, IRECT(72,626,244,670), kParamTapeBypass, {"ACTIVE", "BYPASS"});
-  text(tape, IRECT(788,626,982,670), "POST SYNTH", MonoBold(13,kPaper));
+  // GLOBAL
+  g->AttachControl(new KeithTextControl(IRECT(kPanelGlobal.l + 8, kPanelGlobal.t + 4,
+                                               kPanelGlobal.r - 8, kPanelGlobal.t + 22),
+                                        "GLOBAL", MonoBold(11, kPaper)));
+  freeKnob(kParamGain, "VOLUME", kPaper, true);
+  tabs(kParamPolyMode, {"POLY", "MONO"});
+  tabs(kParamMonoLegato, {"RETRIG", "LEGATO"});
+  freeKnob(kParamPorta, "GLIDE", kPaper);
+  freeKnob(kParamUnisonVoices, "UNISON", kPaper);
+  freeKnob(kParamUnisonDetune, "DETUNE", kPaper);
+  freeKnob(kParamSynthMasterLevel, "SYNTH", kPaper, true);
+  g->AttachControl(new KeithMeterControl(IRECT(852, 708, 898, 776), kParamGain));
 
-  const int ins1Algo = kParamIns1Algo;
-  const int ins2Algo = kParamIns2Algo;
-  const int masterAlgo = kParamMstAlgo;
-  fx->AddChildControl(new KeithPanelControl(box(kFxIns1Region), "INSERT 1", kPanel, kGreen));
-  fx->AddChildControl(new KeithPanelControl(box(kFxIns2Region), "INSERT 2", kPanel, kMagenta));
-  fx->AddChildControl(new KeithPanelControl(box(kFxMasterRegion), "MASTER", kPanel, kPaper));
-  tabs(fx, box(kFxIns1Algo), ins1Algo, {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
-  tabs(fx, box(kFxIns2Algo), ins2Algo, {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
-  tabs(fx, box(kFxMasterAlgo), masterAlgo, {"OFF", "COMP", "LIMIT", "WIDTH", "TILT"});
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1A), kParamIns1A, ins1Algo, 0, false, kGreen));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1B), kParamIns1B, ins1Algo, 1, false, kGreen));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns1C), kParamIns1C, ins1Algo, 2, false, kGreen));
-  freeKnob(fx, kFxIns1Mix, kParamIns1Mix, "DRY / WET", kPaper);
-  tabs(fx, box(kFxIns1Bypass), kParamIns1Bypass, {"ACTIVE", "BYPASS"});
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2A), kParamIns2A, ins2Algo, 0, false, kMagenta));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2B), kParamIns2B, ins2Algo, 1, false, kMagenta));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxIns2C), kParamIns2C, ins2Algo, 2, false, kMagenta));
-  freeKnob(fx, kFxIns2Mix, kParamIns2Mix, "DRY / WET", kPaper);
-  tabs(fx, box(kFxIns2Bypass), kParamIns2Bypass, {"ACTIVE", "BYPASS"});
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterA), kParamMstA, masterAlgo, 0, true, kPaper));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterB), kParamMstB, masterAlgo, 1, true, kPaper));
-  fx->AddChildControl(new KeithFxKnobControl(box(kFxMasterC), kParamMstC, masterAlgo, 2, true, kPaper));
-  freeKnob(fx, kFxMasterMix, kParamMstMix, "DRY / WET", kGreen);
-  tabs(fx, box(kFxMasterBypass), kParamMstBypass, {"ACTIVE", "BYPASS"});
-  freeKnob(fx, kFxOutLevel, kParamOutLevel, "OUT LEVEL", kMagenta, true);
+  // EFFECTS — inserts, master bus and remaining tape controls.
+  g->AttachControl(new KeithTextControl(IRECT(kPanelFx.l + 8, kPanelFx.t + 4, kPanelFx.r - 8,
+                                               kPanelFx.t + 22),
+                                        "EFFECTS", MonoBold(11, kPaper)));
+  freeKnob(kParamTapeWow, "WOW", kMagenta);
+  freeKnob(kParamTapeFlutter, "FLUT", kMagenta);
+  freeKnob(kParamTapeHiss, "HISS", kMagenta);
+  freeKnob(kParamTapePrint, "PRINT", kMagenta);
+  freeKnob(kParamTapeMix, "MIX", kPaper);
+  tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
+  menu(kParamIns1Algo, "INS1", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  fxKnob(kParamIns1A, kParamIns1Algo, 0, false, kGreen);
+  fxKnob(kParamIns1B, kParamIns1Algo, 1, false, kGreen);
+  fxKnob(kParamIns1C, kParamIns1Algo, 2, false, kGreen);
+  freeKnob(kParamIns1Mix, "MIX1", kPaper);
+  tabs(kParamIns1Bypass, {"ACT", "BYP"});
+  menu(kParamIns2Algo, "INS2", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  fxKnob(kParamIns2A, kParamIns2Algo, 0, false, kMagenta);
+  fxKnob(kParamIns2B, kParamIns2Algo, 1, false, kMagenta);
+  fxKnob(kParamIns2C, kParamIns2Algo, 2, false, kMagenta);
+  freeKnob(kParamIns2Mix, "MIX2", kPaper);
+  tabs(kParamIns2Bypass, {"ACT", "BYP"});
+  menu(kParamMstAlgo, "MST", {"OFF", "COMP", "LIMIT", "WIDTH", "TILT"});
+  fxKnob(kParamMstA, kParamMstAlgo, 0, true, kPaper);
+  fxKnob(kParamMstB, kParamMstAlgo, 1, true, kPaper);
+  fxKnob(kParamMstC, kParamMstAlgo, 2, true, kPaper);
+  freeKnob(kParamMstMix, "MMIX", kGreen);
+  tabs(kParamMstBypass, {"ACT", "BYP"});
+  freeKnob(kParamOutLevel, "OUT", kMagenta, true);
 
-  // Library holds two browsable surfaces: the patch archive and the drum engine.
-  // Sub-tabs keep both reachable without widening the main nav to eight cells,
-  // and reuse the same nested-deck idiom as the envelopes page.
-  auto* libraryDeck = new KeithPageDeck(IRECT(58,258,990,690));
-  library->AddChildControl(libraryDeck);
-  auto* patches = libraryDeck->AddPage();
-  auto* drums = libraryDeck->AddPage();
-  library->AddChildControl(new KeithNavButton(IRECT(58,214,300,250), "PATCHES", libraryDeck, 0));
-  library->AddChildControl(new KeithNavButton(IRECT(312,214,554,250), "DRUMS", libraryDeck, 1));
-
-  text(patches, IRECT(58,264,620,292), "PATCH LIBRARY", MonoBold(20,kPaper));
-  text(patches, IRECT(644,264,982,292), "CONTROL NOTES", MonoBold(15,kPaper));
-  std::vector<KeithArchive::Row> rows;
-  int count;
-  const auto* presets = BakedPresets(count);
-  for (int i=0;i<count;++i) rows.push_back({presets[i].name,i});
-  patches->AddChildControl(new KeithArchive(IRECT(58,300,620,690), std::move(rows)));
-  patches->AddChildControl(new KeithArchive(IRECT(644,300,982,690), {
-    {"SOURCE"},{"Morph: sine through pulse."},{"Drag up to increase."},{"Ctrl-drag: fine control."},
-    {"Double-click: default."},
-    {"MODULATION"},{"LFO 1 / LFO 2 / matrix."},{"Four source / destination slots."},
-    {"ENVELOPES"},{"Drag the four handles."},{"Click a value to type."},
-    {"DRUMS"},{"Pads select; MIDI 36-51 plays."},{"Synthesized voices, no samples."},
-    {"FX"},{"Insert 1 into Insert 2."},{"Then tape, then master."},
-    {"CONTENT"},{"103 original patches."},{"No sampled factory ROM data."},{"macOS build not produced."}
-  }));
-
-  text(drums, IRECT(58,264,600,292), "SYNTHESIZED DRUM ENGINE", MonoBold(20,kPaper));
-  text(drums, IRECT(620,264,990,290), "PAD CLICK SELECTS / MIDI 36-51 PLAYS", Mono(10,kPaper));
-  drums->AddChildControl(new KeithPadGridControl(IRECT(58,300,600,690), kParamDrumSlotSelect));
-  freeKnob(drums, {620,300,738,436}, kParamDrumSlotLevel, "SLOT LEVEL", kGreen, true);
-  freeKnob(drums, {746,300,864,436}, kParamDrumSlotPan, "PAN", kGreen, true);
-  freeKnob(drums, {872,300,990,436}, kParamDrumSlotTune, "TUNE", kMagenta, true);
-  freeKnob(drums, {620,446,738,582}, kParamDrumSlotDecay, "DECAY");
-  freeKnob(drums, {746,446,864,582}, kParamDrumSlotFilter, "FILTER");
-  freeKnob(drums, {872,446,990,582}, kParamDrumSlotDrive, "DRIVE", kMagenta);
-  freeKnob(drums, {620,594,750,690}, kParamDrumKitLevel, "KIT LEVEL", kPaper, true);
-  text(drums, IRECT(770,584,838,606), "MUTE", Mono(10,kPaper));
-  tabs(drums, IRECT(842,580,990,614), kParamDrumSlotMute, {"OFF", "MUTE"});
-  text(drums, IRECT(770,632,838,654), "SOLO", Mono(10,kPaper));
-  tabs(drums, IRECT(842,628,990,662), kParamDrumSlotSolo, {"OFF", "SOLO"});
-  text(drums, IRECT(770,666,990,690), "VELOCITY + DETERMINISTIC RR", Mono(10,kCyan));
-
-  // The channel strip is always reachable while navigating source, shape or tape.
-  auto* channel = new IContainerBase(IRECT(1030,204,1252,718));
-  channel->SetIgnoreMouse(true);
-  g->AttachControl(channel);
-  text(channel, IRECT(1046,220,1240,249), "FILTER / VOICE", MonoBold(15,kPaper));
-  tabs(channel, IRECT(1046,265,1240,298), kParamFilterType, {"LP24","LP12","BP","HP"});
-  knob(channel, kParamFilterCutoff, "CUTOFF", kGreen, false);
-  knob(channel, kParamFilterReso, "RESONANCE");
-  knob(channel, kParamFilterEnv, "ENV DEPTH", kGreen, true);
-  tabs(channel, IRECT(1046,568,1240,599), kParamEngine, {"HYBRID","ANALOG"});
-  tabs(channel, IRECT(1046,606,1240,635), kParamPolyMode, {"POLY","MONO"});
-  knob(channel, kParamPorta, "GLIDE", kPaper);
-  knob(channel, kParamUnisonVoices, "UNISON", kPaper);
-  knob(channel, kParamUnisonDetune, "DETUNE", kPaper);
-
-  g->AttachControl(new KeithTextControl(IRECT(42,746,338,770), "MIDI IN / A-L PLAY", Mono(12,kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(42,771,338,790), "Z/X OCTAVE", Mono(11,kPaper)));
-  g->AttachControl(new IVKeyboardControl(IRECT(380,744,1248,789),36,84,false,
-    kPaper,kInk,kMagenta,kPanelAlt,kGreen),kCtrlTagKeyboard);
+  g->AttachControl(new KeithTextControl(IRECT(42, 746, 338, 770), "MIDI IN / A-L PLAY",
+                                        Mono(12, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(42, 771, 338, 790), "Z/X OCTAVE", Mono(11, kPaper)));
+  g->AttachControl(new IVKeyboardControl(IRECT(380, 744, 1248, 789), 36, 84, false, kPaper, kInk,
+                                         kHotPink, kPanelAlt, kGreen),
+                   kCtrlTagKeyboard);
   g->SetQwertyMidiKeyHandlerFunc([g](const IMidiMsg& msg) {
-    auto* keys=g->GetControlWithTag(kCtrlTagKeyboard)->As<IVKeyboardControl>();
-    keys->SetNoteFromMidi(msg.NoteNumber(),msg.StatusMsg()==IMidiMsg::kNoteOn && msg.Velocity()>0);
+    auto* keys = g->GetControlWithTag(kCtrlTagKeyboard)->As<IVKeyboardControl>();
+    keys->SetNoteFromMidi(msg.NoteNumber(),
+                          msg.StatusMsg() == IMidiMsg::kNoteOn && msg.Velocity() > 0);
   });
-  lfoDeck->Select(0);
-  envelopes->Select(0);
-  pages->Select(0);
 }
+
 } }
