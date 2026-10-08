@@ -1,92 +1,118 @@
-# Keith editor design
+# MAGS SYNTH editor design
 
-## Owner direction and status
+## Current direction
 
-**Current direction (D4, 2026-10-08):** comic, painted, single-window UI — every control visible, no
-page tabs. See `BRIEF.md` §10 and `docs/DECISIONS.md` D4. Gorillaz and Green Lantern inform
-attitude and green/red contrast only; every asset is original.
+Comic, painted, single window. Every control is visible at once; there are no page tabs and no
+scrolling surfaces. Owner decision `docs/DECISIONS.md` D4, `BRIEF.md` §10.
 
-**What this document still describes:** the **outgoing** seven-page editorial build (realistic
-materials, `EditorialLayout.h`, Blender renders). That layout is **not** the current contract. It
-remains here as implementation history and verification reference until the comic single-window
-replacement lands.
+The Gorillaz and Green Lantern references inform attitude and palette only. Every asset is original.
+No character, likeness, logo, ring or corps mark is drawn, and no reference image is included in the
+plugin or in the asset set.
 
-**New layout work:** the editor lane rebuilds from `BRIEF.md` §10 — one painted panel per functional
-group (source, modulation, filter, envelopes, tape, library, FX) arranged in one frame, not hidden
-behind tabs. Parameter bindings and host IDs in `docs/PARAM-MANIFEST.md` do not change. No new
-brief is required beyond D4; track progress in editor commits and owner review captures.
+## Instrument model
 
-The original Gorillaz and Green Lantern references inform attitude and green/red contrast only.
-Every rendered asset in either generation is original. The old `design/editor-prototype.html` and
-U3/U8 briefs are historical references, not the visual contract.
+The wordmark on the face reads **MAGS SYNTH**. The registered identity a host stores is subtype
+`MgS1` with maker `Mags`, and it is frozen: changing it after a host saves a set breaks that set.
+See `config.h` and `tools/verify_plugin_identity.py`.
 
-## Instrument model (outgoing editorial build)
+The face is one painted board. Parameter graphics are live native controls drawn on top; nothing
+about a control is baked into the image except its panel.
 
-Product name (UI): **Yote Machine**, from **The Youth Hostel DSP**. This is a display-name change only:
-the repo, binary, plugin name and preset naming are unchanged, per owner instruction. The wordmark
-carries the product name and the stamped magenta service plate carries the studio name beneath it.
+## Canvas and scale
 
-One worn green-enamel instrument with a stamped red nameplate, exposed metal at the seams, charcoal work area, machined controls and permanent filter/voice channel. Physical light defines the bevels and reflections. Artwork occupies the chassis, while parameter graphics remain live native controls.
+- Design canvas 1280 x 800. Uniform scaling through iPlug2's corner resizer, not responsive reflow.
+- Floor 1024 x 700, ceiling 3840 x 2400. The ceiling is 3x the design canvas.
+- Every face raster is rendered at exactly 3x, so at the largest window it is drawn 1 to 1 and is
+  otherwise only downscaled. A face is never upscaled.
 
-Default design canvas: 1280 x 800, scaled through iPlug2's corner resizer. This is uniform scaling, not responsive reflow. Small-size legibility needs owner validation; do not claim the old 1024 x 700 layout guarantee.
+## Layout
 
-## Workflow and layout (outgoing — seven pages)
+`src/editor/EditorGeometry.h` is the single source of truth. It holds the canvas, the eleven panel
+boxes, the wordmark box, and one entry per parameter giving its rectangle, its label, its label font
+size and its rotation. `tools/render_faces.py` reads that same table to paint the panels, so a
+painted edge cannot drift away from the control it frames.
 
-This section documents the **superseded** tabbed editorial UI. Do not implement new features against
-it unless explicitly rolling back D4.
+Panels, left to right and top to bottom:
 
-- Header: wordmark, grouped family/preset dropdown, previous/next preset, master output.
-- Source: two horizontal oscillator work areas. Oversized morph dials, DSP-derived waveform, tune, level and pulse width. Side mixer holds sub, noise, FM and synth level.
-- Envelopes: volume, pitch and filter tabs share a large editable graph. Fixed normalized time lanes keep handles stable while dragging. Pitch depth is separate from the normalized contour, which stays editable at zero depth. Readouts accept exact numeric input.
-- Tape: signal order runs from large drive control on the left through head bump, wow/flutter, hiss and print to large dry/wet on the right. Bypass is explicit.
-- Library: independent scrollbar-free patch and control-note windows inside the page. Scroll position belongs to each window. Only the visible row can receive a click.
-- Permanent right channel: filter type, cutoff, resonance, envelope depth, engine mode, polyphony, glide, unison and detune remain accessible across pages.
-- Footer: playable keyboard and typing-key hints.
+- Wood rail down the left, carrying the wordmark.
+- Top row: OSCILLATORS, FILTER, AMP, LFO, MOD MATRIX.
+- Middle row: the cityscape plate, the sample deck, DRUM PADS.
+- Bottom row: VINTAGE ANALOG, GLOBAL, EFFECTS.
 
-Page choices are UI state, not extra automation parameters. Existing host IDs 0 through 110 remain unchanged. The family menu and patch rows restore real baked presets.
+## Binding rule
 
-## Materials and assets (outgoing editorial build)
+Every control drawn on the face is bound to one of the 111 live parameters in
+`docs/PARAM-MANIFEST.md`. Nothing decorative is drawn where a control appears to be.
 
-`tools/render_materials.py` builds the original asset scene in Blender 5.x. Cycles runs on CPU with six threads and 40 samples. One fixed orthographic camera and one upper-left area light illuminate the complete instrument. Uniform world fill is nondirectional. The camera and light do not move for page crops.
+That rule is why the second oscillator column carries the SUB, NOISE and FM mixer rather than a third
+oscillator, and why the VINTAGE ANALOG panel drives the real engine switch, head bump, noise, drive
+and saturation. It is also why there is no global pan knob and no reverb, chorus or EQ knob: no
+parameter exists behind them. Adding those is a separate pass, and
+`docs/SURGE-GAP-ANALYSIS.md` ranks what is missing.
 
-`src/editor/ControlLayout.h` is the shared placement table for native knobs and rendered physical controls. The renderer reads the same bounds and radii that the C++ layout uses. Knobs, control bearings, contact wear and shadows are rendered in their actual positions. At runtime the pointer and value remain live, while the rotationally symmetric body stays correctly lit.
+The EFFECTS panel is a re-layout of the existing insert 1, insert 2, master and tape bus controls,
+with their real algorithm lists.
 
-Material noise uses world-space Geometry.Position instead of per-object Generated coordinates. This keeps grain scale independent of the shape or size of a panel. Enamel stays mostly intact; exposed material follows case seams and knob bearings. Flat regions behind text remain quiet.
+## Assets
 
-- `resources/images/chassis.png`: 2560 x 1600 shell including permanently visible physical controls.
-- `resources/images/workspace-source.png`, `workspace-pitch.png`, `workspace-tape.png`: exact 2x crops for the corresponding page regions, all rendered with the same camera and lighting.
-- `resources/images/physical-layout.json`: render receipt with crop bounds, light setup and physical control centres/radii.
-- `design/physical-editor.blend`: saved authored common scene.
+`tools/render_faces.py` draws the face procedurally with Pillow, at 3840 x 2400, and is the only
+source of `resources/images/chassis.png`. There are no image files to source, no downloads, and no
+generated raster whose licence we cannot name. The wordmark is drawn from the Bangers face and the
+panel titles from Oswald Bold, both OFL 1.1 and both already embedded in the plugin.
 
-The unused generic module and dial sprite files are historical assets; they are no longer embedded or drawn. Page images are exact 2x crops of their native bounds, not textures stretched to arbitrary containers.
+It needs Pillow, which the system python does not have:
 
-These are baked images. No Blender installation, ray tracer or external image service is needed at runtime. Windows resources embed the active PNGs into both VST3 and standalone.
+```
+~/.venvs/keith-art/bin/python tools/render_faces.py
+```
 
-Oswald Bold is the wordmark and section-heading face. Space Mono Regular and Bold stay on values, labels, tabs and readouts. Bangers stays embedded and is not used for headings. OFL notices accompany the distribution.
+Wood is sawn planks with grain, wander, knots, a light edge and a shadow edge, plank seams and a
+vignette. Panels carry a drop shadow, a vertical gradient, a bevel highlight along the top and left
+with a dark bottom and right, paint chips along the outer edge, corner brads and a noise grain. The
+cityscape is three depth layers separated by haze with water towers, antennas, strung cables and
+warm windows that bloom. The wordmark uses a ragged spray edge, a dark offset outline, a bloom and
+thrown specks.
 
-## Reference study
+The outgoing Blender material pipeline (`tools/render_materials.py`, `design/physical-editor.blend`)
+and its page crops are no longer embedded. They are kept on disk as history, not as the contract.
 
-Owner-added references: The God Particle and Output Arcade. These are control/UX references, not assets to copy.
+## Type
 
-- [The God Particle official product page](https://cradle.app/products/the-god-particle): the inspected official Add Mass illustration makes the primary amount control and its value dominant, with smaller grouped tone controls. Keith uses that hierarchy principle for morph, cutoff, tape drive and mix. It does not reproduce the central sphere or source artwork.
-- [Arcade official product page](https://output.com/products/arcade): the inspected Get Inspired image exposes identifiable named content grouped for discovery. Keith keeps patch selection distinct from editing and retains the instrument channel while browsing. The selected marketing images do not prove detailed Arcade interactions, so those are not claimed as verified behavior.
-- [Arcade macro documentation](https://support.output.com/en/articles/10297593-macro-sliders): the inspected Play-page reference separates four named macro sliders, a central performance graphic and a persistent keyboard. Keith borrows the separation of immediate sound shaping from deeper editing, not Arcade's assets or identical arrangement. Current Keith controls retain their actual parameter names and bindings rather than suggesting unimplemented macros.
-- Official source media stays link-only. No reference imagery is included in the plugin or asset set.
+Oswald Bold for panel titles. Space Mono Regular and Bold for values, labels and readouts. Bangers
+for the wordmark only. OFL notices ship with the distribution.
 
 ## Interaction contract
 
-- Knob drag up increases value. iPlug2 gearing is 4.0; fine-control modifier follows the host/framework. Double-click resets to the parameter default.
-- Click a numeric knob readout for exact entry. Knob and envelope prompts use the already-loaded Space Mono font, not iPlug2's unloaded default font. Native Return/Escape completion is asynchronous; runtime probes wait for the field to close before continuing.
-- Envelope time handles use the same forward and inverse mapping. Sustain moves vertically. Readout clicks prompt numeric entry. Double-click a handle resets that parameter.
-- Library scrolling clamps to its own content, including short content. Scrolling one list does not move its neighbour.
-- Returning to a page preserves its internal selected envelope tab (outgoing tabbed UI only).
-- Family labels remain Family 01 through Family 05. The factory library is 103 original parameter-level patches. They are not sampled factory ROM programs, and they are not the documented program lists.
-- Internally, preset rows are grouped by emulated source family first — Triton, Triton Extreme, Korg M1, Korg Wavestation, then Korg TR — and only then by neutral sound role. Those reference names are metadata/documentation only; the editor exposes Family 01–05 and neutral role names.
+- Knob drag up increases value. iPlug2 gearing is 4.0; the fine-control modifier follows the host.
+- Double-click resets a knob to its parameter default.
+- Clicking a numeric readout opens exact entry, using the already-loaded mono face rather than
+  iPlug2's unloaded default.
+- Envelope handles use matching forward and inverse time mapping. Sustain moves vertically.
+- Family labels stay Family 01 through Family 05. Preset rows are grouped internally by emulated
+  source family and then by neutral sound role; those reference names never reach the UI.
+- The wordmark, panel titles and every label are original text. No Korg name reaches the face.
 
-## Verification and boundaries
+## Verification, and what each check can and cannot prove
 
-Compile Release VST3 and standalone. Run CTest, `tools/editor_surface_check.py`, and strictness-10 pluginval with GUI tests. Inspect the actual standalone and test tab visibility, preset selection, knob sensitivity, all envelope interactions and independent list scrolling.
+- `./build/Release/keith-editor-tests` proves one control rectangle per parameter id, that no two
+  rectangles overlap, that every rectangle is inside the canvas, that every label fits its own box
+  at its own font size, and that no page deck or nav control is constructed. It does not prove that
+  a host draws them, and it is not visual approval.
+- `python3 tools/editor_surface_check.py` proves every live parameter is reachable from the editor
+  source, that the drum panel is the live pad grid and not a sample browser, and that preset deltas
+  target real indices. Counting text mentions does not prove single binding, so it does not claim to;
+  the single-binding proof is the geometry test.
+- pluginval at strictness 10 covers instantiation, buses, parameter fuzzing, state, editor open and
+  editor automation on macOS for both VST3 and AU.
+- Real visual approval is the owner opening the standalone and the plugin in Live.
 
-The source checker verifies references, not actual hit testing or sound. The geometry test verifies forward/inverse mappings and scroll clamping. Neither is visual approval. Record captures and test evidence separately, and ask the owner to approve the rendered screen.
+A live screenshot cannot be captured from an agent session on this machine: macOS denies screen
+capture unless Screen Recording is granted to the process by hand. Review captures come from a human
+session.
 
-The wider BRIEF remains open. This library does not ingest the documented factory program lists, and it does not add a drum sampler or a modulation matrix. Insert effects and the synthesized drum kit are live. Do not treat this as the finished instrument.
+## Open
+
+- Face art is a first pass. The wordmark reads as chunky novelty lettering rather than true spray
+  script, and the two olive panels are greyer than the reference.
+- The reference's left-rail icons are not drawn: there is no control behind them.
+- The panel titles name panels, not parameters. Per-parameter labelling lives on the controls.

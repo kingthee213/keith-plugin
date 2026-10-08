@@ -25,6 +25,18 @@ find_package(iPlug2 REQUIRED)
 
 include_directories(src)
 enable_testing()
+
+# The python gates need numpy, which the macOS system python does not ship. Point the tests
+# at the shared tools venv when it exists, and let a builder override it.
+# Setup: bash tools/setup-tools-venv.sh
+if(NOT DEFINED KEITH_PYTHON)
+  if(EXISTS "$ENV{HOME}/.venvs/keith-measure/bin/python")
+    set(KEITH_PYTHON "$ENV{HOME}/.venvs/keith-measure/bin/python" CACHE FILEPATH "Python for the verification gates")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(KEITH_PYTHON ${Python3_EXECUTABLE} CACHE FILEPATH "Python for the verification gates")
+  endif()
+endif()
 add_executable(keith-synth-tests tools/synth_offline_test.cpp)
 target_compile_features(keith-synth-tests PRIVATE cxx_std_17)
 add_test(NAME synth-offline COMMAND keith-synth-tests)
@@ -247,7 +259,7 @@ if(APPLE)
     "-framework CoreFoundation" "-framework Cocoa")
 endif()
 add_test(NAME recreation-gate
-  COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/recreation_gate.py" $<TARGET_FILE:keith-recreation-render>)
+  COMMAND "${KEITH_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/recreation_gate.py" $<TARGET_FILE:keith-recreation-render>)
 set_tests_properties(recreation-gate PROPERTIES TIMEOUT 1800)
 add_dependencies(keith-synth-tests keith-recreation-render)
 

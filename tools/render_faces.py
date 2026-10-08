@@ -10,9 +10,10 @@ Pillow only, no image files, no downloads, no generated raster the licence of wh
 cannot name. The wordmark is drawn from the Oswald and Bangers faces already embedded in
 the plugin (both OFL 1.1).
 
-Needs Pillow, which the system python does not have:
+Needs Pillow, which the system python does not have. Run it from the shared tools venv:
 
-    ~/.venvs/keith-art/bin/python tools/render_faces.py
+    bash tools/setup-tools-venv.sh
+    ~/.venvs/keith-measure/bin/python tools/render_faces.py
 
 Writes resources/images/chassis.png at 3840x2400 and fails if the size is wrong.
 """
