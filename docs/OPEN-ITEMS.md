@@ -43,11 +43,41 @@ rather than spray script, and the two olive panels are greyer than the reference
 judged properly without the owner looking at the running plugin, and the art is explicitly his to
 approve.
 
-## A live screenshot cannot be taken from an agent session
+## The single-window layout does not fit
 
-macOS denies screen capture to a terminal-launched process unless Screen Recording is granted by
-hand in System Settings, Privacy and Security. Until then, editor review needs a human session or
-a real screen capture.
+This is the most important open item, and it was found by looking at a real screenshot of the
+running editor rather than at the source.
+
+Every control has a rectangle, the rectangles do not overlap, and each label fits its own box. All of
+that is true and gated. What the gate cannot see is the text the plugin draws at runtime, which is
+the parameter name plus its value, and that text is wider than the box the label check measured.
+
+Observed in the running standalone at 1280x800:
+
+- The OSCILLATORS panel carries two oscillators plus the sub, noise and FM mixer in 198 design
+  pixels, and the value readouts collide near the bottom.
+- The AMP panel packs nine envelope modifiers into a secondary row, and their names run into each
+  other.
+- The LFO panel's two dropdowns and their values spill past the panel edge into MOD MATRIX.
+- The EFFECTS and GLOBAL panels have knob values that overlap their own labels.
+- The LOADED SOUNDS panel is mostly empty space with the controls crowded along the bottom, so the
+  area is available but not where it is needed.
+
+The layout is not wrong in principle. It is over-packed in the panels that carry the most controls
+and under-used in the one that carries the fewest. The fix is to move area from LOADED SOUNDS and
+DRUM PADS to OSCILLATORS, AMP and LFO, then re-check. If that is not enough, the design canvas has
+to grow beyond 1280x800, which is a one-way decision because the face render scale follows it.
+
+Until it is fixed, the honest description of the editor is: one window, every control present, and
+several of them unreadable at the default size.
+
+## A live screenshot of the editor cannot be taken from an agent session
+
+Screen Recording permission is granted now, so `screencapture` works. Accessibility permission is
+not, so a capture cannot be scoped to one window. A full-screen capture therefore pulls in whatever
+else is on the screen, which on this machine included another agent session's transcript. Do not
+take full-screen captures here. Either grant Accessibility so the window bounds can be read, or
+clear the screen first, or capture from a human session.
 
 ## Content still to come
 

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Procedural comic editor faces for MAGS SYNTH.
 
-Draws the single chassis face the plugin loads, at exactly 3x the 1280x800 design canvas.
-Every panel rectangle comes from src/editor/EditorGeometry.h, the same table the live
-controls are placed from, so a painted panel edge cannot drift away from the control it
-frames.
+The look is inked, not vector-clean: wobbly edges drawn as jittered paths, thick black outlines
+twice over, cross-hatching in the shadowed thirds, drawn wood grain with grime and scratches, a
+torn black frame, and paper grain over the whole board. Panels are never perfect rectangles.
 
-Pillow only, no image files, no downloads, no generated raster the licence of which we
-cannot name. The wordmark is drawn from the Oswald and Bangers faces already embedded in
-the plugin (both OFL 1.1).
+Draws the single chassis face the plugin loads, at exactly 3x the 1280x800 design canvas. Every
+panel rectangle comes from src/editor/EditorGeometry.h, the same table the live controls are placed
+from, so a painted panel edge cannot drift away from the control it frames.
+
+Pillow only. No image files, no downloads, no generated raster whose licence we cannot name. The
+wordmark is drawn from the Bangers face and the panel titles from Oswald Bold, both OFL 1.1 and both
+already embedded in the plugin.
 
 Needs Pillow, which the system python does not have. Run it from the shared tools venv:
 
@@ -35,17 +38,20 @@ FONT_SPRAY = ROOT / "resources" / "fonts" / "Bangers-Regular.ttf"
 SCALE = 3
 W, H = 1280 * SCALE, 800 * SCALE
 
-WOOD = (128, 88, 54)
-WOOD_LIGHT = (168, 124, 82)
-WOOD_DARK = (70, 45, 26)
-INK = (12, 11, 12)
-PAPER = (238, 231, 213)
-MAGENTA = (255, 62, 158)
+INK = (10, 9, 11)
+INK_SOFT = (26, 22, 26)
+PAPER = (236, 228, 208)
+MAGENTA = (232, 48, 132)
+WOOD = (150, 86, 40)
+WOOD_LIGHT = (196, 128, 66)
+WOOD_DARK = (74, 38, 18)
+
 PANEL_FILL = {
-    "charcoal": (38, 42, 47),
-    "teal": (42, 92, 88),
-    "olive": (104, 104, 66),
+    "charcoal": (46, 54, 62),
+    "teal": (52, 104, 108),
+    "olive": (116, 112, 62),
 }
+JITTER = 0.6
 
 
 def s(v: float) -> int:
@@ -56,7 +62,7 @@ def shade(color, factor):
     return tuple(max(0, min(255, int(ch * factor))) for ch in color)
 
 
-def parse_boxes(header: Path) -> dict[str, tuple[float, float, float, float]]:
+def parse_boxes(header: Path):
     text = header.read_text()
     found = re.findall(r"constexpr Box (k[A-Za-z]+) \{([\d.]+)f, ([\d.]+)f, ([\d.]+)f, ([\d.]+)f\};", text)
     return {name: (float(l), float(t), float(r), float(b)) for name, l, t, r, b in found}
@@ -65,247 +71,358 @@ def parse_boxes(header: Path) -> dict[str, tuple[float, float, float, float]]:
 def vertical_gradient(size, top, bottom):
     image = Image.new("RGB", size)
     draw = ImageDraw.Draw(image)
-    height = size[1]
-    for y in range(height):
-        u = y / max(1, height - 1)
+    for y in range(size[1]):
+        u = y / max(1, size[1] - 1)
         draw.line([(0, y), (size[0], y)],
                   fill=tuple(int(top[i] * (1 - u) + bottom[i] * u) for i in range(3)))
     return image
 
 
-# --------------------------------------------------------------------------- wood frame
+def wobble(box, rng, amount=JITTER):
+    """A rectangle as a hand-drawn path. Borderlands panels are never straight."""
+    l, t, r, b = box
+    step = max(14.0, (r - l) / 22.0)
+    points = []
 
-def draw_wood(canvas: Image.Image, rng: random.Random) -> None:
-    """Vertical planks with grain, seams, knots and a vignette. The reference frame is a
-    sawn board, so the grain runs down the page, not across it."""
-    canvas.paste(vertical_gradient((W, H), WOOD_LIGHT, WOOD_DARK), (0, 0))
+    def walk(x0, y0, x1, y1):
+        length = math.hypot(x1 - x0, y1 - y0)
+        count = max(2, int(length / step))
+        for i in range(count):
+            u = i / count
+            x = x0 + (x1 - x0) * u
+            y = y0 + (y1 - y0) * u
+            points.append((x + rng.uniform(-amount, amount) * SCALE,
+                           y + rng.uniform(-amount, amount) * SCALE))
+
+    walk(l, t, r, t)
+    walk(r, t, r, b)
+    walk(r, b, l, b)
+    walk(l, b, l, t)
+    return points
+
+
+def hatch(layer_box, rng, spacing, angle_deg, alpha, width=1):
+    """Diagonal pen shading, drawn on its own layer so it can be masked to a panel."""
+    l, t, r, b = layer_box
+    layer = Image.new("L", (r - l, b - t), 0)
+    draw = ImageDraw.Draw(layer)
+    span = r - l + b - t
+    rad = math.radians(angle_deg)
+    dx, dy = math.cos(rad), math.sin(rad)
+    for i in range(int(span / spacing)):
+        offset = i * spacing
+        points = []
+        for step in range(0, span, 18):
+            px = offset + step * dx - (b - t) * 0.5
+            py = step * dy
+            if -40 <= px <= (r - l) + 40 and -40 <= py <= (b - t) + 40:
+                points.append((px, py))
+        if len(points) > 1:
+            wobbled = [(x + rng.uniform(-1.2, 1.2), y + rng.uniform(-1.2, 1.2)) for x, y in points]
+            draw.line(wobbled, fill=alpha, width=width)
+    return layer
+
+
+def wood(canvas: Image.Image, rng: random.Random) -> None:
+    canvas.paste(vertical_gradient((W, H), WOOD_LIGHT, WOOD), (0, 0))
     draw = ImageDraw.Draw(canvas, "RGBA")
 
-    plank = s(46)
+    plank = s(52)
     for index, x in enumerate(range(-plank, W + plank, plank)):
-        tone = rng.uniform(0.86, 1.12)
-        base = shade(WOOD, tone)
-        draw.rectangle((x, 0, x + plank, H), fill=base + (150,))
+        tone = rng.uniform(0.88, 1.1)
+        draw.polygon(wobble((x, 0, x + plank, H), rng, 0.9), fill=shade(WOOD, tone) + (135,))
 
-        # A highlight down the left edge of each board and a shadow down the right.
-        draw.line([(x + s(1), 0), (x + s(1), H)], fill=shade(WOOD_LIGHT, tone) + (120,), width=s(2))
-        draw.line([(x + plank - s(2), 0), (x + plank - s(2), H)], fill=shade(WOOD_DARK, 0.7) + (150,), width=s(3))
+        for _ in range(34):
+            gx = rng.uniform(x + s(3), x + plank - s(3))
+            points = [(gx, -s(8))]
+            drift = rng.uniform(-s(4), s(4))
+            for y in range(0, H + s(20), s(48)):
+                points.append((gx + drift * math.sin(y / float(H) * math.pi * rng.uniform(1.2, 3.2)) + rng.uniform(-1.5, 1.5), y))
+            draw.line(points, fill=shade(WOOD_DARK, rng.uniform(0.45, 0.95)) + (rng.randint(30, 90),),
+                      width=rng.choice((1, 1, 2)))
 
-        # Grain: long wandering lines, darkest in the middle of the board.
-        for _ in range(26):
-            gx = rng.uniform(x + s(2), x + plank - s(2))
-            alpha = rng.randint(18, 46)
-            width = rng.choice((1, 1, 2))
-            drift = rng.uniform(-s(3), s(3))
-            points = [(gx, -s(10))]
-            for y in range(0, H + s(20), s(60)):
-                points.append((gx + drift * math.sin(y / float(H) * math.pi * rng.uniform(1.5, 3.5)), y))
-            draw.line(points, fill=shade(WOOD_DARK, rng.uniform(0.55, 0.85)) + (alpha,), width=width)
+        if rng.random() < 0.4:
+            kx, ky = rng.uniform(x + s(10), x + plank - s(10)), rng.uniform(0, H)
+            for ring in range(5, 0, -1):
+                rx = s(ring * 2.2)
+                draw.ellipse((kx - rx, ky - rx * 1.6, kx + rx, ky + rx * 1.6),
+                             outline=shade(WOOD_DARK, 0.5) + (85,), width=s(1))
 
-        if rng.random() < 0.35:
-            kx, ky = rng.uniform(x + s(8), x + plank - s(8)), rng.uniform(0, H)
-            for ring in range(4, 0, -1):
-                radius = s(ring * 2.4)
-                draw.ellipse((kx - radius, ky - radius * 1.5, kx + radius, ky + radius * 1.5),
-                             outline=shade(WOOD_DARK, 0.6) + (70,), width=s(1))
+        seam = wobble((x + plank, 0, x + plank, H), rng, 1.1)
+        draw.line(seam, fill=INK + (170,), width=s(1) + 1)
+        draw.line([(p[0] - s(1), p[1]) for p in seam], fill=shade(WOOD_LIGHT, 1.05) + (90,), width=s(1))
 
-    # A gentle darkening at the edges so the frame reads as one lit object.
+    wood_hatch = hatch((0, 0, W, H), rng, s(9), 68, 34, width=1)
+    canvas.paste(Image.new("RGB", (W, H), shade(WOOD_DARK, 0.5)), (0, 0),
+                 wood_hatch.filter(ImageFilter.GaussianBlur(1)))
+
+    grime = Image.new("L", (W, H), 0)
+    gdraw = ImageDraw.Draw(grime)
+    for _ in range(220):
+        gx, gy = rng.uniform(0, W), rng.uniform(0, H)
+        rad = rng.uniform(s(8), s(60))
+        gdraw.ellipse((gx - rad, gy - rad * 0.6, gx + rad, gy + rad * 0.6),
+                      fill=rng.randint(20, 70))
+    grime = grime.filter(ImageFilter.GaussianBlur(s(10)))
+    canvas.paste(Image.new("RGB", (W, H), (18, 12, 8)), (0, 0), grime)
+
+    scratches = ImageDraw.Draw(canvas, "RGBA")
+    for _ in range(320):
+        x0, y0 = rng.uniform(0, W), rng.uniform(0, H)
+        length = rng.uniform(s(6), s(70))
+        angle = rng.uniform(-0.4, 0.4) + (math.pi if rng.random() < 0.5 else 0)
+        light = rng.random() < 0.55
+        color = shade(WOOD_LIGHT, 1.1) + (rng.randint(30, 80),) if light else INK + (rng.randint(20, 60),)
+        scratches.line((x0, y0, x0 + math.cos(angle) * length, y0 + math.sin(angle) * length),
+                       fill=color, width=1)
+
     vignette = Image.new("L", (W, H), 0)
     vdraw = ImageDraw.Draw(vignette)
-    for i in range(60):
-        alpha = int(70 * (i / 60.0) ** 2)
-        inset = s(60 - i)
-        vdraw.rectangle((inset, inset, W - inset, H - inset), outline=alpha)
-    vignette = vignette.filter(ImageFilter.GaussianBlur(s(18)))
-    canvas.paste(Image.new("RGB", (W, H), (0, 0, 0)), (0, 0), vignette)
+    for i in range(70):
+        vdraw.rectangle((s(70 - i), s(70 - i), W - s(70 - i), H - s(70 - i)),
+                        outline=int(110 * (i / 70.0) ** 2))
+    canvas.paste(Image.new("RGB", (W, H), (14, 10, 8)), (0, 0),
+                 vignette.filter(ImageFilter.GaussianBlur(s(22))))
 
 
-# ------------------------------------------------------------------------------- panel
-
-def panel_shadow(canvas: Image.Image, box, radius: int = 10, spread: int = 7) -> None:
-    l, t, r, b = box
+def torn_frame(canvas: Image.Image, rng: random.Random) -> None:
+    """The black ragged border the reference uses around the whole board."""
     mask = Image.new("L", (W, H), 0)
-    ImageDraw.Draw(mask).rectangle((l, t + s(2), r, b), fill=200)
-    mask = mask.filter(ImageFilter.GaussianBlur(s(spread)))
-    canvas.paste(Image.new("RGB", (W, H), (0, 0, 0)), (0, 0), mask)
+    draw = ImageDraw.Draw(mask)
+    depth = s(7)
+    outer = [(0, 0), (W, 0), (W, H), (0, H)]
+    inner_points = []
+    for x in range(0, W, 9):
+        inner_points.append((x, depth * rng.uniform(0.5, 1.3)))
+    for y in range(0, H, 9):
+        inner_points.append((W - depth * rng.uniform(0.5, 1.3), y))
+    for x in range(W, 0, -9):
+        inner_points.append((x, H - depth * rng.uniform(0.5, 1.3)))
+    for y in range(H, 0, -9):
+        inner_points.append((depth * rng.uniform(0.5, 1.3), y))
+    draw.polygon([(0, 0), (W, 0), (W, H), (0, H)], fill=0)
+    draw.polygon(outer + inner_points, fill=255)
+    canvas.paste(Image.new("RGB", (W, H), INK), (0, 0), mask)
+
+
+def screws(draw, box, rng) -> None:
+    l, t, r, b = box
+    radius = s(5)
+    for px, py in ((l + s(9), t + s(9)), (r - s(9), t + s(9)), (l + s(9), b - s(9)), (r - s(9), b - s(9))):
+        px += rng.uniform(-2, 2)
+        py += rng.uniform(-2, 2)
+        draw.ellipse((px - radius, py - radius, px + radius, py + radius), fill=(0, 0, 0, 150))
+        draw.ellipse((px - radius * 0.8, py - radius * 0.8, px + radius * 0.8, py + radius * 0.8),
+                     fill=(150, 148, 142), outline=INK, width=s(1))
+        draw.line((px - radius * 0.5, py, px + radius * 0.5, py), fill=INK + (220,), width=s(1))
 
 
 def draw_panel(canvas: Image.Image, draw, box, fill, title: str, rng: random.Random) -> None:
     l, t, r, b = box
-    panel_shadow(canvas, box)
+    pw, ph = r - l + 1, b - t + 1
 
-    plate = vertical_gradient((r - l, b - t), shade(fill, 1.16), shade(fill, 0.84))
-    canvas.paste(plate, (l, t))
+    shadow = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(shadow).polygon(wobble((l, t + s(3), r, b), rng, 0.5), fill=210)
+    canvas.paste(Image.new("RGB", (W, H), INK), (0, 0), shadow.filter(ImageFilter.GaussianBlur(s(8))))
 
-    grain = Image.effect_noise((r - l, b - t), 14).convert("L").point(lambda v: int(v * 0.16))
-    canvas.paste(Image.new("RGB", (r - l, b - t), (255, 255, 255)), (l, t), grain)
+    plate = vertical_gradient((pw, ph), shade(fill, 1.24), shade(fill, 0.86))
+    mask = Image.new("L", (pw, ph), 0)
+    ImageDraw.Draw(mask).polygon([(x - l, y - t) for x, y in wobble(box, rng)], fill=255)
+    canvas.paste(plate, (l, t), mask)
 
-    draw.rectangle((l, t, r, b), outline=INK, width=s(3))
-    draw.line([(l + s(2), t + s(2)), (r - s(2), t + s(2))], fill=shade(fill, 1.6) + (110,), width=s(2))
-    draw.line([(l + s(2), t + s(2)), (l + s(2), b - s(2))], fill=shade(fill, 1.45) + (85,), width=s(2))
-    draw.line([(l + s(2), b - s(2)), (r - s(2), b - s(2))], fill=(0, 0, 0, 110), width=s(3))
-    draw.line([(r - s(2), t + s(2)), (r - s(2), b - s(2))], fill=(0, 0, 0, 90), width=s(2))
+    shading = ImageChops.multiply(hatch((l, t, r + 1, b + 1), rng, s(5), 70, 20), mask)
+    canvas.paste(Image.new("RGB", (pw, ph), shade(fill, 0.62)), (l, t), shading)
 
-    # Chipped paint along the outer edge, so the plate reads as worn metal.
-    for _ in range(rng.randint(10, 22)):
-        if rng.random() < 0.5:
-            cx, cy = rng.uniform(l, r), rng.choice((t, b))
-        else:
-            cx, cy = rng.choice((l, r)), rng.uniform(t, b)
-        size = rng.uniform(s(2), s(6))
-        draw.rectangle((cx, cy, cx + size, cy + size), fill=shade(fill, 0.72) + (rng.randint(70, 130),))
+    grime = Image.new("L", (pw, ph), 0)
+    gdraw = ImageDraw.Draw(grime)
+    for _ in range(26):
+        gx, gy = rng.uniform(0, pw), rng.uniform(0, ph)
+        rad = rng.uniform(s(4), s(20))
+        gdraw.ellipse((gx - rad, gy - rad * 0.55, gx + rad, gy + rad * 0.55), fill=rng.randint(20, 55))
+    canvas.paste(Image.new("RGB", (pw, ph), (16, 11, 9)), (l, t),
+                 ImageChops.multiply(grime.filter(ImageFilter.GaussianBlur(s(8))), mask))
 
-    brad = s(4)
-    for px, py in ((l + s(7), t + s(7)), (r - s(7), t + s(7)), (l + s(7), b - s(7)), (r - s(7), b - s(7))):
-        draw.ellipse((px - brad, py - brad + s(1), px + brad, py + brad + s(1)), fill=(0, 0, 0, 120))
-        draw.ellipse((px - brad, py - brad, px + brad, py + brad), fill=(176, 178, 174), outline=INK, width=s(1))
-        draw.ellipse((px - brad + s(1), py - brad + s(1), px, py), fill=(228, 230, 226))
+    for _ in range(rng.randint(30, 55)):
+        cx = rng.uniform(l, r)
+        cy = rng.choice((rng.uniform(t, t + (b - t) * 0.2), rng.uniform(b - (b - t) * 0.2, b)))
+        size = rng.uniform(s(2), s(7))
+        draw.rectangle((cx, cy, cx + size, cy + size * 0.7),
+                       fill=shade(fill, rng.uniform(0.5, 0.75)) + (rng.randint(90, 170),))
+
+    for _ in range(rng.randint(20, 40)):
+        x0, y0 = rng.uniform(l, r), rng.uniform(t, b)
+        length = rng.uniform(s(4), s(34))
+        angle = rng.uniform(0, math.pi)
+        draw.line((x0, y0, x0 + math.cos(angle) * length, y0 + math.sin(angle) * length),
+                  fill=(PAPER if rng.random() < 0.5 else (0, 0, 0)) + (rng.randint(25, 70),), width=1)
+
+    for width, offset in ((s(4), 0.0), (s(2), 2.6)):
+        draw.line(wobble((l + s(offset), t + s(offset), r - s(offset), b - s(offset)), rng), fill=INK,
+                  width=width, joint="curve")
+
+    draw.line([(p[0], p[1]) for p in wobble((l + s(3), t + s(3), r - s(3), t + s(3)), rng)],
+              fill=shade(fill, 1.9) + (130,), width=s(2))
+
+    screws(draw, box, rng)
 
     if title:
         font = ImageFont.truetype(str(FONT_HEAD), s(15))
-        position = (l + s(11), t + s(7))
-        draw.text((position[0] + s(1), position[1] + s(1)), title, fill=(0, 0, 0, 190), font=font)
+        position = (l + s(12), t + s(8))
+        draw.text((position[0] + s(1), position[1] + s(1)), title, fill=(0, 0, 0, 200), font=font)
         draw.text(position, title, fill=PAPER, font=font)
 
 
-# --------------------------------------------------------------------------- cityscape
-
 def draw_cityscape(canvas: Image.Image, box, rng: random.Random) -> None:
-    """The reference plate: a magenta sky over a silhouetted skyline with water towers and
-    strung cables. Drawn as three depth layers with a haze between them."""
     l, t, r, b = box
     width, height = r - l, b - t
 
-    sky = Image.new("RGB", (width, height))
-    sky = Image.blend(vertical_gradient((width, height), (255, 92, 168), (86, 44, 132)),
-                      vertical_gradient((width, height), (255, 150, 196), (58, 30, 96)), 0.45)
+    sky = Image.blend(vertical_gradient((width, height), (238, 58, 126), (74, 32, 110)),
+                      vertical_gradient((width, height), (252, 138, 178), (44, 20, 78)), 0.42)
     draw = ImageDraw.Draw(sky, "RGBA")
-
-    for i in range(140):
-        y = rng.gauss(height * 0.30, height * 0.10)
+    for _ in range(160):
+        y = rng.gauss(height * 0.28, height * 0.10)
         if 0 <= y < height:
-            draw.line([(0, y), (width, y)], fill=(255, 190, 222, rng.randint(6, 16)), width=s(2))
-    draw.ellipse((-width * 0.3, height * 0.14, width * 0.75, height * 0.52), fill=(255, 214, 236, 34))
+            draw.line([(0, y), (width, y)], fill=(255, 196, 226, rng.randint(8, 20)), width=s(2))
+    draw.ellipse((-width * 0.3, height * 0.12, width * 0.8, height * 0.5), fill=(255, 224, 240, 30))
 
     layers = [
-        ((78, 58, 118), height * 0.46, s(56), s(120), 0.86),
-        ((52, 38, 84), height * 0.58, s(64), s(160), 0.92),
-        ((22, 17, 32), height * 0.70, s(70), s(210), 1.0),
+        ((92, 62, 128), height * 0.44, s(56), s(124), 0.55),
+        ((58, 38, 88), height * 0.56, s(66), s(164), 0.8),
+        ((20, 14, 28), height * 0.68, s(72), s(214), 1.0),
     ]
     glow = Image.new("L", (width, height), 0)
     glow_draw = ImageDraw.Draw(glow)
 
-    for color, roof, min_h, max_h, glow_amount in layers:
+    for color, roof, min_h, max_h, brightness in layers:
         x = -s(20)
         tops = []
         while x < width + s(20):
-            building_w = rng.randint(s(38), s(96))
-            building_h = rng.randint(min_h, max_h)
-            top = roof - building_h * 0.45
-            draw.rectangle((x, top, x + building_w, height), fill=color + (255,))
-            tops.append((x, top, x + building_w))
+            bw = rng.randint(s(38), s(96))
+            bh = rng.randint(min_h, max_h)
+            top = roof - bh * 0.45
+            draw.polygon([(x, top), (x + bw, top), (x + bw, height), (x, height)], fill=color + (255,))
+            draw.line([(x, top), (x + bw, top)], fill=INK + (200,), width=s(2))
+            tops.append((x, top, x + bw))
             if rng.random() < 0.3:
-                tower_w = building_w * rng.uniform(0.22, 0.34)
-                tower_x = x + building_w * 0.5 - tower_w * 0.5
-                draw.rectangle((tower_x, top - height * 0.10, tower_x + tower_w, top), fill=color + (255,))
-                draw.polygon([(tower_x - s(4), top - height * 0.10), (tower_x + tower_w + s(4), top - height * 0.10),
-                              (tower_x + tower_w * 0.5, top - height * 0.14)], fill=color + (255,))
-            if rng.random() < 0.18:
-                draw.line([(x + building_w * 0.5, top), (x + building_w * 0.5, top - height * 0.09)],
-                          fill=color + (255,), width=s(2))
-            x += building_w + rng.randint(s(3), s(14))
+                tw = bw * rng.uniform(0.22, 0.34)
+                tx = x + bw * 0.5 - tw * 0.5
+                draw.rectangle((tx, top - height * 0.10, tx + tw, top), fill=color + (255,))
+                draw.polygon([(tx - s(5), top - height * 0.10), (tx + tw + s(5), top - height * 0.10),
+                              (tx + tw * 0.5, top - height * 0.14)], fill=color + (255,))
+                draw.line([(tx, top), (tx, top - height * 0.10)], fill=INK + (170,), width=s(1))
+            if rng.random() < 0.2:
+                draw.line([(x + bw * 0.5, top), (x + bw * 0.5, top - height * 0.09)], fill=INK + (200,), width=s(2))
+            x += bw + rng.randint(s(3), s(14))
 
-        if glow_amount > 0.9:
-            for bx, btop, bright in tops:
-                for wy in range(int(btop + s(16)), height - s(10), s(15)):
-                    for wxx in range(int(bx + s(9)), int(bright - s(9)), s(13)):
-                        if rng.random() > 0.42:
-                            draw.rectangle((wxx, wy, wxx + s(6), wy + s(9)), fill=(255, 198, 104, 255))
-                            glow_draw.rectangle((wxx, wy, wxx + s(6), wy + s(9)), fill=110)
-        else:
-            for bx, btop, bright in tops:
-                for wy in range(int(btop + s(16)), height - s(10), s(15)):
-                    for wxx in range(int(bx + s(9)), int(bright - s(9)), s(13)):
-                        if rng.random() > 0.55:
-                            draw.rectangle((wxx, wy, wxx + s(5), wy + s(7)),
-                                           fill=(255, 214, 150, int(150 * glow_amount)))
+        for bx, btop, bright in tops:
+            for wy in range(int(btop + s(16)), height - s(10), s(15)):
+                for wxx in range(int(bx + s(9)), int(bright - s(9)), s(13)):
+                    if rng.random() > (0.42 if brightness > 0.9 else 0.58):
+                        box_pts = (wxx, wy, wxx + s(6), wy + s(9))
+                        alpha = 255 if brightness > 0.9 else int(160 * brightness)
+                        draw.rectangle(box_pts, fill=(255, 200, 104, alpha), outline=INK + (140,), width=1)
+                        if brightness > 0.9:
+                            glow_draw.rectangle(box_pts, fill=120)
 
-    halo = Image.new("RGB", (width, height), (255, 214, 150))
     canvas.paste(sky, (l, t))
-    canvas.paste(halo, (l, t), glow.filter(ImageFilter.GaussianBlur(s(7))).point(lambda v: int(v * 0.75)))
+    canvas.paste(Image.new("RGB", (width, height), (255, 214, 150)), (l, t),
+                 glow.filter(ImageFilter.GaussianBlur(s(7))).point(lambda v: int(v * 0.7)))
 
-    # Cables between the rooftops, drawn last so they sit in front of the skyline.
     cable = ImageDraw.Draw(canvas, "RGBA")
-    for _ in range(7):
+    for _ in range(8):
         x0 = l + rng.uniform(0, width * 0.3)
         x1 = l + rng.uniform(width * 0.65, width)
-        y0 = t + rng.uniform(height * 0.35, height * 0.6)
-        y1 = t + rng.uniform(height * 0.35, height * 0.6)
-        sag = rng.uniform(s(18), s(46))
-        points = []
-        for i in range(25):
-            u = i / 24.0
-            px = x0 + (x1 - x0) * u
-            py = y0 + (y1 - y0) * u + math.sin(u * math.pi) * sag
-            points.append((px, py))
-        cable.line(points, fill=(14, 10, 20, 210), width=s(1) + 1)
+        y0 = t + rng.uniform(height * 0.32, height * 0.6)
+        y1 = t + rng.uniform(height * 0.32, height * 0.6)
+        sag = rng.uniform(s(18), s(50))
+        points = [(x0 + (x1 - x0) * (i / 24.0), y0 + (y1 - y0) * (i / 24.0)
+                   + math.sin((i / 24.0) * math.pi) * sag) for i in range(25)]
+        cable.line(points, fill=INK + (200,), width=s(1) + 1)
 
-    canvas.paste(Image.new("RGB", (width, height), (0, 0, 0)), (l, t),
-                 Image.effect_noise((width, height), 8).convert("L").point(lambda v: int(v * 0.10)))
-    ImageDraw.Draw(canvas, "RGBA").rectangle((l, t, r, b), outline=INK, width=s(3))
+    city_hatch = hatch((l, t, r, b), rng, s(9), 62, 22)
+    canvas.paste(Image.new("RGB", (width, height), (40, 20, 48)), (l, t), city_hatch)
+
+    ImageDraw.Draw(canvas, "RGBA").rectangle((l, t, r, b), outline=INK, width=s(2))
+    draw_ink_border(canvas, box, rng)
 
 
-# ---------------------------------------------------------------------------- wordmark
+def draw_ink_border(canvas, box, rng) -> None:
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    for width, offset in ((s(5), 0.0), (s(2), 3.0)):
+        l, t, r, b = box
+        draw.line(wobble((l + s(offset), t + s(offset), r - s(offset), b - s(offset)), rng),
+                  fill=INK, width=width, joint="curve")
+
 
 def draw_wordmark(canvas: Image.Image, box, rng: random.Random) -> None:
-    """Spray lettering in the owner's direction: two stacked words with a ragged edge, a
-    bloom around the paint and a few specks thrown off the nozzle."""
+    """Hand-painted letters: a rough painted edge, then a heavy ink outline behind them."""
     l, t, r, b = box
-    layer = Image.new("RGBA", (r - l, b - t), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer)
-    font = ImageFont.truetype(str(FONT_SPRAY), s(44))
+    size = (r - l, b - t)
+    font = ImageFont.truetype(str(FONT_SPRAY), s(46))
     text = "MAGS\nSYNTH"
-    origin = (s(10), s(2))
+    origin = (s(8), s(0))
 
-    body = Image.new("L", layer.size, 0)
-    ImageDraw.Draw(body).multiline_text(origin, text, fill=255, font=font, spacing=s(2))
-    body = body.point(lambda v: 255 if v > 110 else 0)
+    body = Image.new("L", size, 0)
+    ImageDraw.Draw(body).multiline_text(origin, text, fill=255, font=font, spacing=s(1))
+    body = body.point(lambda v: 255 if v > 100 else 0)
 
-    edge = Image.new("L", layer.size, 0)
-    edge_draw = ImageDraw.Draw(edge)
-    for _ in range(14):
-        edge_draw.multiline_text((origin[0] + rng.randint(-s(2), s(2)), origin[1] + rng.randint(-s(2), s(2))),
-                                 text, fill=rng.randint(120, 255), font=font, spacing=s(2))
-    edge = edge.point(lambda v: 255 if v > 90 else 0)
-    mask = ImageChops.lighter(ImageChops.lighter(body, edge).filter(ImageFilter.GaussianBlur(s(1))), body)
+    rough = Image.new("L", size, 0)
+    rough_draw = ImageDraw.Draw(rough)
+    for _ in range(10):
+        rough_draw.multiline_text(
+            (origin[0] + rng.randint(-s(2), s(2)), origin[1] + rng.randint(-s(2), s(2))),
+            text, fill=rng.randint(170, 255), font=font, spacing=s(1))
+    rough = rough.point(lambda v: 255 if v > 140 else 0)
+    paint = ImageChops.lighter(body, rough)
 
-    bloom = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    bloom.paste(Image.new("RGBA", layer.size, MAGENTA + (255,)), (0, 0),
-                mask.filter(ImageFilter.GaussianBlur(s(9))).point(lambda v: int(v * 0.85)))
-    layer = Image.alpha_composite(layer, bloom)
+    layer = Image.new("RGBA", size, (0, 0, 0, 0))
+    outline = Image.new("L", size, 0)
+    for dx, dy in ((s(3), s(4)), (-s(3), -s(2)), (s(3), -s(2)), (-s(3), s(4)), (0, 0)):
+        outline = ImageChops.lighter(outline, ImageChops.offset(paint, dx, dy))
+    layer.paste(Image.new("RGBA", size, INK + (255,)), (0, 0), outline)
+    layer.paste(Image.new("RGBA", size, MAGENTA + (255,)), (0, 0), paint)
 
-    dark = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    dark.paste(Image.new("RGBA", layer.size, (16, 8, 14, 255)), (s(2), s(3)), mask)
-    dark.paste(Image.new("RGBA", layer.size, (16, 8, 14, 255)), (-s(1), -s(1)), mask)
-    layer = Image.alpha_composite(layer, dark)
+    # Vertical brush streaks inside the paint, so the fill is not a flat slab.
+    streak = ImageChops.multiply(paint, Image.effect_noise(size, 30).convert("L").point(lambda v: int(v * 1.6)))
+    layer.paste(Image.new("RGBA", size, (255, 158, 204, 255)), (0, 0),
+                streak.point(lambda v: int(v * 0.5)))
 
-    paint = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    paint.paste(Image.new("RGBA", layer.size, MAGENTA + (255,)), (0, 0), mask)
-    paint.paste(Image.new("RGBA", layer.size, (255, 132, 196, 255)), (0, 0),
-                mask.filter(ImageFilter.GaussianBlur(s(4))).point(lambda v: int(v * 0.35)))
-    layer = Image.alpha_composite(layer, paint)
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    glow.paste(Image.new("RGBA", size, MAGENTA + (255,)), (0, 0),
+               paint.filter(ImageFilter.GaussianBlur(s(10))).point(lambda v: int(v * 0.45)))
+    layer = Image.alpha_composite(glow, layer)
 
-    for _ in range(70):
-        sx, sy = rng.uniform(0, layer.size[0]), rng.uniform(0, layer.size[1])
-        if mask.getpixel((int(min(sx, layer.size[0] - 1)), int(min(sy, layer.size[1] - 1)))) > 60:
+    speck = ImageDraw.Draw(layer)
+    for _ in range(80):
+        sx, sy = rng.uniform(0, size[0]), rng.uniform(0, size[1])
+        if paint.getpixel((int(min(sx, size[0] - 1)), int(min(sy, size[1] - 1)))) > 60:
             rad = rng.uniform(s(0.4), s(1.8))
-            draw.ellipse((sx - rad, sy - rad, sx + rad, sy + rad), fill=MAGENTA + (rng.randint(90, 200),))
+            speck.ellipse((sx - rad, sy - rad, sx + rad, sy + rad), fill=MAGENTA + (rng.randint(100, 200),))
 
-    layer = layer.rotate(rng.uniform(-3.0, -1.0), resample=Image.BICUBIC, expand=False)
+    layer = layer.rotate(rng.uniform(-3.0, -1.2), resample=Image.BICUBIC, expand=False)
     canvas.paste(layer, (l, t), layer)
 
 
-# --------------------------------------------------------------------------------- main
+def paper_grain(canvas: Image.Image, rng: random.Random) -> None:
+    grain = Image.effect_noise((W, H), 26).convert("L").point(lambda v: int(v * 0.16))
+    canvas.paste(Image.new("RGB", (W, H), (255, 252, 240)), (0, 0), grain)
+
+    halftone = Image.new("L", (W, H), 0)
+    hdraw = ImageDraw.Draw(halftone)
+    step = s(6)
+    for y in range(0, H, step):
+        for x in range(0, W, step):
+            if (x // step + y // step) % 2 == 0:
+                hdraw.ellipse((x, y, x + s(1), y + s(1)), fill=rng.randint(18, 42))
+    canvas.paste(Image.new("RGB", (W, H), INK), (0, 0), halftone)
+
+    flecks = ImageDraw.Draw(canvas, "RGBA")
+    for _ in range(900):
+        fx, fy = rng.uniform(0, W), rng.uniform(0, H)
+        rad = rng.uniform(0.6, 2.4)
+        flecks.ellipse((fx - rad, fy - rad, fx + rad, fy + rad),
+                       fill=(INK if rng.random() < 0.7 else PAPER) + (rng.randint(30, 90),))
+
 
 def main() -> None:
     rng = random.Random(20261008)
@@ -315,7 +432,7 @@ def main() -> None:
         raise SystemExit(f"EditorGeometry.h is missing {missing}")
 
     canvas = Image.new("RGB", (W, H), INK)
-    draw_wood(canvas, rng)
+    wood(canvas, rng)
     draw = ImageDraw.Draw(canvas, "RGBA")
 
     styles = [
@@ -331,16 +448,13 @@ def main() -> None:
             continue
         box = tuple(s(v) for v in boxes[key])
         if style is None:
-            panel_shadow(canvas, box)
             draw_cityscape(canvas, box, rng)
         else:
             draw_panel(canvas, draw, box, PANEL_FILL[style], title, rng)
 
     draw_wordmark(canvas, tuple(s(v) for v in boxes["kWordmarkBox"]), rng)
-
-    # One pass of paper grain over the whole instrument, then a soft bloom off the paint.
-    grain = Image.effect_noise((W, H), 12).convert("L").point(lambda v: int(v * 0.09))
-    canvas.paste(Image.new("RGB", (W, H), (255, 255, 255)), (0, 0), grain)
+    paper_grain(canvas, rng)
+    torn_frame(canvas, rng)
 
     if canvas.size != (3840, 2400):
         raise SystemExit(f"bad size {canvas.size}")
