@@ -52,6 +52,8 @@ int main()
   using keith::ui::Box;
   using keith::ui::ControlKind;
   using keith::ui::ControlRect;
+  using keith::ui::PanelSpec;
+  using keith::ui::PanelTitleBand;
   const Box canvas = keith::ui::kCanvas;
 
   int seen[kNumParams] {};
@@ -127,6 +129,82 @@ int main()
   }
   if (clear)
     std::printf("PASS all control rectangles are disjoint\n");
+
+  bool titleBandsClear = true;
+  for (const ControlRect& item : keith::ui::kControlRects)
+  {
+    for (const PanelSpec& panel : keith::ui::kPanels)
+    {
+      if (!item.rect.Overlaps(panel.bounds))
+        continue;
+      const Box band = PanelTitleBand(panel.bounds);
+      if (item.rect.Overlaps(band))
+      {
+        std::printf("FAIL parameter %d overlaps title band in panel \"%s\"\n", item.parameter,
+                    panel.title);
+        titleBandsClear = false;
+        failed += 1;
+      }
+    }
+  }
+  if (titleBandsClear)
+    std::printf("PASS controls clear every panel title band\n");
+
+  bool keyboardClear = true;
+  for (const PanelSpec& panel : keith::ui::kPanels)
+  {
+    if (panel.bounds.Overlaps(keith::ui::kKeyboardBox) && panel.bounds.b > keith::ui::kKeyboardBox.t)
+    {
+      std::printf("FAIL panel \"%s\" extends into keyboard strip (bottom %.0f > keyboard top %.0f)\n",
+                  panel.title, panel.bounds.b, keith::ui::kKeyboardBox.t);
+      keyboardClear = false;
+      failed += 1;
+    }
+  }
+  for (const ControlRect& item : keith::ui::kControlRects)
+  {
+    if (item.rect.Overlaps(keith::ui::kKeyboardBox))
+    {
+      std::printf("FAIL parameter %d overlaps keyboard strip\n", item.parameter);
+      keyboardClear = false;
+      failed += 1;
+    }
+  }
+  if (keyboardClear)
+    std::printf("PASS keyboard strip is clear of panels and controls\n");
+
+  constexpr float kRowPitchGap = 4.f;
+  bool rowPitchClear = true;
+  for (int i = 0; i < keith::ui::kNumControlRects; ++i)
+  {
+    for (int j = i + 1; j < keith::ui::kNumControlRects; ++j)
+    {
+      const ControlRect& a = keith::ui::kControlRects[i];
+      const ControlRect& b = keith::ui::kControlRects[j];
+      const float rowA = (a.rect.t + a.rect.b) * 0.5f;
+      const float rowB = (b.rect.t + b.rect.b) * 0.5f;
+      if (std::fabs(rowA - rowB) > 6.f)
+        continue;
+      const ControlRect* left = a.rect.l <= b.rect.l ? &a : &b;
+      const ControlRect* right = left == &a ? &b : &a;
+      if (right->rect.l <= left->rect.l)
+        continue;
+      const float pitch = right->rect.l - left->rect.l;
+      const char* worstValue = kWorstValueStr[left->parameter];
+      const float labelAdvance = keith::ui::MonoAdvance(left->labelUnits, left->labelFontPx);
+      const float valueAdvance = TextWidth(worstValue, left->labelFontPx);
+      const float need = std::max(labelAdvance, valueAdvance) + kRowPitchGap;
+      if (need > pitch)
+      {
+        std::printf("FAIL row pitch parameter %d -> %d needs %.1f has %.1f\n", left->parameter,
+                    right->parameter, need, pitch);
+        rowPitchClear = false;
+        failed += 1;
+      }
+    }
+  }
+  if (rowPitchClear)
+    std::printf("PASS row pitch fits label and value between neighbours\n");
 
   const float wordmarkMetric = keith::ui::OswaldMetricHeight(keith::ui::kWordmarkPx);
   const bool wordmark = keith::ui::kWordmarkBox.H() >= wordmarkMetric;

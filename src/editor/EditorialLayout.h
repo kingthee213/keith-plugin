@@ -65,15 +65,9 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   };
 
   // OSCILLATORS — two oscillators plus a mixer column (not a third osc).
-  g->AttachControl(new KeithTextControl(IRECT(kPanelOsc.l + 8, kPanelOsc.t + 4, kPanelOsc.r - 8,
-                                               kPanelOsc.t + 22),
-                                        "OSCILLATORS", MonoBold(11, kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(222, 28, 280, 44), "OSC 1", MonoBold(10, kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(278, 28, 336, 44), "OSC 2", MonoBold(10, kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(334, 28, 406, 44), "MIX", MonoBold(10, kPaper)));
-  g->AttachControl(new KeithWaveform(IRECT(222, 52, 278, 92), kParamOsc1Shape, kParamOsc1PW,
+  g->AttachControl(new KeithWaveform(IRECT(226, 40, 282, 80), kParamOsc1Shape, kParamOsc1PW,
                                      kGreen));
-  g->AttachControl(new KeithWaveform(IRECT(278, 52, 336, 92), kParamOsc2Shape, kParamOsc2PW,
+  g->AttachControl(new KeithWaveform(IRECT(282, 40, 338, 80), kParamOsc2Shape, kParamOsc2PW,
                                      kMagenta));
   freeKnob(kParamOsc1Shape, "SHAPE", kGreen);
   freeKnob(kParamOsc1Pitch, "TUNE", kGreen, true);
@@ -90,9 +84,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamFmAmount, "FM", kMagenta);
 
   // FILTER
-  g->AttachControl(new KeithTextControl(IRECT(kPanelFilter.l + 8, kPanelFilter.t + 4,
-                                               kPanelFilter.r - 8, kPanelFilter.t + 22),
-                                        "FILTER", MonoBold(11, kPaper)));
   tabs(kParamFilterType, {"LP24", "LP12", "BP", "HP"});
   freeKnob(kParamFilterCutoff, "CUTOFF", kGreen);
   freeKnob(kParamFilterReso, "RESO");
@@ -104,28 +95,17 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamFiltRelease, "F REL");
 
   // AMP — ADSR faders plus compact modifier row.
-  g->AttachControl(new KeithTextControl(IRECT(kPanelAmp.l + 8, kPanelAmp.t + 4, kPanelAmp.r - 8,
-                                               kPanelAmp.t + 22),
-                                        "AMP", MonoBold(11, kPaper)));
   fader(kParamAmpAttack, "A");
   fader(kParamAmpDecay, "D");
   fader(kParamAmpSustain, "S");
   fader(kParamAmpRelease, "R");
-  freeKnob(kParamNoiseKey, "N KEY", kGreen, true);
-  freeKnob(kParamAmpAttackKey, "A KEY", kGreen, true);
-  freeKnob(kParamAmpAttackCurve, "A BND", kGreen, true);
-  freeKnob(kParamAmpDecayKey, "D KEY", kGreen, true);
-  freeKnob(kParamAmpDecayCurve, "D BND", kGreen, true);
-  freeKnob(kParamStereoDelay, "ST DL");
-  freeKnob(kParamStereoDelayKey, "ST TR", kGreen, true);
-  freeKnob(kParamStereoSpread, "ST WD", kGreen, true);
-  freeKnob(kParamDirectLevel, "DIRECT");
-  freeKnob(kParamFilterKeyCurve, "C BND", kGreen, true);
+  for (int p = kParamNoiseKey; p <= kParamStereoSpread; ++p)
+  {
+    const auto& c = ControlFor(p);
+    freeKnob(p, c.label, kGreen, true);
+  }
 
   // LFO 1 + LFO 2 stacked.
-  g->AttachControl(new KeithTextControl(IRECT(kPanelLfo.l + 8, kPanelLfo.t + 4, kPanelLfo.r - 8,
-                                               kPanelLfo.t + 22),
-                                        "LFO", MonoBold(11, kPaper)));
   g->AttachControl(new KeithTextControl(IRECT(776, 24, 868, 38), "LFO 1", MonoBold(9, kHotPink)));
   g->AttachControl(new KeithTextControl(IRECT(776, 134, 868, 148), "LFO 2",
                                         MonoBold(9, kHotPink)));
@@ -139,13 +119,8 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamLfo2Amount, "DEPTH", kGreen, true);
   menu(kParamLfo2Shape, "SHAPE", {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
   menu(kParamLfo2Dest, "DEST", {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
-  freeKnob(kParamModWheelAmount, "MW AMT", kMagenta, true);
-  menu(kParamModWheelDest, "MW DST", {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
 
   // MOD MATRIX
-  g->AttachControl(new KeithTextControl(IRECT(kPanelMod.l + 8, kPanelMod.t + 4, kPanelMod.r - 8,
-                                               kPanelMod.t + 22),
-                                        "MOD MATRIX", MonoBold(11, kPaper)));
   constexpr int matrixSources[] = {kParamMod1Source, kParamMod2Source, kParamMod3Source,
                                    kParamMod4Source};
   constexpr int matrixDestinations[] = {kParamMod1Dest, kParamMod2Dest, kParamMod3Dest,
@@ -160,15 +135,11 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
          {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
     freeKnob(matrixAmounts[slot], "AMT", kGreen, true);
   }
-  freeKnob(kParamVelToAmp, "V AMP");
   freeKnob(kParamVelToFilter, "V FLT");
 
   // Middle row: artwork plate (painted in chassis), sampler + drums.
-  g->AttachControl(new KeithTextControl(IRECT(kPanelSample.l + 8, kPanelSample.t + 4,
-                                               kPanelSample.r - 8, kPanelSample.t + 22),
-                                        "ANALOG REPLICA / DRUMS / LOADED SOUNDS",
-                                        MonoBold(10, kPaper)));
-  g->AttachControl(new KeithPresetMenu(IRECT(710, 300, 988, 340)));
+  g->AttachControl(new KeithPresetMenu(IRECT(kPanelSample.l + 8, kPanelSample.t + 108,
+                                               kPanelSample.r - 8, kPanelSample.t + 152)));
   constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
                                  kParamPitchRelease, kParamPitchAmount};
   for (int p : pitchParams)
@@ -185,37 +156,37 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   g->AttachControl(new KeithPadGridControl(CRect(kParamDrumSlotSelect), kParamDrumSlotSelect));
 
   // VINTAGE ANALOG MODELING
-  g->AttachControl(new KeithTextControl(IRECT(kPanelVintage.l + 8, kPanelVintage.t + 4,
-                                               kPanelVintage.r - 8, kPanelVintage.t + 22),
-                                        "VINTAGE ANALOG MODELING", MonoBold(10, kPaper)));
   tabs(kParamEngine, {"HYBRID", "ANALOG"});
   freeKnob(kParamTapeBump, "TONE", kMagenta);
   freeKnob(kParamFilterDrive, "COMP", kMagenta);
   freeKnob(kParamTapeSat, "DIST", kMagenta);
 
   // GLOBAL
-  g->AttachControl(new KeithTextControl(IRECT(kPanelGlobal.l + 8, kPanelGlobal.t + 4,
-                                               kPanelGlobal.r - 8, kPanelGlobal.t + 22),
-                                        "GLOBAL", MonoBold(11, kPaper)));
-  freeKnob(kParamGain, "VOLUME", kPaper, true);
-  tabs(kParamPolyMode, {"POLY", "MONO"});
-  tabs(kParamMonoLegato, {"RETRIG", "LEGATO"});
-  freeKnob(kParamPorta, "GLIDE", kPaper);
-  freeKnob(kParamUnisonVoices, "UNISON", kPaper);
-  freeKnob(kParamUnisonDetune, "DETUNE", kPaper);
-  freeKnob(kParamSynthMasterLevel, "SYNTH", kPaper, true);
-  g->AttachControl(new KeithMeterControl(IRECT(852, 708, 898, 776), kParamGain));
+  freeKnob(kParamGain, ControlFor(kParamGain).label, kPaper, true);
+  menu(kParamPolyMode, ControlFor(kParamPolyMode).label, {"POLY", "MONO"});
+  menu(kParamMonoLegato, ControlFor(kParamMonoLegato).label, {"RETRIG", "LEGATO"});
+  freeKnob(kParamPorta, ControlFor(kParamPorta).label, kPaper);
+  freeKnob(kParamUnisonVoices, ControlFor(kParamUnisonVoices).label, kPaper);
+  freeKnob(kParamUnisonDetune, ControlFor(kParamUnisonDetune).label, kPaper);
+  freeKnob(kParamSynthMasterLevel, ControlFor(kParamSynthMasterLevel).label, kPaper, true);
+  menu(kParamModWheelDest, ControlFor(kParamModWheelDest).label,
+       {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
+  freeKnob(kParamModWheelAmount, ControlFor(kParamModWheelAmount).label, kMagenta, true);
+  g->AttachControl(new KeithMeterControl(IRECT(kPanelGlobal.r - 56, kPanelGlobal.b - 78,
+                                               kPanelGlobal.r - 8, kPanelGlobal.b - 10), kParamGain));
 
-  // EFFECTS — inserts, master bus and remaining tape controls.
-  g->AttachControl(new KeithTextControl(IRECT(kPanelFx.l + 8, kPanelFx.t + 4, kPanelFx.r - 8,
-                                               kPanelFx.t + 22),
-                                        "EFFECTS", MonoBold(11, kPaper)));
+  // LEFT RAIL — tape bus and direct/curve trims.
   freeKnob(kParamTapeWow, "WOW", kMagenta);
   freeKnob(kParamTapeFlutter, "FLUT", kMagenta);
   freeKnob(kParamTapeHiss, "HISS", kMagenta);
   freeKnob(kParamTapePrint, "PRINT", kMagenta);
   freeKnob(kParamTapeMix, "MIX", kPaper);
   tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
+  freeKnob(kParamOutLevel, "OUT", kMagenta, true);
+  freeKnob(kParamDirectLevel, ControlFor(kParamDirectLevel).label, kGreen, true);
+  freeKnob(kParamFilterKeyCurve, ControlFor(kParamFilterKeyCurve).label, kGreen, true);
+
+  // EFFECTS — inserts and master bus.
   fxAlgo(kParamIns1Algo, kParamIns1Bypass, "INS1", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
   fxKnob(kParamIns1A, kParamIns1Algo, 0, false, kGreen);
   fxKnob(kParamIns1B, kParamIns1Algo, 1, false, kGreen);
@@ -231,12 +202,10 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   fxKnob(kParamMstB, kParamMstAlgo, 1, true, kPaper);
   fxKnob(kParamMstC, kParamMstAlgo, 2, true, kPaper);
   fxMix(kParamMstMix, kParamMstAlgo, "MMIX", kGreen);
-  freeKnob(kParamOutLevel, "OUT", kMagenta, true);
 
-  g->AttachControl(new KeithTextControl(IRECT(42, 746, 338, 770), "MIDI IN / A-L PLAY",
-                                        Mono(12, kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(42, 771, 338, 790), "Z/X OCTAVE", Mono(11, kPaper)));
-  g->AttachControl(new IVKeyboardControl(IRECT(380, 744, 1248, 789), 36, 84, false, kPaper, kInk,
+  g->AttachControl(new KeithTextControl(IRECT(24, 724, 210, 738), "MIDI / A-L PLAY", Mono(9, kPaper)));
+  g->AttachControl(new KeithTextControl(IRECT(24, 738, 210, 750), "Z/X OCTAVE", Mono(9, kPaper)));
+  g->AttachControl(new IVKeyboardControl(IRECT(kKeyboardBox.l, kKeyboardBox.t, kKeyboardBox.r, kKeyboardBox.b), 36, 84, false, kPaper, kInk,
                                          kHotPink, kPanelAlt, kGreen),
                    kCtrlTagKeyboard);
   g->SetQwertyMidiKeyHandlerFunc([g](const IMidiMsg& msg) {

@@ -20,9 +20,6 @@ public:
   void Draw(IGraphics& g) override
   {
     g.DrawFittedBitmap(mChassis, mRECT);
-    const IRECT wordmark(kWordmarkBox.l, kWordmarkBox.t, kWordmarkBox.r, kWordmarkBox.b);
-    IText spray = IText(kWordmarkPx, kHotPink, "Bangers", EAlign::Near, EVAlign::Middle);
-    DrawOutlinedText(g, spray, "MAGS\nSYNTH", wordmark, kInk, 3.f);
   }
 
 private:
@@ -223,10 +220,12 @@ public:
   {
     auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
     const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
-    const char* label = FxKnobLabel(mMaster, algorithm, mKnob);
-    if (algorithm <= 0 || std::strcmp(label, "NOT USED") == 0)
+    if (algorithm <= 0)
       return;
-    SetLabel(label);
+    const char* algoLabel = FxKnobLabel(mMaster, algorithm, mKnob);
+    if (std::strcmp(algoLabel, "NOT USED") == 0)
+      return;
+    SetLabel(ControlFor(GetParamIdx()).label);
     KeithKnobControl::Draw(g);
   }
 
