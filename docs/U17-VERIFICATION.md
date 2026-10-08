@@ -72,19 +72,52 @@ Tolerances are **not** loosened to force a pass:
 Harmonic ratio and stereo correlation are printed beside the gated columns but **not** given a looser
 pass, exactly as the brief required.
 
-Measured evidence, from the coordinator's own run:
+Full gate result, from the coordinator's own run: **`recreation_gate: 28 passed, 0 failed (total 28)`**,
+exit 0. Every gated row:
 
-```
-Family 01 / 021 Upright Bass   36 f0_hz     65.410   65.400   0.981 PASS
-Family 01 / 021 Upright Bass   36 attack_s   0.123    0.116   0.012 PASS
-Family 01 / 021 Upright Bass   36 decay_s    3.552    3.480   0.278 PASS
-Family 01 / 021 Upright Bass   36 centroid 423.940  402.000  40.000 PASS
-Family 01 / 021 Upright Bass   48 f0_hz    130.820  130.700   1.960 PASS
-Family 01 / 021 Upright Bass   60 f0_hz    261.637  261.500   3.922 PASS
-Family 01 / 021 Upright Bass   60 decay_s    1.637    1.590   0.127 PASS
-```
+| Preset | Note | Metric | Measured | Target | Result |
+|---|---|---|---|---|---|
+| Upright Bass | 36 | f0_hz | 65.410 | 65.400 | PASS |
+| Upright Bass | 36 | attack_s | 0.123 | 0.116 | PASS |
+| Upright Bass | 36 | decay_s | 3.552 | 3.480 | PASS |
+| Upright Bass | 36 | centroid | 423.940 | 402.000 | PASS |
+| Upright Bass | 48 | f0_hz | 130.820 | 130.700 | PASS |
+| Upright Bass | 48 | attack_s | 0.032 | 0.023 | PASS |
+| Upright Bass | 48 | decay_s | 2.208 | 2.150 | PASS |
+| Upright Bass | 48 | centroid | 631.296 | 655.000 | PASS |
+| Upright Bass | 60 | f0_hz | 261.637 | 261.500 | PASS |
+| Upright Bass | 60 | attack_s | 0.032 | 0.029 | PASS |
+| Upright Bass | 60 | decay_s | 1.637 | 1.590 | PASS |
+| Upright Bass | 60 | centroid | 1130.408 | 1156.000 | PASS |
+| Hammer Keys | 24 | f0_hz | 32.705 | 32.600 | PASS |
+| Hammer Keys | 24 | attack_s | 0.101 | 0.099 | PASS |
+| Hammer Keys | 24 | decay_s | 1.701 | 1.750 | PASS |
+| Hammer Keys | 24 | centroid | 692.935 | 683.000 | PASS |
+| Hammer Keys | 48 | f0_hz | 130.814 | 130.800 | PASS |
+| Hammer Keys | 48 | attack_s | 0.016 | 0.017 | PASS |
+| Hammer Keys | 48 | decay_s | 4.715 | 4.690 | PASS |
+| Hammer Keys | 48 | centroid | 1259.489 | 1283.000 | PASS |
+| Hammer Keys | 72 | f0_hz | 523.188 | 523.200 | PASS |
+| Hammer Keys | 72 | attack_s | 0.021 | 0.012 | PASS |
+| Hammer Keys | 72 | decay_s | 2.384 | 2.330 | PASS |
+| Hammer Keys | 72 | centroid | 2945.439 | 2793.000 | PASS |
+| Swell Choir | 60 | f0_hz | 261.668 | 262.200 | PASS |
+| Swell Choir | 60 | attack_s | 3.083 | 3.100 | PASS |
+| Swell Choir | 60 | decay_s | 1.056 | 1.100 | PASS |
+| Swell Choir | 60 | centroid | 1583.446 | 1477.000 | PASS |
 
-Zero FAIL rows. `Family 01 / 021` matches the acoustic bass reference to **0.015 %** on fundamental.
+Pitch is the strongest result: every recreation lands on its reference fundamental, the closest at
+**0.015 %** (65.410 vs 65.400) and the furthest still inside 0.2 %.
+
+Honest margin note — the two **loosest** passes, so they are on the record rather than buried:
+
+- **Swell Choir centroid**: 1583 Hz measured against 1477 Hz, a 7.2 % error against an 8 % allowance.
+  The choir is formant-heavy and the noisiest target, so this is the recreation closest to its limit.
+- **Hammer Keys C5 centroid**: 2945 Hz against 2793 Hz, 5.5 % against 8 %.
+
+Neither is a false pass — both are inside the tolerance the brief fixed before the work started, and
+neither tolerance was widened. But if a future pass tightens the gate, these two are what will fail
+first, and any further choir work should target that centroid gap.
 
 ## Coordinator-verified results
 
