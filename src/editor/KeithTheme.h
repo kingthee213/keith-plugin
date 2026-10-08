@@ -55,7 +55,7 @@ inline IText Title(float size, const IColor& colour = kPaper)
   return IText(size, colour, kFontTitle, EAlign::Near, EVAlign::Middle);
 }
 
-inline IText Label(float size = 9.5f, const IColor& colour = kPaper)
+inline IText Label(float size = 11.f, const IColor& colour = kPaper)
 {
   return IText(size, colour, kFontMono, EAlign::Center, EVAlign::Middle);
 }

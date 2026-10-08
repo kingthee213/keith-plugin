@@ -7,9 +7,11 @@ namespace keith { namespace ui {
 
 struct Box { float l,t,r,b; constexpr float W() const { return r-l; } constexpr float H() const { return b-t; } constexpr bool Contains(Box o) const { return o.l>=l&&o.t>=t&&o.r<=r&&o.b<=b; } constexpr bool Overlaps(Box o) const { return l<o.r&&o.l<r&&t<o.b&&o.t<b; } };
 
-constexpr float kCanvasW = 1280.0f;
-constexpr float kCanvasH = 800.0f;
-constexpr float kLeftRailW = 210.0f;
+constexpr float kCanvasW = 1536.0f;
+constexpr float kCanvasH = 1024.0f;
+constexpr float kLeftRailW = 246.0f;
+constexpr float kPanelPadding = 18.0f;
+constexpr float kControlGap = 14.0f;
 constexpr bool kSingleWindowEditor = true;
 constexpr Box kCanvas {0.f, 0.f, kCanvasW, kCanvasH};
 
