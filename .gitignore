@@ -19,3 +19,7 @@ __pycache__/
 # Blender autosave backups (keep the .blend source, not its rotated backups)
 *.blend1
 *.blend2
+
+# analysis material: reference recordings used to derive synthesis targets.
+# Never shipped, never committed. See docs/DECISIONS.md D2 and docs/REFERENCE-ANALYSIS.md
+reference-audio/
