@@ -451,7 +451,7 @@ def apply_to_repo():
     geom = geom_path.read_text()
     panel_block = "\n".join(panel_lines())
     geom = re.sub(
-        r"constexpr float kPanelTitleBand = .*?\nconstexpr Box kLeftRail \{.*?\};",
+        r"constexpr float kPanelTitleBand = .*?constexpr Box kWordmarkBox \{[^}]+\};",
         panel_block,
         geom,
         count=1,
@@ -459,7 +459,7 @@ def apply_to_repo():
     )
     if "kPanelTitleBand" not in geom:
         geom = re.sub(
-            r"constexpr Box kPanelOsc \{.*?\nconstexpr Box kLeftRail \{.*?\};",
+            r"constexpr Box kPanelOsc \{.*?constexpr Box kWordmarkBox \{[^}]+\};",
             panel_block,
             geom,
             count=1,

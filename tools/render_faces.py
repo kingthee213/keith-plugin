@@ -409,33 +409,19 @@ def draw_wordmark(canvas: Image.Image, box, rng: random.Random) -> None:
 
     body = Image.new("L", size, 0)
     ImageDraw.Draw(body).multiline_text(origin, text, fill=255, font=font, spacing=s(1))
-    body = body.point(lambda v: 255 if v > 100 else 0)
-
-    rough = Image.new("L", size, 0)
-    rough_draw = ImageDraw.Draw(rough)
-    for _ in range(10):
-        rough_draw.multiline_text(
-            (origin[0] + rng.randint(-s(2), s(2)), origin[1] + rng.randint(-s(2), s(2))),
-            text, fill=rng.randint(170, 255), font=font, spacing=s(1))
-    rough = rough.point(lambda v: 255 if v > 140 else 0)
-    paint = ImageChops.lighter(body, rough)
+    paint = body.point(lambda v: 255 if v > 100 else 0)
 
     layer = Image.new("RGBA", size, (0, 0, 0, 0))
     outline = Image.new("L", size, 0)
-    for dx, dy in ((s(3), s(4)), (-s(3), -s(2)), (s(3), -s(2)), (-s(3), s(4)), (0, 0)):
+    for dx, dy in ((s(3), s(3)), (-s(3), -s(3)), (s(3), -s(3)), (-s(3), s(3))):
         outline = ImageChops.lighter(outline, ImageChops.offset(paint, dx, dy))
+    outline = ImageChops.lighter(outline, paint)
     layer.paste(Image.new("RGBA", size, INK + (255,)), (0, 0), outline)
     layer.paste(Image.new("RGBA", size, MAGENTA + (255,)), (0, 0), paint)
 
-    # Vertical brush streaks inside the paint, so the fill is not a flat slab.
-    streak = ImageChops.multiply(paint, Image.effect_noise(size, 30).convert("L").point(lambda v: int(v * 1.6)))
+    top_edge = ImageChops.offset(paint, 0, -s(2))
     layer.paste(Image.new("RGBA", size, (255, 158, 204, 255)), (0, 0),
-                streak.point(lambda v: int(v * 0.5)))
-
-    glow = Image.new("RGBA", size, (0, 0, 0, 0))
-    glow.paste(Image.new("RGBA", size, MAGENTA + (255,)), (0, 0),
-               paint.filter(ImageFilter.GaussianBlur(s(10))).point(lambda v: int(v * 0.45)))
-    layer = Image.alpha_composite(glow, layer)
+                ImageChops.subtract(paint, top_edge).point(lambda v: int(v * 0.7)))
 
     speck = ImageDraw.Draw(layer)
     for _ in range(80):

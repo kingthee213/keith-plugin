@@ -38,6 +38,7 @@ constexpr Box kPanelVintage {218.0f, 548.0f, 368.0f, 743.0f};
 constexpr Box kPanelGlobal {374.0f, 548.0f, 664.0f, 743.0f};
 constexpr Box kPanelFx {670.0f, 548.0f, 1272.0f, 743.0f};
 constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};
+constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
 constexpr const char* kLabelAbbreviations[] = {
   "A1",
   "A2",
@@ -148,8 +149,6 @@ inline bool LabelPassesAbbrevGate(const char* label) {
   if (n >= 4) return true;
   return LabelIsDeclaredAbbrev(label);
 }
-
-constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
 
 constexpr PanelSpec kPanels[] = {
   {"OSCILLATORS", kPanelOsc, "panel"},
