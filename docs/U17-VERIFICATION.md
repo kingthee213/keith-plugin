@@ -152,3 +152,33 @@ first, and any further choir work should target that centroid gap.
 
 GPT-5.6 Sol hit its monthly model cap mid-run (resets 10/12) having written **zero files**; the pass was
 restarted on Grok 4.7 xhigh. Nothing was lost or half-applied.
+
+---
+
+## Addendum — the gate now covers all six recreations
+
+U18 added the remaining three references, so the RECREATIONS table has six entries and the gate runs
+**40 assertions**. Final run, coordinator-executed, unpiped:
+
+```
+recreation_gate: 40 passed, 0 failed (total 40)
+GATE_EXIT=0
+```
+
+Every note of every recreation passes all four gated metrics:
+
+| Recreation | Notes gated | Rows | Result |
+|---|---|---|---|
+| `Family 01 / 021 Upright Bass` | 36, 48, 60 | 12 | all PASS |
+| `Family 01 / 022 Hammer Keys` | 24, 48, 72 | 12 | all PASS |
+| `Family 01 / 023 Swell Choir` | 60 | 4 | all PASS |
+| `Family 01 / 024 Bright Reed` | 72 | 4 | all PASS |
+| `Family 01 / 025 Snap Bass` | 36 | 4 | all PASS |
+| `Family 01 / 026 Short Bass` | 48 | 4 | all PASS |
+
+**Read this table for what it is.** It proves every recreation has the intended fundamental, attack,
+decay and spectral centroid within 1.5 % / 8 %. It does **not** prove any of them sounds like its
+source. `docs/SPECTRAL-EVAL-PROPOSAL.md` measures the same presets on a time-frequency comparison and
+finds them between 49 % and 111 % from their references — Short Bass passes every scalar assertion here
+while sitting as far from its source as a deliberately mismatched instrument does. That gap is the
+subject of `docs/V2-LIBRARY-PLAN.md`, and it is why the scalar gate is not sufficient on its own.
