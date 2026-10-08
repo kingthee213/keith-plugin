@@ -2,11 +2,12 @@
 
 Keith is a two-oscillator instrument with 101 automatable parameters (IDs 0-100), 103 original presets in Family 01-05, a synthesized drum kit, a tape bus, and insert and master effects. The Windows VST3 and the standalone share one editor. The plugin name, the binary and the preset names stay Keith. The editor wordmark reads Yote Machine. The service plate reads The Youth Hostel DSP.
 
-Locked product spec: [`BRIEF.md`](BRIEF.md).
+Locked product spec: [`BRIEF.md`](BRIEF.md). Control and preset manual, including the full drum
+map and the FX chain of all 103 presets: [`docs/MANUAL.md`](docs/MANUAL.md).
 
 ## Pages
 
-Seven pages. The right-hand channel stays up on all of them: filter type, cutoff, resonance, envelope depth, engine, poly or mono, glide, unison and detune.
+Seven pages. The right-hand channel stays up on all of them: filter type, cutoff, resonance, envelope depth, engine, poly or mono, glide, unison and detune. [`docs/MANUAL.md`](docs/MANUAL.md) documents every page and control with its real editor label.
 
 1. **Source.** Two oscillators, each with morph, tune, level and pulse width, plus sub, noise, FM, sync and ring.
 2. **Modulation.** LFO 1, LFO 2 and the four-slot matrix are sub-tabs of one full-size desk. Each matrix row has source, destination and bipolar amount controls. Mod wheel, velocity and mono legato sit beside that desk.
@@ -18,13 +19,15 @@ Seven pages. The right-hand channel stays up on all of them: filter type, cutoff
 
 ## Drums
 
-The drum kit is synthesized. `src/drums/DrumSynth.h` builds each hit from oscillators, deterministic noise, envelopes, a one-pole filter and soft clipping. The file has no sample playback. MIDI notes 36-51 trigger the sixteen slots. A pad click selects a slot. The slot knobs edit that slot.
+The drum kit is synthesized. `src/drums/DrumSynth.h` builds each hit from oscillators, deterministic noise, envelopes, a one-pole filter and soft clipping. The file has no sample playback and there is no sample map. MIDI notes 36-51 trigger the sixteen slots. A pad click selects a slot. The slot knobs edit that slot. Full map: [`docs/MANUAL.md`](docs/MANUAL.md#drum-map) and [`docs/DRUM-MAP.md`](docs/DRUM-MAP.md).
 
 ## Effects
 
 `src/Keith_DSP.h` runs the chain in this order: synth voices plus the drum bus, insert 1, insert 2, tape, master, output level, then the Gain parameter.
 
 Insert 1 and insert 2 each take Off, Drive, Chorus, Delay or Crush. Master takes Off, Comp, Limit, Width or Tilt.
+
+Every one of the 103 presets preloads a deliberate chain: insert 1 and the master stage on all of them, insert 2 where the role wants more space. `docs/MANUAL.md` lists the chain per preset, `banks/SOURCES.md` rows 107-111 record the provenance, and `tools/verify_patch_fx_chains.py` gates the table.
 
 ## Modulation matrix
 
@@ -149,6 +152,9 @@ The pages above are the live editor. Parameter IDs and defaults are in [`docs/PA
 cmake --build build --config Release --target keith-synth-tests keith-editor-tests
 ctest --test-dir build -C Release --output-on-failure
 python tools/editor_surface_check.py
+python tools/verify_preset_metadata.py
+python tools/verify_patch_fx_chains.py
+python tools/verify_material_layout.py
 ```
 
 Rendering the authored material assets is optional for a normal build. PNGs are checked into the
