@@ -137,8 +137,14 @@ first, and any further choir work should target that centroid gap.
 
 ## Not done
 
-- **Seven of the ten references are not yet recreated.** Reported as deferred, not silently dropped.
-- **The harmonica cannot be gated** until its measurement is resolved (flagged suspect).
+- **Three of the ten references are not yet recreated**: harmonica C5, Stein Bass C2 and Stein Bass C3.
+  Reported as deferred, not silently dropped. The three recreations above do cover the other **seven**
+  (acoustic bass C2/C3/C4, acoustic piano C1/C3/C5, slow choir C4). An earlier revision of this document
+  said seven were missing; that was an inverted count taken from the worker's self-report and it is
+  corrected here against the gate table.
+- **The harmonica cannot be gated** until its measurement is resolved (flagged suspect). This is a
+  coordinator-side fix, not a worker task — the target number itself is wrong, so no implementation can
+  be gated against it until the reference is re-measured.
 - macOS/AU/auval: still never built or run. FL Studio and Ableton: still never loaded this build.
 - CC1 and mono legato remain offline-proven only.
 

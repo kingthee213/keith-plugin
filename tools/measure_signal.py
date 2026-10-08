@@ -67,6 +67,19 @@ def detect_f0(x, sr, lo=25.0, hi=2000.0):
         return 0.0
     seg = ac[lo_lag:hi_lag]
     lag = lo_lag + int(np.argmax(seg))
+
+    # Subharmonic guard. A strongly periodic signal can correlate almost as well at a
+    # multiple of its true period, so a plain argmax sometimes reports the fundamental
+    # an octave or a twelfth too low. The true period is the SHORTEST lag that is a local
+    # maximum and still correlates near the peak, so prefer that over the global max.
+    peak = ac[lag]
+    if peak > 0:
+        guard_lo = max(lo_lag, 1)
+        for cand in range(guard_lo, lag):
+            if ac[cand] >= 0.85 * peak and ac[cand] >= ac[cand - 1] and ac[cand] >= ac[cand + 1]:
+                lag = cand
+                break
+
     if 0 < lag < len(ac) - 1:
         a, b, c = ac[lag - 1], ac[lag], ac[lag + 1]
         d = a - 2 * b + c
