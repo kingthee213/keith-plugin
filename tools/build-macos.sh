@@ -47,36 +47,50 @@ echo "==> Building Release"
 cmake --build "${ROOT}/build" --config Release --target Keith-vst3 Keith-au Keith-app
 
 OUT="${ROOT}/build/out"
+# The Xcode generator nests the bundles one level down (build/out/Release/...),
+# so locating them by name is safer than assuming a fixed depth. The previous
+# version hard-coded build/out/<name>, which meant the signing step and the
+# printed install paths both pointed at directories that do not exist.
 echo "==> Bundles produced"
-find "${OUT}" -maxdepth 3 -type d \( -name '*.vst3' -o -name '*.component' -o -name '*.app' \) | sort
+bundle_path() { find "${OUT}" -type d -name "$1" -maxdepth 3 -print -quit 2>/dev/null; }
+VST3="$(bundle_path 'Keith.vst3')"
+AU="$(bundle_path 'Keith.component')"
+APP="$(bundle_path 'Keith.app')"
+for b in "$VST3" "$AU" "$APP"; do [[ -n "$b" ]] && echo "    $b"; done
 
 echo "==> Ad-hoc signing (required for Apple Silicon hosts to load the plugin)"
 # A downloaded, unsigned bundle is refused outright by most macOS hosts. Ad-hoc
 # signing is enough for a demo on someone else's machine and needs no certificate.
 sign() {
   local target="$1"
-  if [[ -e "$target" ]]; then
+  if [[ -n "$target" && -e "$target" ]]; then
     codesign --force --deep --sign - "$target" 2>/dev/null \
       && echo "    signed  $(basename "$target")" \
       || echo "    WARNING: could not sign $(basename "$target") - a DAW may refuse it"
   fi
 }
-sign "${OUT}/Keith.vst3"
-sign "${OUT}/Keith.component"
-sign "${OUT}/Keith.app"
+sign "$VST3"
+sign "$AU"
+sign "$APP"
 
-echo "==> Verifying architectures (both arm64 and x86_64 expected)"
-for b in "${OUT}/Keith.vst3/Contents/MacOS/Keith" "${OUT}/Keith.component/Contents/MacOS/Keith"; do
-  [[ -e "$b" ]] && { printf '    %-52s ' "$(basename "$(dirname "$(dirname "$(dirname "$b")")")")"; lipo -archs "$b" 2>/dev/null || echo "(lipo unavailable)"; }
+echo "==> Verifying architectures (arm64 and x86_64 expected)"
+for b in "$VST3" "$AU"; do
+  [[ -n "$b" ]] || continue
+  bin="$(find "$b/Contents/MacOS" -maxdepth 1 -type f -print -quit 2>/dev/null)"
+  [[ -n "$bin" ]] && printf '    %-28s %s\n' "$(basename "$b")" "$(lipo -archs "$bin" 2>/dev/null || echo '(lipo unavailable)')"
 done
 
 cat <<EOF
 
-Build complete. Install locations:
-  VST3 : ${OUT}/Keith.vst3        ->  ~/Library/Audio/Plug-Ins/VST3/
-  AU   : ${OUT}/Keith.component   ->  ~/Library/Audio/Plug-Ins/Components/
-  App  : ${OUT}/Keith.app         ->  run it directly, no install needed
+Build complete.
+  VST3 : ${VST3:-NOT BUILT}
+  AU   : ${AU:-NOT BUILT}
+  App  : ${APP:-NOT BUILT}
 
-Deployment target: 11.7.10. Architectures: arm64 + x86_64.
-The standalone app is the fastest way to demo without a DAW.
+Install:
+  mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
+  cp -R "${VST3:-<vst3>}" ~/Library/Audio/Plug-Ins/VST3/ 2>/dev/null
+  cp -R "${AU:-<au>}"    ~/Library/Audio/Plug-Ins/Components/ 2>/dev/null
+
+Deployment target: 11.7.10. The standalone app is the fastest demo with no DAW.
 EOF
