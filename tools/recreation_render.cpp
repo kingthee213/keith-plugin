@@ -46,6 +46,48 @@ void ProcessSilence(Keith& plugin, int blocks)
   }
 }
 
+bool RenderNote(Keith& plugin, int note, double seconds, const std::string& path)
+{
+  ProcessSilence(plugin, kWarmupBlocks);
+
+  iplug::IMidiMsg noteOn;
+  noteOn.MakeNoteOnMsg(note, 102, 0);
+  plugin.ProcessMidiMsg(noteOn);
+
+  const int frames = std::max(kBlock, static_cast<int>(seconds * kRate));
+  const int blocks = (frames + kBlock - 1) / kBlock;
+  std::vector<float> interleaved(static_cast<size_t>(blocks * kBlock) * 2);
+
+  std::vector<sample> blockLeft(static_cast<size_t>(kBlock));
+  std::vector<sample> blockRight(static_cast<size_t>(kBlock));
+  sample* outputs[2] {blockLeft.data(), blockRight.data()};
+
+  for (int block = 0; block < blocks; ++block)
+  {
+    std::fill(blockLeft.begin(), blockLeft.end(), sample(0));
+    std::fill(blockRight.begin(), blockRight.end(), sample(0));
+    plugin.ProcessBlock(nullptr, outputs, kBlock);
+    for (int i = 0; i < kBlock; ++i)
+    {
+      const size_t at = (static_cast<size_t>(block) * kBlock + static_cast<size_t>(i)) * 2;
+      interleaved[at] = static_cast<float>(blockLeft[static_cast<size_t>(i)]);
+      interleaved[at + 1] = static_cast<float>(blockRight[static_cast<size_t>(i)]);
+    }
+  }
+
+  std::ofstream out(path, std::ios::binary);
+  const int32_t header[2] = {static_cast<int32_t>(kRate), frames};
+  out.write(reinterpret_cast<const char*>(header), sizeof(header));
+  out.write(reinterpret_cast<const char*>(interleaved.data()),
+            static_cast<std::streamsize>(static_cast<size_t>(frames) * 2 * sizeof(float)));
+  if (!out)
+  {
+    std::fprintf(stderr, "could not write %s\n", path.c_str());
+    return false;
+  }
+  return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -81,42 +123,7 @@ int main(int argc, char** argv)
   }
 
   Prepare(*plugin);
-  ProcessSilence(*plugin, kWarmupBlocks);
-
-  iplug::IMidiMsg noteOn;
-  noteOn.MakeNoteOnMsg(note, 102, 0);
-  plugin->ProcessMidiMsg(noteOn);
-
-  const int frames = std::max(kBlock, static_cast<int>(seconds * kRate));
-  const int blocks = (frames + kBlock - 1) / kBlock;
-  std::vector<float> interleaved(static_cast<size_t>(blocks * kBlock) * 2);
-
-  std::vector<sample> blockLeft(static_cast<size_t>(kBlock));
-  std::vector<sample> blockRight(static_cast<size_t>(kBlock));
-  sample* outputs[2] {blockLeft.data(), blockRight.data()};
-
-  for (int block = 0; block < blocks; ++block)
-  {
-    std::fill(blockLeft.begin(), blockLeft.end(), sample(0));
-    std::fill(blockRight.begin(), blockRight.end(), sample(0));
-    plugin->ProcessBlock(nullptr, outputs, kBlock);
-    for (int i = 0; i < kBlock; ++i)
-    {
-      const size_t at = (static_cast<size_t>(block) * kBlock + static_cast<size_t>(i)) * 2;
-      interleaved[at] = static_cast<float>(blockLeft[static_cast<size_t>(i)]);
-      interleaved[at + 1] = static_cast<float>(blockRight[static_cast<size_t>(i)]);
-    }
-  }
-
-  std::ofstream out(argv[4], std::ios::binary);
-  const int32_t header[2] = {static_cast<int32_t>(kRate), frames};
-  out.write(reinterpret_cast<const char*>(header), sizeof(header));
-  out.write(reinterpret_cast<const char*>(interleaved.data()),
-            static_cast<std::streamsize>(static_cast<size_t>(frames) * 2 * sizeof(float)));
-  if (!out)
-  {
-    std::fprintf(stderr, "could not write %s\n", argv[4]);
+  if (!RenderNote(*plugin, note, seconds, argv[4]))
     return 1;
-  }
   return 0;
 }

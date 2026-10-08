@@ -1,9 +1,9 @@
 # Keith
 
-Keith is a two-oscillator instrument with 111 automatable parameters (IDs 0-110), 106 presets in Family 01-05, a synthesized drum kit, a tape bus, and insert and master effects. The Windows VST3 and the standalone share one editor. The plugin name, the binary and the preset names stay Keith. The editor wordmark reads Yote Machine. The service plate reads The Youth Hostel DSP.
+Keith is a two-oscillator instrument with 111 automatable parameters (IDs 0-110), 109 presets in Family 01-05, a synthesized drum kit, a tape bus, and insert and master effects. The Windows VST3 and the standalone share one editor. The plugin name, the binary and the preset names stay Keith. The editor wordmark reads Yote Machine. The service plate reads The Youth Hostel DSP.
 
 Locked product spec: [`BRIEF.md`](BRIEF.md). Control and preset manual, including the full drum
-map and the FX chain of all 106 presets: [`docs/MANUAL.md`](docs/MANUAL.md).
+map and the FX chain of all 109 presets: [`docs/MANUAL.md`](docs/MANUAL.md).
 
 ## Pages
 
@@ -27,7 +27,7 @@ The drum kit is synthesized. `src/drums/DrumSynth.h` builds each hit from oscill
 
 Insert 1 and insert 2 each take Off, Drive, Chorus, Delay or Crush. Master takes Off, Comp, Limit, Width or Tilt.
 
-Every one of the 106 presets preloads a deliberate chain: insert 1 and the master stage on all of them, insert 2 where the role wants more space. `docs/MANUAL.md` lists the chain per preset, `banks/SOURCES.md` records the provenance, and `tools/verify_patch_fx_chains.py` gates the table.
+Every one of the 109 presets preloads a deliberate chain: insert 1 and the master stage on all of them, insert 2 where the role wants more space. `docs/MANUAL.md` lists the chain per preset, `banks/SOURCES.md` records the provenance, and `tools/verify_patch_fx_chains.py` gates the table.
 
 ## Modulation matrix
 
@@ -177,12 +177,11 @@ blender --background --factory-startup --python tools/render_materials.py
 ## Licence notes
 
 - **Keith** plugin code: private handover; not published.
-- **Analysis references.** The acoustic bass, acoustic piano and slow choir recreations in Family 01
-  (Upright Bass, Hammer Keys, Swell Choir) were matched by analysis to recordings from Free Wave
-  Samples by Jason Champion (freewavesamples.com). Those files were not copied into this repo or
-  the build. The presets are synthesis. The harmonica measurement was left out: it locks an octave
-  below the named note, and the file is not here to remeasure. Stein bass was left out: darkening
-  the low note enough for its centroid drops the detected fundamental.
+- **Analysis references.** The acoustic bass, acoustic piano, slow choir, harmonica and short bass
+  recreations in Family 01 (Upright Bass, Hammer Keys, Swell Choir, Bright Reed, Snap Bass, Short
+  Bass) were matched by analysis to recordings from Free Wave Samples by Jason Champion
+  (freewavesamples.com). Those files were not copied into this repo or the build. The presets are
+  synthesis.
 - **iPlug2** — zlib-style licence. Attribution: *“This product uses the iPlug 2 library,
   Copyright (c) the iPlug 2 developers.”*
 - **Bundled permissive dependencies** shipped with iPlug2: WDL, NanoVG, NanoSVG, RTAudio,

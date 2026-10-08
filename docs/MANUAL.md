@@ -50,7 +50,7 @@ Four regions stay on screen whichever page you are on.
 | Channel strip (right) | `FILTER / VOICE`: the filter-type tabs, `CUTOFF`, `RESONANCE`, `ENV DEPTH`, the engine and poly tabs, `GLIDE`, `UNISON`, `DETUNE` |
 | Footer | `MIDI IN / A-L PLAY`, `Z/X OCTAVE`, and an on-screen keyboard spanning MIDI notes 36–84 |
 
-`<` and `>` step through the 106 presets and wrap at both ends.
+`<` and `>` step through the 109 presets and wrap at both ends.
 
 Knobs take a vertical drag. Ctrl-drag is fine control and a double-click returns the default; the
 editor prints that on the page 06 `CONTROL NOTES` list. Envelope values can also be typed by
@@ -194,7 +194,7 @@ The page is labelled `POST SYNTH` because that is where it sits.
 
 Two tabs: `PATCHES` and `DRUMS`.
 
-`PATCHES` lists all 106 presets on the left and a `CONTROL NOTES` reference on the right. Clicking a
+`PATCHES` lists all 109 presets on the left and a `CONTROL NOTES` reference on the right. Clicking a
 row recalls that preset.
 
 `DRUMS` is the drum engine: a 4 × 4 pad grid, seven knobs and two switches. See
@@ -331,20 +331,19 @@ player, so there are no steps to move.
 
 ## Preset library
 
-106 presets in five families, ordered 01 → 05 and never reordered. A preset is a set of deltas over
+109 presets in five families, ordered 01 → 05 and never reordered. A preset is a set of deltas over
 the init defaults, baked into a state chunk at construction, so recalling one is the same code path
 the host uses to load a saved session.
 
 Each preset also carries a deliberate FX chain. Insert 1 and the master stage are engaged on all
-106; Insert 2 is engaged where the role wants more space, and is `Off` on every Family 05 preset.
+109; Insert 2 is engaged where the role wants more space, and is `Off` on every Family 05 preset.
 Mix percentages below are the stage's `DRY / WET`, so they tell you how hard each chain is working.
 
-Family 01 / 021 Upright Bass, 022 Hammer Keys and 023 Swell Choir are synthesis matched by analysis
-to Free Wave Samples recordings by Jason Champion (freewavesamples.com): acoustic bass at C2, C3
-and C4, acoustic piano at C1, C3 and C5, and the slow choir at C4. No audio from those recordings
-was ingested or shipped. The harmonica reference was not turned into a preset: the measurement
-locks an octave below the named note. Stein bass was not turned into a preset: the low note cannot
-keep its fundamental and its centroid at the same time.
+Family 01 / 021 Upright Bass, 022 Hammer Keys, 023 Swell Choir, 024 Bright Reed, 025 Snap Bass and
+026 Short Bass are synthesis matched by analysis to Free Wave Samples recordings by Jason Champion
+(freewavesamples.com): acoustic bass at C2, C3 and C4, acoustic piano at C1, C3 and C5, the slow
+choir at C4, the harmonica at C5, and the short bass at C2 and C3. No audio from those recordings
+was ingested or shipped.
 
 <!-- BEGIN GENERATED PRESET TABLE -->
 
@@ -372,112 +371,115 @@ keep its fundamental and its centroid at the same time.
 | 17 | 018 Glass Arp | arp | Delay 16% | Off | Comp 20% |
 | 18 | 019 Heavy Delay | fx | Delay 78% | Crush 40% | Comp 65% |
 | 19 | 020 Room Kit | kit | Drive 25% | Crush 18% | Limit 50% |
-| 20 | 021 Upright Bass | bass | Drive 1% | Off | Comp 1% |
-| 21 | 022 Hammer Keys | keys | Chorus 1% | Off | Tilt 1% |
-| 22 | 023 Swell Choir | choir | Chorus 1% | Off | Width 1% |
+| 20 | 021 Upright Bass | bass | Drive 5% | Off | Comp 5% |
+| 21 | 022 Hammer Keys | keys | Chorus 1% | Off | Tilt 12% |
+| 22 | 023 Swell Choir | choir | Chorus 5% | Off | Width 5% |
+| 23 | 024 Bright Reed | lead | Drive 5% | Off | Tilt 12% |
+| 24 | 025 Snap Bass | bass | Chorus 5% | Off | Comp 12% |
+| 25 | 026 Short Bass | bass | Drive 5% | Off | Comp 12% |
 
 ### Family 02
 
 | # | Preset | Role | Insert 1 | Insert 2 | Master |
 |---:|---|---|---|---|---|
-| 23 | 001 Neon Keys | keys | Drive 30% | Off | Comp 26% |
-| 24 | 002 Thin Piano | electric piano | Chorus 12% | Off | Tilt 16% |
-| 25 | 003 Thin Clav | clav | Drive 34% | Off | Comp 28% |
-| 26 | 004 Perc Organ | organ | Drive 22% | Off | Comp 24% |
-| 27 | 005 Metal Bells | bells | Delay 20% | Drive 18% | Width 24% |
-| 28 | 006 Neon Pluck | pluck | Drive 24% | Off | Comp 22% |
-| 29 | 007 Sparse Pluck | pluck | Delay 8% | Off | Comp 14% |
-| 30 | 008 Thin Stab | stab | Drive 30% | Off | Comp 30% |
-| 31 | 009 Hard Bass | bass | Drive 40% | Off | Limit 55% |
-| 32 | 010 Sparse Bass | bass | Drive 14% | Off | Comp 18% |
-| 33 | 011 Sync Lead | lead | Drive 32% | Delay 16% | Comp 26% |
-| 34 | 012 Stab Brass | brass | Drive 26% | Off | Comp 30% |
-| 35 | 013 Tight Strings | strings | Chorus 16% | Off | Comp 30% |
-| 36 | 014 Breath Choir | choir | Chorus 24% | Delay 16% | Width 24% |
-| 37 | 015 Poly Pad | pad | Chorus 28% | Delay 18% | Width 26% |
-| 38 | 016 Sweep Motion | motion | Chorus 22% | Delay 36% | Width 32% |
-| 39 | 017 Skew Texture | texture | Crush 45% | Drive 24% | Tilt 40% |
-| 40 | 018 Pulse Drone | drone | Drive 20% | Delay 16% | Tilt 24% |
-| 41 | 019 Wide Arp | arp | Delay 18% | Off | Width 24% |
-| 42 | 020 Heavy Crush | fx | Crush 80% | Drive 50% | Limit 70% |
-| 43 | 021 Punch Kit | kit | Drive 36% | Crush 20% | Limit 60% |
+| 26 | 001 Neon Keys | keys | Drive 30% | Off | Comp 26% |
+| 27 | 002 Thin Piano | electric piano | Chorus 12% | Off | Tilt 16% |
+| 28 | 003 Thin Clav | clav | Drive 34% | Off | Comp 28% |
+| 29 | 004 Perc Organ | organ | Drive 22% | Off | Comp 24% |
+| 30 | 005 Metal Bells | bells | Delay 20% | Drive 18% | Width 24% |
+| 31 | 006 Neon Pluck | pluck | Drive 24% | Off | Comp 22% |
+| 32 | 007 Sparse Pluck | pluck | Delay 8% | Off | Comp 14% |
+| 33 | 008 Thin Stab | stab | Drive 30% | Off | Comp 30% |
+| 34 | 009 Hard Bass | bass | Drive 40% | Off | Limit 55% |
+| 35 | 010 Sparse Bass | bass | Drive 14% | Off | Comp 18% |
+| 36 | 011 Sync Lead | lead | Drive 32% | Delay 16% | Comp 26% |
+| 37 | 012 Stab Brass | brass | Drive 26% | Off | Comp 30% |
+| 38 | 013 Tight Strings | strings | Chorus 16% | Off | Comp 30% |
+| 39 | 014 Breath Choir | choir | Chorus 24% | Delay 16% | Width 24% |
+| 40 | 015 Poly Pad | pad | Chorus 28% | Delay 18% | Width 26% |
+| 41 | 016 Sweep Motion | motion | Chorus 22% | Delay 36% | Width 32% |
+| 42 | 017 Skew Texture | texture | Crush 45% | Drive 24% | Tilt 40% |
+| 43 | 018 Pulse Drone | drone | Drive 20% | Delay 16% | Tilt 24% |
+| 44 | 019 Wide Arp | arp | Delay 18% | Off | Width 24% |
+| 45 | 020 Heavy Crush | fx | Crush 80% | Drive 50% | Limit 70% |
+| 46 | 021 Punch Kit | kit | Drive 36% | Crush 20% | Limit 60% |
 
 ### Family 03
 
 | # | Preset | Role | Insert 1 | Insert 2 | Master |
 |---:|---|---|---|---|---|
-| 44 | 001 Piano Stack | keys | Chorus 12% | Delay 12% | Tilt 16% |
-| 45 | 002 Soft EP | electric piano | Chorus 18% | Off | Tilt 18% |
-| 46 | 003 Soul Piano | electric piano | Chorus 26% | Delay 14% | Tilt 22% |
-| 47 | 004 Clav Stab | clav | Drive 24% | Off | Comp 26% |
-| 48 | 005 Dry Clav | clav | Drive 18% | Off | Comp 20% |
-| 49 | 006 Warm Organ | organ | Chorus 20% | Off | Comp 22% |
-| 50 | 007 Bottle Bells | bells | Delay 14% | Chorus 14% | Width 22% |
-| 51 | 008 Muted Pluck | pluck | Delay 10% | Off | Comp 18% |
-| 52 | 009 Reed Stab | stab | Chorus 18% | Delay 12% | Comp 26% |
-| 53 | 010 Finger Bass | bass | Drive 20% | Off | Comp 24% |
-| 54 | 011 Solo Lead | lead | Delay 16% | Chorus 12% | Comp 22% |
-| 55 | 012 Ensemble Brass | brass | Chorus 20% | Off | Comp 30% |
-| 56 | 013 Section Strings | strings | Chorus 24% | Delay 16% | Width 24% |
-| 57 | 014 Ooh Choir | choir | Chorus 22% | Delay 16% | Width 22% |
-| 58 | 015 Dream Pad | pad | Chorus 28% | Delay 16% | Width 26% |
-| 59 | 016 Slow Sweep | motion | Chorus 22% | Delay 20% | Tilt 22% |
-| 60 | 017 Hollow Texture | texture | Crush 12% | Delay 16% | Tilt 18% |
-| 61 | 018 Warm Drone | drone | Chorus 18% | Delay 14% | Tilt 20% |
-| 62 | 019 Mallet Arp | arp | Delay 10% | Off | Comp 18% |
-| 63 | 020 Slap Delay | fx | Delay 48% | Crush 26% | Width 30% |
-| 64 | 021 Dry Perc | kit | Drive 22% | Crush 16% | Limit 46% |
+| 47 | 001 Piano Stack | keys | Chorus 12% | Delay 12% | Tilt 16% |
+| 48 | 002 Soft EP | electric piano | Chorus 18% | Off | Tilt 18% |
+| 49 | 003 Soul Piano | electric piano | Chorus 26% | Delay 14% | Tilt 22% |
+| 50 | 004 Clav Stab | clav | Drive 24% | Off | Comp 26% |
+| 51 | 005 Dry Clav | clav | Drive 18% | Off | Comp 20% |
+| 52 | 006 Warm Organ | organ | Chorus 20% | Off | Comp 22% |
+| 53 | 007 Bottle Bells | bells | Delay 14% | Chorus 14% | Width 22% |
+| 54 | 008 Muted Pluck | pluck | Delay 10% | Off | Comp 18% |
+| 55 | 009 Reed Stab | stab | Chorus 18% | Delay 12% | Comp 26% |
+| 56 | 010 Finger Bass | bass | Drive 20% | Off | Comp 24% |
+| 57 | 011 Solo Lead | lead | Delay 16% | Chorus 12% | Comp 22% |
+| 58 | 012 Ensemble Brass | brass | Chorus 20% | Off | Comp 30% |
+| 59 | 013 Section Strings | strings | Chorus 24% | Delay 16% | Width 24% |
+| 60 | 014 Ooh Choir | choir | Chorus 22% | Delay 16% | Width 22% |
+| 61 | 015 Dream Pad | pad | Chorus 28% | Delay 16% | Width 26% |
+| 62 | 016 Slow Sweep | motion | Chorus 22% | Delay 20% | Tilt 22% |
+| 63 | 017 Hollow Texture | texture | Crush 12% | Delay 16% | Tilt 18% |
+| 64 | 018 Warm Drone | drone | Chorus 18% | Delay 14% | Tilt 20% |
+| 65 | 019 Mallet Arp | arp | Delay 10% | Off | Comp 18% |
+| 66 | 020 Slap Delay | fx | Delay 48% | Crush 26% | Width 30% |
+| 67 | 021 Dry Perc | kit | Drive 22% | Crush 16% | Limit 46% |
 
 ### Family 04
 
 | # | Preset | Role | Insert 1 | Insert 2 | Master |
 |---:|---|---|---|---|---|
-| 65 | 001 Vector Keys | keys | Chorus 26% | Delay 14% | Width 24% |
-| 66 | 002 Phase Piano | electric piano | Chorus 34% | Delay 12% | Width 22% |
-| 67 | 003 Wave Clav | clav | Chorus 20% | Drive 18% | Comp 24% |
-| 68 | 004 Drift Organ | organ | Chorus 32% | Delay 12% | Width 24% |
-| 69 | 005 Chime Bells | bells | Delay 22% | Chorus 20% | Width 26% |
-| 70 | 006 Harp Pluck | pluck | Chorus 18% | Delay 14% | Width 22% |
-| 71 | 007 Soft Stab | stab | Chorus 16% | Delay 12% | Comp 24% |
-| 72 | 008 Sub Bass | bass | Drive 16% | Off | Comp 26% |
-| 73 | 009 Air Lead | lead | Delay 20% | Chorus 16% | Width 22% |
-| 74 | 010 Swell Brass | brass | Chorus 24% | Delay 14% | Width 24% |
-| 75 | 011 Bowed Strings | strings | Chorus 30% | Delay 16% | Width 24% |
-| 76 | 012 Air Choir | choir | Chorus 28% | Delay 18% | Width 26% |
-| 77 | 013 Cloud Pad | pad | Chorus 36% | Delay 22% | Width 30% |
-| 78 | 014 Sparse Pad | pad | Chorus 12% | Delay 10% | Width 16% |
-| 79 | 015 Motion Pad | motion | Chorus 35% | Delay 24% | Width 55% |
-| 80 | 016 Tilt Texture | texture | Crush 16% | Delay 18% | Tilt 48% |
-| 81 | 017 Slow Drone | drone | Chorus 20% | Delay 16% | Tilt 22% |
-| 82 | 018 Seq Arp | arp | Delay 12% | Chorus 12% | Width 20% |
-| 83 | 019 Wash Delay | fx | Delay 62% | Chorus 28% | Width 36% |
-| 84 | 020 Metal Kit | kit | Crush 18% | Drive 22% | Limit 48% |
+| 68 | 001 Vector Keys | keys | Chorus 26% | Delay 14% | Width 24% |
+| 69 | 002 Phase Piano | electric piano | Chorus 34% | Delay 12% | Width 22% |
+| 70 | 003 Wave Clav | clav | Chorus 20% | Drive 18% | Comp 24% |
+| 71 | 004 Drift Organ | organ | Chorus 32% | Delay 12% | Width 24% |
+| 72 | 005 Chime Bells | bells | Delay 22% | Chorus 20% | Width 26% |
+| 73 | 006 Harp Pluck | pluck | Chorus 18% | Delay 14% | Width 22% |
+| 74 | 007 Soft Stab | stab | Chorus 16% | Delay 12% | Comp 24% |
+| 75 | 008 Sub Bass | bass | Drive 16% | Off | Comp 26% |
+| 76 | 009 Air Lead | lead | Delay 20% | Chorus 16% | Width 22% |
+| 77 | 010 Swell Brass | brass | Chorus 24% | Delay 14% | Width 24% |
+| 78 | 011 Bowed Strings | strings | Chorus 30% | Delay 16% | Width 24% |
+| 79 | 012 Air Choir | choir | Chorus 28% | Delay 18% | Width 26% |
+| 80 | 013 Cloud Pad | pad | Chorus 36% | Delay 22% | Width 30% |
+| 81 | 014 Sparse Pad | pad | Chorus 12% | Delay 10% | Width 16% |
+| 82 | 015 Motion Pad | motion | Chorus 35% | Delay 24% | Width 55% |
+| 83 | 016 Tilt Texture | texture | Crush 16% | Delay 18% | Tilt 48% |
+| 84 | 017 Slow Drone | drone | Chorus 20% | Delay 16% | Tilt 22% |
+| 85 | 018 Seq Arp | arp | Delay 12% | Chorus 12% | Width 20% |
+| 86 | 019 Wash Delay | fx | Delay 62% | Chorus 28% | Width 36% |
+| 87 | 020 Metal Kit | kit | Crush 18% | Drive 22% | Limit 48% |
 
 ### Family 05
 
 | # | Preset | Role | Insert 1 | Insert 2 | Master |
 |---:|---|---|---|---|---|
-| 85 | 001 Stage Keys | keys | Chorus 14% | Off | Comp 28% |
-| 86 | 002 Reed Piano | electric piano | Chorus 10% | Off | Tilt 18% |
-| 87 | 003 Funk Clav | clav | Drive 22% | Off | Comp 26% |
-| 88 | 004 Rock Organ | organ | Drive 20% | Off | Comp 26% |
-| 89 | 005 Ping Bells | bells | Delay 8% | Off | Width 20% |
-| 90 | 006 Mute Pluck | pluck | Drive 10% | Off | Comp 18% |
-| 91 | 007 Short Stab | stab | Drive 16% | Off | Comp 26% |
-| 92 | 008 Round Bass | bass | Drive 18% | Off | Comp 26% |
-| 93 | 009 Saw Lead | lead | Drive 24% | Off | Comp 24% |
-| 94 | 010 Section Brass | brass | Chorus 12% | Off | Comp 24% |
-| 95 | 011 Small Strings | strings | Chorus 14% | Off | Width 20% |
-| 96 | 012 Close Choir | choir | Chorus 10% | Off | Width 18% |
-| 97 | 013 Tape Pad | pad | Delay 14% | Off | Width 22% |
-| 98 | 014 Filter Motion | motion | Chorus 18% | Off | Width 24% |
-| 99 | 015 Broken Texture | texture | Crush 22% | Off | Tilt 26% |
-| 100 | 016 Dark Drone | drone | Chorus 16% | Off | Tilt 20% |
-| 101 | 017 Tight Arp | arp | Delay 6% | Off | Comp 16% |
-| 102 | 018 Room Crush | fx | Crush 55% | Off | Limit 50% |
-| 103 | 019 Dry Kit | kit | Drive 20% | Off | Limit 42% |
-| 104 | 020 Hard Kit | kit | Drive 42% | Off | Comp 70% |
-| 105 | 021 Tape Kit | kit | Drive 30% | Off | Limit 45% |
+| 88 | 001 Stage Keys | keys | Chorus 14% | Off | Comp 28% |
+| 89 | 002 Reed Piano | electric piano | Chorus 10% | Off | Tilt 18% |
+| 90 | 003 Funk Clav | clav | Drive 22% | Off | Comp 26% |
+| 91 | 004 Rock Organ | organ | Drive 20% | Off | Comp 26% |
+| 92 | 005 Ping Bells | bells | Delay 8% | Off | Width 20% |
+| 93 | 006 Mute Pluck | pluck | Drive 10% | Off | Comp 18% |
+| 94 | 007 Short Stab | stab | Drive 16% | Off | Comp 26% |
+| 95 | 008 Round Bass | bass | Drive 18% | Off | Comp 26% |
+| 96 | 009 Saw Lead | lead | Drive 24% | Off | Comp 24% |
+| 97 | 010 Section Brass | brass | Chorus 12% | Off | Comp 24% |
+| 98 | 011 Small Strings | strings | Chorus 14% | Off | Width 20% |
+| 99 | 012 Close Choir | choir | Chorus 10% | Off | Width 18% |
+| 100 | 013 Tape Pad | pad | Delay 14% | Off | Width 22% |
+| 101 | 014 Filter Motion | motion | Chorus 18% | Off | Width 24% |
+| 102 | 015 Broken Texture | texture | Crush 22% | Off | Tilt 26% |
+| 103 | 016 Dark Drone | drone | Chorus 16% | Off | Tilt 20% |
+| 104 | 017 Tight Arp | arp | Delay 6% | Off | Comp 16% |
+| 105 | 018 Room Crush | fx | Crush 55% | Off | Limit 50% |
+| 106 | 019 Dry Kit | kit | Drive 20% | Off | Limit 42% |
+| 107 | 020 Hard Kit | kit | Drive 42% | Off | Comp 70% |
+| 108 | 021 Tape Kit | kit | Drive 30% | Off | Limit 45% |
 
 <!-- END GENERATED PRESET TABLE -->
 
