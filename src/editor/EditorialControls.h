@@ -140,7 +140,7 @@ public:
     const bool bypassed = plugin && plugin->GetParam(mBypassParam)->Int() > 0;
     g.FillRect(bypassed ? kMuteRed.WithOpacity(0.65f) : kGreen, bypass);
     g.DrawRect(kLine, bypass, nullptr, 1.f);
-    g.DrawText(MonoBold(9, kPaper, EAlign::Center), bypassed ? "BYP" : "ACT", bypass);
+    g.DrawText(MonoBold(9, kInk, EAlign::Center), bypassed ? "BYP" : "ACT", bypass);
   }
 
   void OnMouseDown(float x, float y, const IMouseMod&) override

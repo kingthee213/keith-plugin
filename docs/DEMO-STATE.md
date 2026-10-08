@@ -38,14 +38,15 @@ control, synth recreation gate 40 passed 0 failed.
 
 ## Open, and visible in `design/screenshots/w5-verified.png` and the running window
 
-- Several toggle controls read as blank coloured squares at normal size, but they are not blank. The
-  label is drawn in a pale colour on a pale fill, so it vanishes. Two sites: the button style at
-  `src/editor/EditorialLayout.h:38` pairs a cream fill with cream text for the active option, so `FREE`
-  and `OFF` sit cream on cream while the inactive `SYNC` and `ON` are crisp white on dark, which is
-  backwards; and the effects indicator at `src/editor/EditorialControls.h:143` draws `ACT` in cream on
-  the bright green fill. Reading the buttons at 1:1 confirms the text is present. The fix is dark ink
-  for the label wherever the fill is light. This is the largest remaining cosmetic defect.
-- The preset selector row in LOADED SOUNDS renders its text partly overlapping the neighbouring buttons.
+- Fixed. The toggles read. `IVTabSwitchControl` draws one label colour for every tab, so a light
+  selected fill under a cream label could never read. The tab style now fills light in both states with
+  dark ink text, which is the idiom in the owner's reference, and the selected tab is a solid hot pink.
+  The effects `ACT` indicator draws dark ink on its green fill instead of cream. Found on the way: the
+  `kHotPink` constant had a typo, `0x4FA3` in a byte position, which resolved to a pale pink; it is now
+  the intended `0xFF, 0x4F, 0xA3`.
+- The GLOBAL panel draws two bright green vertical bars beside `MWD` and an `OFF` badge, and they read
+  as unlabelled slabs. That is the loudest thing left on the surface.
+- The preset row in LOADED SOUNDS renders `Ld 01` and its octave label overlapping the adjacent buttons.
 - `NOISE` in OSCILLATORS is legible as `NOTSE` at the current size because the glyphs touch. The string
   is correct, the size is not.
 - The city artwork panel is now an 80 px wide column. It reads as a deliberate vertical slice, but it is

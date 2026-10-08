@@ -35,7 +35,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   };
 
   auto tabs = [&](int param, std::initializer_list<const char*> choices) {
-    auto style = HardButton(kPanel, kPaper, 10).WithValueText(MonoBold(10, kPaper));
+    auto style = HardButton(kPaper, kInk, 10).WithValueText(MonoBold(10, kInk));
     style.colorSpec.mColors[kPR] = kHotPink;
     g->AttachControl(new IVTabSwitchControl(CRect(param), param, choices, "", style,
                                              EVShape::Rectangle));
