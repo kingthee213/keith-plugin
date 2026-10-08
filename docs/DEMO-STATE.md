@@ -44,8 +44,19 @@ control, synth recreation gate 40 passed 0 failed.
   The effects `ACT` indicator draws dark ink on its green fill instead of cream. Found on the way: the
   `kHotPink` constant had a typo, `0x4FA3` in a byte position, which resolved to a pale pink; it is now
   the intended `0xFF, 0x4F, 0xA3`.
-- The GLOBAL panel draws two bright green vertical bars beside `MWD` and an `OFF` badge, and they read
-  as unlabelled slabs. That is the loudest thing left on the surface.
+- Fixed. The GLOBAL panel's green bars are gone. They were not a level meter, they read `kParamGain`
+  and drew it as a bar, so the bars sat pegged at 100 percent whenever the synth was idle, with no
+  label, and `kParamGain` already has a labelled VOL knob on the same panel. Removed as a duplicate.
+- Fixed. The LFO panel drew a waveform box at `IRECT(872, 60, 950, 100)`, which is inside the rate
+  knob's own rectangle of `{886, 40, 963, 113}`, so it covered the knob's label and value bands and the
+  big RATE sat on top of the squiggle. That panel has no slack to move it into, so the LFO waveform
+  decoration is removed. The two oscillator waveform squiggles stay, they are clear of their knobs.
+- Both were invisible to the geometry gate because they were hand-placed `IRECT` decorations rather
+  than entries in the geometry table. A decoration that overlaps a control is the gap that let them
+  through twice. Worth closing by putting decorations in the table too.
+- The GLOBAL panel now has an empty gap where the removed bars sat, which reads as breathing room.
+- The bottom left rail's help text renders as `MWD/L/R PLAY` and `2/X OCTAVE` instead of `A-L PLAY`
+  and `Z/X OCTAVE`, so those two lines overlap each other.
 - The preset row in LOADED SOUNDS renders `Ld 01` and its octave label overlapping the adjacent buttons.
 - `NOISE` in OSCILLATORS is legible as `NOTSE` at the current size because the glyphs touch. The string
   is correct, the size is not.

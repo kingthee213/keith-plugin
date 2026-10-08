@@ -3,20 +3,20 @@ set -uo pipefail
 cd /Users/solace/YoteMachine-build
 export PATH="$HOME/cmakebin:$PATH"
 
-cp /tmp/win8.png design/screenshots/w8-editor-fit.png
+cp /tmp/win10.png design/screenshots/w10-editor-fit.png
 git add -A
-git -c user.name=sss0lace -c user.email=noahissaabbas@gmail.com commit -q -m "Make the toggle labels readable
+git -c user.name=sss0lace -c user.email=noahissaabbas@gmail.com commit -q -m "Remove two decorations that covered the controls underneath them
 
-IVTabSwitchControl draws one label colour for every tab, so the light selected fill
-under a cream label could never read on FREE, OFF, ACT or any of the effects
-indicators. The tab style now fills light in both states with dark ink text and marks
-the selected tab in hot pink. The effects ACT indicator draws dark ink on green.
+The GLOBAL panel drew kParamGain as an unlabelled bar, so it sat pegged at 100
+percent whenever the synth was idle and duplicated the labelled VOL knob beside it.
+The LFO panel drew a waveform box inside the rate knob's own rectangle, so the knob's
+label and value were covered by the squiggle. Both were hand-placed IRECT decorations,
+which is why the geometry gate could not see either one.
 
-kHotPink had 0x4FA3 in a byte position, which resolved to a pale pink; corrected to
-0xFF, 0x4F, 0xA3.
+Removed both. The oscillator waveform squiggles stay; they are clear of their knobs.
 
-Verified from a window capture read at 1:1 and as a whole: every toggle label reads,
-geometry gate 636 passed 0 failed."
+Verified from a window capture: LFO rate and depth read cleanly in both sections, no
+decoration sits over a control, geometry gate 636 passed 0 failed."
 git push -q origin mags-rebuild-and-levels
 echo "commit: $(git log --oneline -1)"
 

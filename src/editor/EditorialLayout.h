@@ -102,8 +102,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   g->AttachControl(new KeithTextControl(IRECT(776, 24, 868, 38), "LFO 1", MonoBold(9, kHotPink)));
   g->AttachControl(new KeithTextControl(IRECT(776, 134, 868, 148), "LFO 2",
                                         MonoBold(9, kHotPink)));
-  g->AttachControl(new KeithWaveform(IRECT(872, 60, 950, 100), kParamLfoRate, kParamLfoShape,
-                                     kHotPink));
   freeKnob(kParamLfoRate, "RATE");
   freeKnob(kParamLfoAmount, "DEPTH", kGreen, true);
   menu(kParamLfoShape, "SHAPE", {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
@@ -164,8 +162,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   menu(kParamModWheelDest, ControlFor(kParamModWheelDest).label,
        {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
   freeKnob(kParamModWheelAmount, ControlFor(kParamModWheelAmount).label, kMagenta, true);
-  g->AttachControl(new KeithMeterControl(IRECT(kPanelGlobal.r - 56, kPanelGlobal.b - 78,
-                                               kPanelGlobal.r - 8, kPanelGlobal.b - 10), kParamGain));
 
   // LEFT RAIL — tape bus and direct/curve trims.
   freeKnob(kParamTapeWow, "WOW", kMagenta);
