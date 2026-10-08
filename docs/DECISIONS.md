@@ -58,3 +58,31 @@ library be used to broaden the sound library.
 **Effect on the engine:** the plugin previously had no sample playback at all (the drum section is
 synthesized, because there was no permissible content). This decision is what makes a sampler
 worth building, so a sample-playback engine becomes in scope.
+
+---
+
+## D3 — GPL-3.0 reuse from Surge and OB-Xf approved
+
+**Decided by the owner, 2026-10-08.** The clean-room restriction in `BRIEF.md` [L2] is retracted for
+Surge (`surge-synthesizer/surge`) and OB-Xf (`surge-synthesizer/OB-Xf`). The owner accepts that
+Keith becomes **GPL-3.0** and that handing the plugin to one person still counts as distribution, so
+**complete source ships with the binary**. Reuse is explicit: vendored or adapted GPL files keep
+licence headers and are listed in the repo licence notes. JUCE stays out (§5). Freakshow code and
+Splice content stay forbidden.
+
+**Effect on the spec:** [L2] now authorises GPL reuse from those two trees. `BRIEF.md` §12 licence
+audit no longer treats all GPL synth source as forbidden — only unattributed or undisclosed imports.
+
+---
+
+## D4 — comic single-window interface directed
+
+**Decided by the owner, 2026-10-08.** The editorial, seven-page, photoreal-material UI described in
+`docs/UI-DESIGN.md` is **superseded**. The owner directs a return to a **comic, painted** interface:
+one window, every control visible, **no page tabs**. The earlier comic prototype failed on execution
+(cheap look), not on style. Gorillaz and Green Lantern remain attitude-and-palette references only;
+no borrowed characters or logos ([L5]).
+
+**Effect on the spec:** `BRIEF.md` §10 and [L5] describe the comic single-window layout. The editor
+lane replaces tab navigation with panel layout; host parameter IDs stay stable. `docs/UI-DESIGN.md`
+is updated to point here and to the new layout work, not deleted.

@@ -2,11 +2,25 @@
 
 ## Owner direction and status
 
-The owner superseded the comic-panel prototype with an editorial, avant-garde punk instrument, then explicitly requested realistic high-resolution materials and visible light bounce. The latest instruction is to rebuild the UI/UX from first principles, with Sam hand-editing. This document describes the replacement build, not an owner-approved final look.
+**Current direction (D4, 2026-10-08):** comic, painted, single-window UI — every control visible, no
+page tabs. See `BRIEF.md` §10 and `docs/DECISIONS.md` D4. Gorillaz and Green Lantern inform
+attitude and green/red contrast only; every asset is original.
 
-The original Gorillaz and Green Lantern references inform attitude and green/red contrast only. Every rendered asset is original. The old `design/editor-prototype.html` and U3/U8 briefs are historical references, not the current visual contract.
+**What this document still describes:** the **outgoing** seven-page editorial build (realistic
+materials, `EditorialLayout.h`, Blender renders). That layout is **not** the current contract. It
+remains here as implementation history and verification reference until the comic single-window
+replacement lands.
 
-## Instrument model
+**New layout work:** the editor lane rebuilds from `BRIEF.md` §10 — one painted panel per functional
+group (source, modulation, filter, envelopes, tape, library, FX) arranged in one frame, not hidden
+behind tabs. Parameter bindings and host IDs in `docs/PARAM-MANIFEST.md` do not change. No new
+brief is required beyond D4; track progress in editor commits and owner review captures.
+
+The original Gorillaz and Green Lantern references inform attitude and green/red contrast only.
+Every rendered asset in either generation is original. The old `design/editor-prototype.html` and
+U3/U8 briefs are historical references, not the visual contract.
+
+## Instrument model (outgoing editorial build)
 
 Product name (UI): **Yote Machine**, from **The Youth Hostel DSP**. This is a display-name change only:
 the repo, binary, plugin name and preset naming are unchanged, per owner instruction. The wordmark
@@ -16,7 +30,10 @@ One worn green-enamel instrument with a stamped red nameplate, exposed metal at 
 
 Default design canvas: 1280 x 800, scaled through iPlug2's corner resizer. This is uniform scaling, not responsive reflow. Small-size legibility needs owner validation; do not claim the old 1024 x 700 layout guarantee.
 
-## Workflow and layout
+## Workflow and layout (outgoing — seven pages)
+
+This section documents the **superseded** tabbed editorial UI. Do not implement new features against
+it unless explicitly rolling back D4.
 
 - Header: wordmark, grouped family/preset dropdown, previous/next preset, master output.
 - Source: two horizontal oscillator work areas. Oversized morph dials, DSP-derived waveform, tune, level and pulse width. Side mixer holds sub, noise, FM and synth level.
@@ -26,9 +43,9 @@ Default design canvas: 1280 x 800, scaled through iPlug2's corner resizer. This 
 - Permanent right channel: filter type, cutoff, resonance, envelope depth, engine mode, polyphony, glide, unison and detune remain accessible across pages.
 - Footer: playable keyboard and typing-key hints.
 
-Page choices are UI state, not extra automation parameters. Existing host IDs 0 through 42 remain unchanged. The family menu and patch rows restore real baked presets.
+Page choices are UI state, not extra automation parameters. Existing host IDs 0 through 110 remain unchanged. The family menu and patch rows restore real baked presets.
 
-## Materials and assets
+## Materials and assets (outgoing editorial build)
 
 `tools/render_materials.py` builds the original asset scene in Blender 5.x. Cycles runs on CPU with six threads and 40 samples. One fixed orthographic camera and one upper-left area light illuminate the complete instrument. Uniform world fill is nondirectional. The camera and light do not move for page crops.
 
@@ -62,7 +79,7 @@ Owner-added references: The God Particle and Output Arcade. These are control/UX
 - Click a numeric knob readout for exact entry. Knob and envelope prompts use the already-loaded Space Mono font, not iPlug2's unloaded default font. Native Return/Escape completion is asynchronous; runtime probes wait for the field to close before continuing.
 - Envelope time handles use the same forward and inverse mapping. Sustain moves vertically. Readout clicks prompt numeric entry. Double-click a handle resets that parameter.
 - Library scrolling clamps to its own content, including short content. Scrolling one list does not move its neighbour.
-- Returning to a page preserves its internal selected envelope tab.
+- Returning to a page preserves its internal selected envelope tab (outgoing tabbed UI only).
 - Family labels remain Family 01 through Family 05. The factory library is 103 original parameter-level patches. They are not sampled factory ROM programs, and they are not the documented program lists.
 - Internally, preset rows are grouped by emulated source family first — Triton, Triton Extreme, Korg M1, Korg Wavestation, then Korg TR — and only then by neutral sound role. Those reference names are metadata/documentation only; the editor exposes Family 01–05 and neutral role names.
 
