@@ -23,6 +23,7 @@ Writes resources/images/chassis.png at 3840x2400 and fails if the size is wrong.
 from __future__ import annotations
 
 import math
+import json
 import random
 import re
 from pathlib import Path
@@ -52,6 +53,44 @@ PANEL_FILL = {
     "olive": (116, 112, 62),
 }
 JITTER = 0.6
+
+CONCEPT = ROOT / "design"
+CONCEPT_PALETTE = CONCEPT / "concept-palette.json"
+CONCEPT_TILE = {"wood": CONCEPT / "concept-tile-wood.png", "panel": CONCEPT / "concept-tile-charcoal.png"}
+
+
+def load_concept():
+    """Colours and texture patches from the owner's concept render, sampled by
+    tools/sample_concept.py. Returns empty structures when the render is absent, so the face
+    still renders from the built-in palette."""
+    palette, tiles = {}, {}
+    if CONCEPT_PALETTE.exists():
+        raw = json.loads(CONCEPT_PALETTE.read_text())
+        palette = {key: tuple(value) for key, value in raw.items()
+                   if isinstance(value, list) and len(value) == 3}
+    for key, path in CONCEPT_TILE.items():
+        if path.exists():
+            tiles[key] = Image.open(path).convert("RGB")
+    return palette, tiles
+
+
+def tiled(image: Image.Image, tile: Image.Image, alpha: float) -> Image.Image:
+    """Multiply a patch over an image, tiled at 1:1. Tiling is the point: every pixel of the
+    concept render stays at its own resolution instead of being stretched to fit."""
+    width, height = image.size
+    layer = Image.new("RGB", (width, height))
+    for y in range(0, height, tile.size[1]):
+        for x in range(0, width, tile.size[0]):
+            layer.paste(tile, (x, y))
+    flat = Image.new("RGB", (width, height), (255, 255, 255))
+    return ImageChops.multiply(image, Image.blend(flat, layer, alpha))
+
+
+def texture(canvas: Image.Image, tile: Image.Image, box, alpha: float) -> None:
+    l, t, r, b = box
+    if r - l <= 0 or b - t <= 0:
+        return
+    canvas.paste(tiled(canvas.crop((l, t, r, b)), tile, alpha), (l, t))
 
 
 def s(v: float) -> int:
@@ -123,7 +162,7 @@ def hatch(layer_box, rng, spacing, angle_deg, alpha, width=1):
     return layer
 
 
-def wood(canvas: Image.Image, rng: random.Random) -> None:
+def wood(canvas: Image.Image, rng: random.Random, tiles: dict) -> None:
     canvas.paste(vertical_gradient((W, H), WOOD_LIGHT, WOOD), (0, 0))
     draw = ImageDraw.Draw(canvas, "RGBA")
 
@@ -155,6 +194,9 @@ def wood(canvas: Image.Image, rng: random.Random) -> None:
     wood_hatch = hatch((0, 0, W, H), rng, s(9), 68, 34, width=1)
     canvas.paste(Image.new("RGB", (W, H), shade(WOOD_DARK, 0.5)), (0, 0),
                  wood_hatch.filter(ImageFilter.GaussianBlur(1)))
+
+    if "wood" in tiles:
+        texture(canvas, tiles["wood"], (0, 0, W, H), 0.55)
 
     grime = Image.new("L", (W, H), 0)
     gdraw = ImageDraw.Draw(grime)
@@ -217,7 +259,8 @@ def screws(draw, box, rng) -> None:
         draw.line((px - radius * 0.5, py, px + radius * 0.5, py), fill=INK + (220,), width=s(1))
 
 
-def draw_panel(canvas: Image.Image, draw, box, fill, title: str, rng: random.Random) -> None:
+def draw_panel(canvas: Image.Image, draw, box, fill, title: str, rng: random.Random,
+               tiles: dict | None = None) -> None:
     l, t, r, b = box
     pw, ph = r - l + 1, b - t + 1
 
@@ -226,6 +269,8 @@ def draw_panel(canvas: Image.Image, draw, box, fill, title: str, rng: random.Ran
     canvas.paste(Image.new("RGB", (W, H), INK), (0, 0), shadow.filter(ImageFilter.GaussianBlur(s(8))))
 
     plate = vertical_gradient((pw, ph), shade(fill, 1.24), shade(fill, 0.86))
+    if tiles and "panel" in tiles:
+        plate = tiled(plate, tiles["panel"], 0.5)
     mask = Image.new("L", (pw, ph), 0)
     ImageDraw.Draw(mask).polygon([(x - l, y - t) for x, y in wobble(box, rng)], fill=255)
     canvas.paste(plate, (l, t), mask)
@@ -425,14 +470,29 @@ def paper_grain(canvas: Image.Image, rng: random.Random) -> None:
 
 
 def main() -> None:
+    global WOOD, WOOD_LIGHT, WOOD_DARK, MAGENTA, INK
     rng = random.Random(20261008)
     boxes = parse_boxes(GEOM)
     missing = [k for k in ("kPanelOsc", "kPanelArt", "kWordmarkBox", "kPanelFx") if k not in boxes]
     if missing:
         raise SystemExit(f"EditorGeometry.h is missing {missing}")
 
+    palette, tiles = load_concept()
+    if palette:
+        WOOD = palette.get("wood", WOOD)
+        WOOD_LIGHT = shade(WOOD, 1.35)
+        WOOD_DARK = shade(WOOD, 0.42)
+        MAGENTA = palette.get("paint", MAGENTA)
+        INK = shade(palette.get("charcoal", INK), 0.4)
+        for key in PANEL_FILL:
+            if key in palette:
+                PANEL_FILL[key] = palette[key]
+        print(f"concept render sampled: wood {WOOD} panels {PANEL_FILL} paint {MAGENTA}")
+    else:
+        print("concept render absent, using the built-in palette")
+
     canvas = Image.new("RGB", (W, H), INK)
-    wood(canvas, rng)
+    wood(canvas, rng, tiles)
     draw = ImageDraw.Draw(canvas, "RGBA")
 
     styles = [
@@ -450,7 +510,7 @@ def main() -> None:
         if style is None:
             draw_cityscape(canvas, box, rng)
         else:
-            draw_panel(canvas, draw, box, PANEL_FILL[style], title, rng)
+            draw_panel(canvas, draw, box, PANEL_FILL[style], title, rng, tiles)
 
     draw_wordmark(canvas, tuple(s(v) for v in boxes["kWordmarkBox"]), rng)
     paper_grain(canvas, rng)
