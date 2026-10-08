@@ -55,9 +55,17 @@ control, synth recreation gate 40 passed 0 failed.
   than entries in the geometry table. A decoration that overlaps a control is the gap that let them
   through twice. Worth closing by putting decorations in the table too.
 - The GLOBAL panel now has an empty gap where the removed bars sat, which reads as breathing room.
-- The bottom left rail's help text renders as `MWD/L/R PLAY` and `2/X OCTAVE` instead of `A-L PLAY`
-  and `Z/X OCTAVE`, so those two lines overlap each other.
-- The preset row in LOADED SOUNDS renders `Ld 01` and its octave label overlapping the adjacent buttons.
+- The bottom rail's help text is fine. I read it as `MWD/L/R PLAY` in a downscaled window capture and
+  wrote that here as a defect. At 1:1 it reads `MIDI / A-L PLAY` and `Z/X OCTAVE`, two clean lines, no
+  overlap. Crop the region before trusting a reading off a scaled capture.
+- The preset row in LOADED SOUNDS is a real collision, and it is an over-subscribed panel rather than a
+  misplaced control. The panel is 186 px tall. Its content needs a 26 px title band, two 73 px knob rows
+  and a 6 px gap, which is 178 px, leaving 8 px. The preset menu is drawn as a hand-built `IRECT` at
+  `kPanelSample.t + 108` through `kPanelSample.t + 152`, so it lands inside the second knob row and the
+  pitch-amount and kit-level knobs sit on top of the preset name. Something has to leave that panel for
+  the menu to have a band of its own, and that is a call about where the preset selector belongs rather
+  than a fix to apply blind. The hand-built `IRECT` is the same gap as the two decorations in the
+  GLOBAL and LFO panels: a control placed outside the geometry table is invisible to the gate.
 - `NOISE` in OSCILLATORS is legible as `NOTSE` at the current size because the glyphs touch. The string
   is correct, the size is not.
 - The city artwork panel is now an 80 px wide column. It reads as a deliberate vertical slice, but it is
