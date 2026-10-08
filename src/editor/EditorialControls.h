@@ -3,6 +3,7 @@
 #include "IPlugPluginBase.h"
 #include "../synth/CoreSynth.h"
 #include <functional>
+#include <cstring>
 #include <initializer_list>
 #include <memory>
 #include <string>
@@ -111,6 +112,101 @@ inline const char* FxKnobLabel(bool master, int algorithm, int knob)
                 : insertLabels[safeAlgorithm][safeKnob];
 }
 
+class KeithFxAlgoMenu : public IControl
+{
+public:
+  KeithFxAlgoMenu(const IRECT& r, int algoParam, int bypassParam, const char* label,
+                  std::initializer_list<const char*> options)
+  : IControl(r, algoParam)
+  , mBypassParam(bypassParam)
+  , mLabel(label)
+  {
+    for (const char* option : options)
+      mOptions.emplace_back(option);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    const int selected = SelectedIndex();
+    const IRECT menu = MenuBounds();
+    const IRECT bypass = BypassBounds();
+    g.DrawText(Mono(9, kPaper, EAlign::Near), mLabel.c_str(),
+                IRECT(mRECT.L, mRECT.T, mRECT.R, mRECT.T + 14.f));
+    g.FillRect(kPanelAlt, menu);
+    g.DrawRect(kLine, menu, nullptr, 1.f);
+    g.DrawText(MonoBold(10, kPaper, EAlign::Near), mOptions[static_cast<size_t>(selected)].c_str(),
+                menu.GetPadded(-7.f).GetReducedFromRight(16.f));
+    g.FillTriangle(kHotPink, menu.R - 13.f, menu.MH() - 2.f, menu.R - 5.f, menu.MH() - 2.f,
+                    menu.R - 9.f, menu.MH() + 3.f);
+
+    const bool bypassed = plugin && plugin->GetParam(mBypassParam)->Int() > 0;
+    g.FillRect(bypassed ? kMuteRed.WithOpacity(0.65f) : kGreen, bypass);
+    g.DrawRect(kLine, bypass, nullptr, 1.f);
+    g.DrawText(MonoBold(9, kPaper, EAlign::Center), bypassed ? "BYP" : "ACT", bypass);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod&) override
+  {
+    if (BypassBounds().Contains(x, y))
+    {
+      auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+      if (!plugin)
+        return;
+      const int bypassed = plugin->GetParam(mBypassParam)->Int();
+      plugin->GetParam(mBypassParam)->SetNormalized(bypassed > 0 ? 0.0 : 1.0);
+      SetDirty(false);
+      return;
+    }
+
+    const int selected = SelectedIndex();
+    mMenu.Clear();
+    for (int i = 0; i < static_cast<int>(mOptions.size()); ++i)
+    {
+      const int flags = i == selected ? IPopupMenu::Item::kChecked : 0;
+      mMenu.AddItem(new IPopupMenu::Item(mOptions[static_cast<size_t>(i)].c_str(), flags, i));
+    }
+    GetUI()->CreatePopupMenu(*this, mMenu, MenuBounds());
+  }
+
+  void OnPopupMenuSelection(IPopupMenu* menu, int) override
+  {
+    if (!menu || !menu->GetChosenItem() || mOptions.size() < 2)
+      return;
+    const int selected = menu->GetChosenItem()->GetTag();
+    if (selected < 0 || selected >= static_cast<int>(mOptions.size()))
+      return;
+    SetValueFromUserInput(static_cast<double>(selected) /
+                          static_cast<double>(mOptions.size() - 1), 0);
+    GetUI()->SetAllControlsDirty();
+  }
+
+private:
+  int SelectedIndex() const
+  {
+    const IParam* param = GetParam();
+    return param ? std::clamp(param->Int(), 0, static_cast<int>(mOptions.size()) - 1) : 0;
+  }
+
+  IRECT MenuBounds() const
+  {
+    IRECT menu = mRECT.GetReducedFromTop(16.f);
+    menu.R = mRECT.L + mRECT.W() * 0.72f;
+    return menu;
+  }
+
+  IRECT BypassBounds() const
+  {
+    const IRECT menu = MenuBounds();
+    return IRECT(menu.R + 4.f, menu.T, mRECT.R, menu.B);
+  }
+
+  int mBypassParam;
+  std::string mLabel;
+  std::vector<std::string> mOptions;
+  IPopupMenu mMenu;
+};
+
 class KeithFxKnobControl : public KeithKnobControl
 {
 public:
@@ -127,14 +223,59 @@ public:
   {
     auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
     const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
-    SetLabel(FxKnobLabel(mMaster, algorithm, mKnob));
+    const char* label = FxKnobLabel(mMaster, algorithm, mKnob);
+    if (algorithm <= 0 || std::strcmp(label, "NOT USED") == 0)
+      return;
+    SetLabel(label);
     KeithKnobControl::Draw(g);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
+    const char* label = FxKnobLabel(mMaster, algorithm, mKnob);
+    if (algorithm <= 0 || std::strcmp(label, "NOT USED") == 0)
+      return;
+    KeithKnobControl::OnMouseDown(x, y, mod);
   }
 
 private:
   int mAlgorithmParam;
   int mKnob;
   bool mMaster;
+};
+
+class KeithFxMixKnobControl : public KeithKnobControl
+{
+public:
+  KeithFxMixKnobControl(const IRECT& bounds, int paramIdx, int algorithmParam, const char* label,
+                        const IColor& accent)
+  : KeithKnobControl(bounds, paramIdx, label, accent, true, false, 4.0, 24.f, true)
+  , mAlgorithmParam(algorithmParam)
+  {
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
+    if (algorithm <= 0)
+      return;
+    KeithKnobControl::Draw(g);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    const int algorithm = plugin ? plugin->GetParam(mAlgorithmParam)->Int() : 0;
+    if (algorithm <= 0)
+      return;
+    KeithKnobControl::OnMouseDown(x, y, mod);
+  }
+
+private:
+  int mAlgorithmParam;
 };
 
 class KeithWaveform : public IControl

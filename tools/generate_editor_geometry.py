@@ -1,0 +1,381 @@
+#!/usr/bin/env python3
+"""Generate EditorGeometry.h control rects for W4 editor fit pass."""
+from __future__ import annotations
+
+KNOB_H = 34 + 19 + 20
+KNOB_GAP = 8
+TAB_H = 28
+DROPDOWN_H = 52
+FADER_H = 96
+FADER_W = 54
+MIN_W = 54
+PAD = 8
+CANVAS = (0, 0, 1280, 800)
+
+PANELS = {
+    "kPanelOsc": (218, 14, 456, 350),
+    "kPanelFilter": (458, 14, 634, 350),
+    "kPanelAmp": (636, 14, 876, 350),
+    "kPanelLfo": (878, 14, 1054, 350),
+    "kPanelMod": (1056, 14, 1272, 350),
+    "kPanelArt": (218, 356, 578, 542),
+    "kPanelSample": (584, 356, 848, 542),
+    "kPanelPads": (854, 356, 1272, 542),
+    "kPanelVintage": (218, 548, 368, 788),
+    "kPanelGlobal": (374, 548, 664, 788),
+    "kPanelFx": (670, 548, 1272, 788),
+    "kLeftRail": (0, 0, 210, 800),
+    "kWordmarkBox": (18, 28, 192, 118),
+}
+
+KINDS = {
+    "knob": "ControlKind::Knob",
+    "tab": "ControlKind::Tab",
+    "dropdown": "ControlKind::Dropdown",
+    "fader": "ControlKind::Fader",
+    "pad": "ControlKind::Pad",
+}
+
+LABELS = {
+    0: ("VOL", "knob", 1836), 1: ("DIST", "knob", 2448), 2: ("TONE", "knob", 2448),
+    3: ("WOW", "knob", 1836), 4: ("FLUT", "knob", 2448), 5: ("HISS", "knob", 2448),
+    6: ("PRINT", "knob", 3060), 7: ("MIX", "knob", 1836), 8: ("BYP", "tab", 1836),
+    9: ("TYPE", "tab", 2448), 10: ("POLY", "tab", 2448), 11: ("GLIDE", "knob", 3060),
+    12: ("UNI", "knob", 1836), 13: ("DET", "knob", 1836), 14: ("SHP", "knob", 1836),
+    15: ("TUNE", "knob", 2448), 16: ("LVL", "knob", 1836), 17: ("PW", "knob", 1224),
+    18: ("SHP", "knob", 1836), 19: ("TUNE", "knob", 2448), 20: ("LVL", "knob", 1836),
+    21: ("PW", "knob", 1224), 22: ("SUB", "knob", 1836), 23: ("NOISE", "knob", 3060),
+    24: ("FM", "knob", 1224), 25: ("TYPE", "tab", 2448), 26: ("CUT", "knob", 1836),
+    27: ("RES", "knob", 1836), 28: ("ENV", "knob", 1836), 29: ("A", "fader", 612),
+    30: ("D", "fader", 612), 31: ("S", "fader", 612), 32: ("R", "fader", 612),
+    33: ("PA", "knob", 1224), 34: ("PD", "knob", 1224), 35: ("PS", "knob", 1224),
+    36: ("PR", "knob", 1224), 37: ("AMT", "knob", 1836), 38: ("SYN", "knob", 1836),
+    39: ("FA", "knob", 1224), 40: ("FD", "knob", 1224), 41: ("FS", "knob", 1224),
+    42: ("FR", "knob", 1224), 43: ("SYNC", "tab", 2448), 44: ("RING", "tab", 2448),
+    45: ("KEY", "knob", 1836), 46: ("COMP", "knob", 2448), 47: ("RATE", "knob", 2448),
+    48: ("SHP", "dropdown", 1836), 49: ("DST", "dropdown", 1836), 50: ("DEP", "knob", 1836),
+    51: ("MWD", "dropdown", 1836), 52: ("MWA", "knob", 1836), 53: ("VA", "knob", 1224),
+    54: ("VF", "knob", 1224), 55: ("LEG", "tab", 1836), 56: ("I1", "dropdown", 1224),
+    57: ("A1", "knob", 1224), 58: ("B1", "knob", 1224), 59: ("C1", "knob", 1224),
+    60: ("M1", "knob", 1224), 62: ("I2", "dropdown", 1224), 63: ("A2", "knob", 1224),
+    64: ("B2", "knob", 1224), 65: ("C2", "knob", 1224), 66: ("M2", "knob", 1224),
+    68: ("MS", "dropdown", 1224), 69: ("MA", "knob", 1224), 70: ("MB", "knob", 1224),
+    71: ("MC", "knob", 1224), 72: ("MX", "knob", 1224), 74: ("OUT", "knob", 1836),
+    75: ("PAD", "pad", 1836), 76: ("LVL", "knob", 1836), 77: ("PAN", "knob", 1836),
+    78: ("TUN", "knob", 1836), 79: ("DEC", "knob", 1836), 80: ("FLT", "knob", 1836),
+    81: ("DRV", "knob", 1836), 82: ("MUT", "tab", 1836), 83: ("SOL", "tab", 1836),
+    84: ("KIT", "knob", 1836), 85: ("RT", "knob", 1224), 86: ("SHP", "dropdown", 1836),
+    87: ("DST", "dropdown", 1836), 88: ("DEP", "knob", 1836), 89: ("S1", "dropdown", 1224),
+    90: ("D1", "dropdown", 1224), 91: ("A1", "knob", 1224), 92: ("S2", "dropdown", 1224),
+    93: ("D2", "dropdown", 1224), 94: ("A2", "knob", 1224), 95: ("S3", "dropdown", 1224),
+    96: ("D3", "dropdown", 1224), 97: ("A3", "knob", 1224), 98: ("S4", "dropdown", 1224),
+    99: ("D4", "dropdown", 1224), 100: ("A4", "knob", 1224), 101: ("NK", "knob", 1224),
+    102: ("AK", "knob", 1224), 103: ("AB", "knob", 1224), 104: ("DK", "knob", 1224),
+    105: ("DB", "knob", 1224), 106: ("SD", "knob", 1224), 107: ("ST", "knob", 1224),
+    108: ("SW", "knob", 1224), 109: ("DIR", "knob", 1836), 110: ("CB", "knob", 1224),
+}
+
+BYPASS_VIA_ALGO = {61, 67, 73}
+rects: dict[int, tuple[float, float, float, float]] = {}
+
+def box(l, t, r, b):
+    return (l, t, r, b)
+
+def overlaps(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+def place_knobs_grid(items, l, t, r, b, cols, knob_w=None):
+    n = len(items)
+    rows = (n + cols - 1) // cols
+    kw = knob_w or min(64, (r - l - KNOB_GAP * (cols - 1)) / cols)
+    row_step = KNOB_H + KNOB_GAP
+    col_step = kw + KNOB_GAP
+    total_h = rows * KNOB_H + (rows - 1) * KNOB_GAP
+    y0 = t + max(0, (b - t - total_h) / 2)
+    for i, param in enumerate(items):
+        row, col = divmod(i, cols)
+        x = l + col * col_step
+        y = y0 + row * row_step
+        rects[param] = box(x, y, x + kw, y + KNOB_H)
+
+def place_row(items, l, t, w, h, gap=6):
+    x = l
+    for param in items:
+        rects[param] = box(x, t, x + w, t + h)
+        x += w + gap
+
+# OSC — 2x2 per oscillator, mixer row above the tabs
+osc_l, osc_t, osc_r, osc_b = PANELS["kPanelOsc"]
+ix, iy = osc_l + PAD, osc_t + 28
+kw = 54
+for col, params in enumerate([(14, 15, 16, 17), (18, 19, 20, 21)]):
+    cx = ix + col * (kw * 2 + 8)
+    for row, pair in enumerate([(params[0], params[1]), (params[2], params[3])]):
+        y = iy + row * (KNOB_H + 4)
+        rects[pair[0]] = box(cx, y, cx + kw, y + KNOB_H)
+        rects[pair[1]] = box(cx + kw + 4, y, cx + 2 * kw + 4, y + KNOB_H)
+mix_y = iy + 2 * (KNOB_H + 4) + 4
+mix_w = (osc_r - osc_l - 2 * PAD - 12) / 3
+for i, p in enumerate([22, 23, 24]):
+    rects[p] = box(ix + i * (mix_w + 6), mix_y, ix + i * (mix_w + 6) + mix_w, mix_y + KNOB_H)
+rects[43] = box(ix, osc_b - PAD - TAB_H, ix + 68, osc_b - PAD)
+rects[44] = box(ix + 76, osc_b - PAD - TAB_H, ix + 144, osc_b - PAD)
+
+# FILTER — three 2-wide knob rows after the type tab
+fl, ft, fr, fb = PANELS["kPanelFilter"]
+kw_filt = max(MIN_W, (fr - fl - 2 * PAD - 6) / 2)
+rects[25] = box(fl + PAD, ft + 28, fr - PAD, ft + 28 + TAB_H)
+y_filt = ft + 64
+for row_params in ([26, 27], [28, 45], [53, 54]):
+    for i, p in enumerate(row_params):
+        x = fl + PAD + i * (kw_filt + 6)
+        rects[p] = box(x, y_filt, x + kw_filt, y_filt + KNOB_H)
+    y_filt += KNOB_H + 6
+
+# AMP — 2x2 ADSR faders plus filter-envelope row
+al, at, ar, ab = PANELS["kPanelAmp"]
+fader_x0 = al + PAD
+fader_y0 = at + 32
+for i, p in enumerate([29, 30, 31, 32]):
+    col = i % 2
+    row = i // 2
+    x = fader_x0 + col * (FADER_W + 10)
+    y = fader_y0 + row * (FADER_H + 8)
+    rects[p] = box(x, y, x + FADER_W, y + FADER_H)
+y_fa = fader_y0 + 2 * (FADER_H + 8) + 8
+kw_f = max(MIN_W, (ar - al - 2 * PAD - 3 * 6) / 4)
+for i, p in enumerate([39, 40, 41, 42]):
+    rects[p] = box(al + PAD + i * (kw_f + 6), y_fa, al + PAD + i * (kw_f + 6) + kw_f, y_fa + KNOB_H)
+
+# ART — amp modifier knobs along the bottom of the artwork plate
+arl, art, arr, arb = PANELS["kPanelArt"]
+kw_mod = MIN_W
+mods = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110]
+row_y1 = arb - PAD - KNOB_H
+row_y0 = row_y1 - KNOB_GAP - KNOB_H
+for i, p in enumerate(mods):
+    row = i // 5
+    col = i % 5
+    y = row_y1 if row else row_y0
+    x = arl + PAD + col * (kw_mod + 6)
+    rects[p] = box(x, y, x + kw_mod, y + KNOB_H)
+
+# LFO — two stacked blocks plus mod wheel along the bottom
+ll, lt, lr, lb = PANELS["kPanelLfo"]
+inner_w = lr - ll - 2 * PAD
+
+def lfo_block(y, rate, shape, dest, amount):
+    kw = (inner_w - 6) / 2
+    rects[rate] = box(ll + PAD, y, ll + PAD + kw, y + KNOB_H)
+    rects[amount] = box(ll + PAD + kw + 6, y, lr - PAD, y + KNOB_H)
+    dy = y + KNOB_H + 6
+    dw = (inner_w - 6) / 2
+    rects[shape] = box(ll + PAD, dy, ll + PAD + dw, dy + DROPDOWN_H)
+    rects[dest] = box(ll + PAD + dw + 6, dy, lr - PAD, dy + DROPDOWN_H)
+    return dy + DROPDOWN_H
+
+y1 = lt + 28
+lfo_block(y1, 47, 48, 49, 50)
+lfo_block(y1 + 131 + 8, 85, 86, 87, 88)
+
+# MOD — one 73px band per matrix row
+ml, mt, mr, mb = PANELS["kPanelMod"]
+row_w = mr - ml - 2 * PAD
+for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97), (98, 99, 100)]):
+    y = mt + 28 + slot * (KNOB_H + 4)
+    dw = (row_w - 50 - 8) / 2
+    rects[src] = box(ml + PAD, y, ml + PAD + dw, y + DROPDOWN_H)
+    rects[dst] = box(ml + PAD + dw + 4, y, ml + PAD + 2 * dw + 4, y + DROPDOWN_H)
+    rects[amt] = box(mr - PAD - MIN_W, y, mr - PAD, y + KNOB_H)
+
+# SAMPLE — pitch envelope plus kit/tabs in two compact rows
+sl, st, sr, sb = PANELS["kPanelSample"]
+inner_w = sr - sl - 2 * PAD
+y1 = st + 28
+kw4 = max(MIN_W, (inner_w - 18) / 4)
+for i, p in enumerate([33, 34, 35, 84]):
+    rects[p] = box(sl + PAD + i * (kw4 + 6), y1, sl + PAD + i * (kw4 + 6) + kw4, y1 + KNOB_H)
+y2 = y1 + KNOB_H + 6
+kw2 = max(MIN_W, (inner_w - 6 - 64 - 6 - 64) / 2)
+for i, p in enumerate([36, 37]):
+    rects[p] = box(sl + PAD + i * (kw2 + 6), y2, sl + PAD + i * (kw2 + 6) + kw2, y2 + KNOB_H)
+tab_y = y2 + (KNOB_H - TAB_H) / 2
+rects[82] = box(sl + PAD + 2 * (kw2 + 6), tab_y, sl + PAD + 2 * (kw2 + 6) + 64, tab_y + TAB_H)
+rects[83] = box(sl + PAD + 2 * (kw2 + 6) + 70, tab_y, sl + PAD + 2 * (kw2 + 6) + 134, tab_y + TAB_H)
+
+# PADS — pad grid left, per-slot knobs stacked right
+pl, pt, pr, pb = PANELS["kPanelPads"]
+grid_r = pr - PAD - 3 * MIN_W - 2 * 6
+rects[75] = box(pl + PAD, pt + 28, grid_r - 8, pb - PAD)
+kw = MIN_W
+dy = pt + 32
+for row, trio in enumerate([(76, 77, 78), (79, 80, 81)]):
+    y = dy + row * (KNOB_H + 4)
+    for i, p in enumerate(trio):
+        rects[p] = box(grid_r + i * (kw + 6), y, grid_r + i * (kw + 6) + kw, y + KNOB_H)
+
+# VINTAGE
+vl, vt, vr, vb = PANELS["kPanelVintage"]
+rects[9] = box(vl + PAD, vt + 28, vr - PAD, vt + 28 + TAB_H)
+place_knobs_grid([2, 46, 1], vl + PAD, vt + 64, vr - PAD, vb - PAD, 3, 44)
+
+# GLOBAL
+gl, gt, gr, gb = PANELS["kPanelGlobal"]
+y1 = gt + 28
+place_knobs_grid([0, 11, 12, 13], gl + PAD, y1, gr - PAD, y1 + KNOB_H, 4, 62)
+y2 = y1 + KNOB_H + 8
+rects[10] = box(gl + PAD, y2, gl + PAD + 76, y2 + TAB_H)
+rects[55] = box(gl + PAD + 82, y2, gl + PAD + 158, y2 + TAB_H)
+y3 = y2 + TAB_H + 8
+rects[38] = box(gl + PAD, y3, gl + PAD + 64, y3 + KNOB_H)
+rects[51] = box(gl + PAD + 70, y3, gl + PAD + 150, y3 + DROPDOWN_H)
+rects[52] = box(gl + PAD + 156, y3, gr - PAD, y3 + KNOB_H)
+
+# FX — tape strip, algorithm menus, then one full-width knob row
+fxl, fxt, fxr, fxb = PANELS["kPanelFx"]
+tape_y = fxt + 28
+tape_items = [3, 4, 5, 6, 7, 8, 74]
+tape_w = (fxr - fxl - 2 * PAD - (len(tape_items) - 1) * 6) / len(tape_items)
+x = fxl + PAD
+for p in tape_items:
+    h = TAB_H if p == 8 else KNOB_H
+    rects[p] = box(x, tape_y, x + tape_w, tape_y + h)
+    x += tape_w + 6
+
+menu_y = tape_y + KNOB_H + 8
+third = (fxr - fxl - 2 * PAD - 16) / 3
+rects[56] = box(fxl + PAD, menu_y, fxl + PAD + third, menu_y + DROPDOWN_H)
+rects[62] = box(fxl + PAD + third + 8, menu_y, fxl + PAD + 2 * third + 8, menu_y + DROPDOWN_H)
+rects[68] = box(fxl + PAD + 2 * third + 16, menu_y, fxr - PAD, menu_y + DROPDOWN_H)
+
+knob_y = menu_y + DROPDOWN_H + 6
+all_fx_knobs = [57, 58, 59, 60, 63, 64, 65, 66, 69, 70, 71, 72]
+knob_w = (fxr - fxl - 2 * PAD - (len(all_fx_knobs) - 1) * 4) / len(all_fx_knobs)
+kx = fxl + PAD
+for p in all_fx_knobs:
+    rects[p] = box(kx, knob_y, kx + knob_w, knob_y + KNOB_H)
+    kx += knob_w + 4
+
+for p in range(111):
+    if p in BYPASS_VIA_ALGO:
+        continue
+    if p not in rects:
+        raise SystemExit(f"missing rect for param {p}")
+
+# width sanity for faders
+for p, (l, t, r, b) in rects.items():
+    _label, kind, _units = LABELS[p]
+    w = r - l
+    if kind == "fader" and w < MIN_W:
+        raise SystemExit(f"param {p} fader width {w:.1f} < {MIN_W}")
+
+# validate
+items = sorted(rects.items())
+for i, (pa, ra) in enumerate(items):
+    if ra[2] > CANVAS[2] or ra[3] > CANVAS[3] or ra[0] < 0 or ra[1] < 0:
+        raise SystemExit(f"param {pa} out of canvas: {ra}")
+    for pb, rb in items[i + 1:]:
+        if overlaps(ra, rb):
+            raise SystemExit(f"overlap {pa} vs {pb}: {ra} {rb}")
+
+# density check
+panel_boxes = {k: v for k, v in PANELS.items() if k.startswith("kPanel")}
+grouped = {k: [] for k in panel_boxes}
+for p, r in rects.items():
+    cx, cy = (r[0] + r[2]) / 2, (r[1] + r[3]) / 2
+    for name, (l, t, rr, b) in panel_boxes.items():
+        if l <= cx <= rr and t <= cy <= b:
+            grouped[name].append(p)
+            break
+for name, bucket in sorted(grouped.items()):
+    if not bucket:
+        continue
+    l, t, r, b = panel_boxes[name]
+    density = (r - l) * (b - t) / len(bucket)
+    flag = "OK" if density >= 5000 else "LOW"
+    print(f"# {name}: {len(bucket)} controls density={density:.0f} {flag}")
+
+def panel_lines():
+    return [f"constexpr Box {name} {{{l:.1f}f, {t:.1f}f, {r:.1f}f, {b:.1f}f}};"
+            for name, (l, t, r, b) in PANELS.items()]
+
+
+def control_rect_lines():
+    lines = ["inline constexpr ControlRect kControlRects[] = {"]
+    for p in sorted(rects.keys()):
+        l, t, r, b = rects[p]
+        label, kind, units = LABELS[p]
+        lines.append(
+            f"  {{{p}, {{{l:.1f}f, {t:.1f}f, {r:.1f}f, {b:.1f}f}}, \"{label}\", 10.0f, {units}, {KINDS[kind]}}},"
+        )
+    lines.append("};")
+    return lines
+
+
+def knob_placement_lines():
+    lines = [
+        "#pragma once",
+        '#include "IControl.h"',
+        '#include "EditorGeometry.h"',
+        "#include <cassert>",
+        "",
+        "namespace keith { namespace ui {",
+        "struct KnobPlacement { int parameter; const char* page; float left, top, right, bottom, radius; "
+        "IRECT Bounds() const { return IRECT(left, top, right, bottom); } };",
+        "inline const KnobPlacement kKnobPlacements[] = {",
+    ]
+    for p in sorted(rects.keys()):
+        _label, kind, _units = LABELS[p]
+        if kind != "knob":
+            continue
+        l, t, r, b = rects[p]
+        radius = min(r - l, b - t) * 0.42
+        lines.append(f'  {{{p}, "single", {l:.1f}f, {t:.1f}f, {r:.1f}f, {b:.1f}f, {radius:.1f}f}},')
+    lines.extend([
+        "};",
+        "inline const KnobPlacement& PlacementFor(int parameter){for(const auto& item:kKnobPlacements)"
+        "if(item.parameter==parameter)return item;assert(false&&\"Knob must have a physical placement\");"
+        "return kKnobPlacements[0];}",
+        "} }",
+    ])
+    return lines
+
+
+def apply_to_repo():
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    geom_path = root / "src/editor/EditorGeometry.h"
+    geom = geom_path.read_text()
+    panel_block = "\n".join(panel_lines())
+    geom = re.sub(
+        r"constexpr Box kPanelOsc \{.*?\nconstexpr Box kWordmarkBox \{.*?\};",
+        panel_block,
+        geom,
+        count=1,
+        flags=re.S,
+    )
+    rect_block = "\n".join(control_rect_lines())
+    geom = re.sub(
+        r"inline constexpr ControlRect kControlRects\[\] = \{.*?\};",
+        rect_block,
+        geom,
+        count=1,
+        flags=re.S,
+    )
+    geom_path.write_text(geom)
+    (root / "src/editor/ControlLayout.h").write_text("\n".join(knob_placement_lines()) + "\n")
+    print(f"wrote {geom_path} and ControlLayout.h", flush=True)
+
+
+print("\n// --- generated ---")
+print("\n".join(panel_lines()))
+print()
+print("\n".join(control_rect_lines()))
+
+if __name__ == "__main__":
+    import sys
+
+    if "--write" in sys.argv:
+        apply_to_repo()

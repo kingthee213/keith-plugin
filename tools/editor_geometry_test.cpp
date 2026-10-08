@@ -1,8 +1,15 @@
 #include "../src/editor/EditorGeometry.h"
+#include "worst_values.inc"
 #include <cstdio>
 #include <cstring>
 
 constexpr int kNumParams = 111;
+constexpr float kAdvanceEm = 0.60f;
+
+static float TextWidth(const char* text, float fontPx)
+{
+  return kAdvanceEm * fontPx * static_cast<float>(std::strlen(text));
+}
 
 int main()
 {
@@ -43,6 +50,7 @@ int main()
   }
 
   using keith::ui::Box;
+  using keith::ui::ControlKind;
   using keith::ui::ControlRect;
   const Box canvas = keith::ui::kCanvas;
 
@@ -60,16 +68,43 @@ int main()
     std::printf("%s parameter %d inside canvas\n", inside ? "PASS" : "FAIL", item.parameter);
     failed += !inside;
 
-    const float advance = keith::ui::MonoAdvance(item.labelUnits, item.labelFontPx);
-    const bool labelFits = advance <= item.rect.W() && item.labelFontPx <= item.rect.H();
-    std::printf("%s parameter %d label \"%s\" fits (advance %.1f in %.0f)\n",
+    const float labelAdvance = keith::ui::MonoAdvance(item.labelUnits, item.labelFontPx);
+    const bool labelFits = labelAdvance <= item.rect.W();
+    std::printf("%s parameter %d label \"%s\" fits width (advance %.1f in %.0f)\n",
                 labelFits ? "PASS" : "FAIL", item.parameter, item.label,
-                advance, item.rect.W());
+                labelAdvance, item.rect.W());
     failed += !labelFits;
+
+    if (item.kind == ControlKind::Knob)
+    {
+      const bool knobTall = item.rect.H() >= keith::ui::kKnobMinHeight;
+      std::printf("%s parameter %d knob height %.0f >= %.0f\n",
+                  knobTall ? "PASS" : "FAIL", item.parameter, item.rect.H(),
+                  keith::ui::kKnobMinHeight);
+      failed += !knobTall;
+    }
+
+    const char* worstValue = kWorstValueStr[item.parameter];
+    const float valueAdvance = TextWidth(worstValue, item.labelFontPx);
+    const float need = std::max(labelAdvance, valueAdvance);
+    const bool valueFits = need <= item.rect.W();
+    std::printf("%s parameter %d value \"%s\" fits width (advance %.1f in %.0f)\n",
+                valueFits ? "PASS" : "FAIL", item.parameter, worstValue,
+                valueAdvance, item.rect.W());
+    failed += !valueFits;
   }
 
   for (int param = 0; param < kNumParams; ++param)
   {
+    if (keith::ui::BypassViaAlgoMenu(param))
+    {
+      const bool none = seen[param] == 0;
+      std::printf("%s parameter %d bypass reachable via algo menu (rect count %d)\n",
+                  none ? "PASS" : "FAIL", param, seen[param]);
+      failed += !none;
+      continue;
+    }
+
     const bool one = seen[param] == 1;
     std::printf("%s parameter %d has exactly one control rect (count %d)\n",
                 one ? "PASS" : "FAIL", param, seen[param]);

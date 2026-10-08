@@ -55,6 +55,15 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
                                             color));
   };
 
+  auto fxAlgo = [&](int algoParam, int bypassParam, const char* label,
+                    std::initializer_list<const char*> options) {
+    g->AttachControl(new KeithFxAlgoMenu(CRect(algoParam), algoParam, bypassParam, label, options));
+  };
+
+  auto fxMix = [&](int param, int algoParam, const char* label, IColor color = kPaper) {
+    g->AttachControl(new KeithFxMixKnobControl(CRect(param), param, algoParam, label, color));
+  };
+
   // OSCILLATORS — two oscillators plus a mixer column (not a third osc).
   g->AttachControl(new KeithTextControl(IRECT(kPanelOsc.l + 8, kPanelOsc.t + 4, kPanelOsc.r - 8,
                                                kPanelOsc.t + 22),
@@ -207,24 +216,21 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamTapePrint, "PRINT", kMagenta);
   freeKnob(kParamTapeMix, "MIX", kPaper);
   tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
-  menu(kParamIns1Algo, "INS1", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  fxAlgo(kParamIns1Algo, kParamIns1Bypass, "INS1", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
   fxKnob(kParamIns1A, kParamIns1Algo, 0, false, kGreen);
   fxKnob(kParamIns1B, kParamIns1Algo, 1, false, kGreen);
   fxKnob(kParamIns1C, kParamIns1Algo, 2, false, kGreen);
-  freeKnob(kParamIns1Mix, "MIX1", kPaper);
-  tabs(kParamIns1Bypass, {"ACT", "BYP"});
-  menu(kParamIns2Algo, "INS2", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
+  fxMix(kParamIns1Mix, kParamIns1Algo, "MIX1", kPaper);
+  fxAlgo(kParamIns2Algo, kParamIns2Bypass, "INS2", {"OFF", "DRIVE", "CHORUS", "DELAY", "CRUSH"});
   fxKnob(kParamIns2A, kParamIns2Algo, 0, false, kMagenta);
   fxKnob(kParamIns2B, kParamIns2Algo, 1, false, kMagenta);
   fxKnob(kParamIns2C, kParamIns2Algo, 2, false, kMagenta);
-  freeKnob(kParamIns2Mix, "MIX2", kPaper);
-  tabs(kParamIns2Bypass, {"ACT", "BYP"});
-  menu(kParamMstAlgo, "MST", {"OFF", "COMP", "LIMIT", "WIDTH", "TILT"});
+  fxMix(kParamIns2Mix, kParamIns2Algo, "MIX2", kPaper);
+  fxAlgo(kParamMstAlgo, kParamMstBypass, "MST", {"OFF", "COMP", "LIMIT", "WIDTH", "TILT"});
   fxKnob(kParamMstA, kParamMstAlgo, 0, true, kPaper);
   fxKnob(kParamMstB, kParamMstAlgo, 1, true, kPaper);
   fxKnob(kParamMstC, kParamMstAlgo, 2, true, kPaper);
-  freeKnob(kParamMstMix, "MMIX", kGreen);
-  tabs(kParamMstBypass, {"ACT", "BYP"});
+  fxMix(kParamMstMix, kParamMstAlgo, "MMIX", kGreen);
   freeKnob(kParamOutLevel, "OUT", kMagenta, true);
 
   g->AttachControl(new KeithTextControl(IRECT(42, 746, 338, 770), "MIDI IN / A-L PLAY",
