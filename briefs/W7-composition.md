@@ -1,5 +1,34 @@
 # W7 — rebuild the composition to match the owner's reference
 
+## Blocker found part way through, read this first
+
+The reference's own panel rectangles are too small for our control count. Measured on its coordinates:
+
+- **Amp modifiers.** Eight controls need two columns of the 42 px minimum plus padding and a gap, which
+  is 134 px of width. The reference grid leaves 72 px there. It has been widened to 134, taking 68 px
+  from the sampled-sounds panel, and that conflict is resolved.
+- **LFO.** The reference panel is 124 by 392 and holds four controls. Ours needs eight, plus a label row
+  per block. A full-size knob needs 73 px of height, which is 34 px of body plus 19 px of label plus
+  20 px of value. Two LFO blocks need 418 px of content in the 346 px available. It does not fit, and no
+  amount of re-spacing makes it fit.
+- The same shape of problem sits wherever we show more than the reference does. GLOBAL carries nine
+  controls where the reference shows three. EFFECTS carries twelve where the reference shows four.
+
+So the composition cannot match the reference exactly **and** keep all 111 controls visible at the
+reference's control size. Three ways out, and it is a product call rather than a technical one.
+
+1. Let the busy panels be larger than the reference's rectangles, keeping every control visible. The
+   panel grid then stops matching the reference in those places, while materials, colours, the hero and
+   the overall proportions still do.
+2. Keep the reference's grid and put the extra controls behind per-section tabs, LFO 1 and LFO 2 for
+   instance, or insert A, B and master. Some controls then stop being visible at once, which cuts
+   against the owner's instruction that everything be presented at once.
+3. Keep the grid and shrink those panels' controls below the label-plus-value minimum. That is the
+   defect this whole line of work started from, so it is not a real option.
+
+Do not start this round until that is settled.
+
+
 Work in `/Users/solace/YoteMachine-build`, branch `mags-rebuild-and-levels`.
 
 The owner's feedback on the current build, in his words: the preset selector is entirely covered and it is
