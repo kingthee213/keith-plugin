@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.14)
 # configure picks up the BRIEF §11 floor (macOS 11.7.10) in the toolchain.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.7.10" CACHE STRING "Minimum macOS version")
 
-project(Keith VERSION 0.1.0)
+project(MagsSynth VERSION 0.1.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(KeithPlatform)
@@ -91,7 +91,7 @@ set(KEITH_IMAGE_RESOURCES
   images/chassis.png)
 
 if(APPLE)
-  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+  foreach(_target IN ITEMS MagsSynth-vst3 MagsSynth-au MagsSynth-app)
     if(TARGET ${_target})
       set_target_properties(${_target} PROPERTIES
         MACOSX_DEPLOYMENT_TARGET "11.7.10"
@@ -103,8 +103,8 @@ endif()
 
 # resources/main.rc is a Windows resource script. iPlug2 already adds it to the
 # APP target. The VST3 target does not get it, so attach it here on Windows only.
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc" AND TARGET Keith-vst3)
-  target_sources(Keith-vst3 PRIVATE resources/main.rc)
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc" AND TARGET MagsSynth-vst3)
+  target_sources(MagsSynth-vst3 PRIVATE resources/main.rc)
   set_source_files_properties(resources/main.rc PROPERTIES
     COMPILE_FLAGS "/I\"${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts\" /I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
 endif()
@@ -129,8 +129,8 @@ endfunction()
 
 # iPlug2's CMake does not copy the RESOURCES list next to the Windows binaries.
 # The .rc embeds the faces. These copies keep them on disk as well.
-if(WIN32 AND TARGET Keith-vst3)
-  keith_stage_files(Keith-vst3 "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources"
+if(WIN32 AND TARGET MagsSynth-vst3)
+  keith_stage_files(MagsSynth-vst3 "${CMAKE_BINARY_DIR}/out/MagsSynth.vst3/Contents/Resources"
     ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
 endif()
 
@@ -263,8 +263,8 @@ add_test(NAME recreation-gate
 set_tests_properties(recreation-gate PROPERTIES TIMEOUT 1800)
 add_dependencies(keith-synth-tests keith-recreation-render)
 
-if(WIN32 AND TARGET Keith-app)
-  keith_stage_files(Keith-app "${CMAKE_BINARY_DIR}/out"
+if(WIN32 AND TARGET MagsSynth-app)
+  keith_stage_files(MagsSynth-app "${CMAKE_BINARY_DIR}/out"
     ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
 endif()
 
@@ -272,14 +272,14 @@ endif()
 # faces there for each bundle. The APP also gets them beside the .app, matching
 # the standalone layout used on Windows.
 if(APPLE)
-  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+  foreach(_target IN ITEMS MagsSynth-vst3 MagsSynth-au MagsSynth-app)
     if(TARGET ${_target})
       keith_stage_files(${_target} "$<TARGET_BUNDLE_DIR:${_target}>/Contents/Resources"
         ${KEITH_FONT_RESOURCES} ${KEITH_IMAGE_RESOURCES} fonts/OFL.txt)
     endif()
   endforeach()
-  if(TARGET Keith-app)
-    keith_stage_files(Keith-app "$<TARGET_BUNDLE_DIR:Keith-app>/.."
+  if(TARGET MagsSynth-app)
+    keith_stage_files(MagsSynth-app "$<TARGET_BUNDLE_DIR:MagsSynth-app>/.."
       ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
   endif()
 endif()

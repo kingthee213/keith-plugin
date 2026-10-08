@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Keith (Yote Machine) for macOS: VST3, AU and the standalone app.
+# Build Keith (Mags Synth) for macOS: VST3, AU and the standalone app.
 #
 # STATUS: still not executed on real hardware - no Mac was reachable when this was
 # written, so treat the first run as a test and read the output rather than assuming.
@@ -44,7 +44,7 @@ cmake -S "${ROOT}" -B "${ROOT}/build" -G Xcode \
   -DIPLUG_DEPLOY_PLUGINS=OFF
 
 echo "==> Building Release"
-cmake --build "${ROOT}/build" --config Release --target Keith-vst3 Keith-au Keith-app
+cmake --build "${ROOT}/build" --config Release --target MagsSynth-vst3 MagsSynth-au MagsSynth-app
 
 OUT="${ROOT}/build/out"
 # The Xcode generator nests the bundles one level down (build/out/Release/...),
@@ -54,7 +54,7 @@ OUT="${ROOT}/build/out"
 echo "==> Bundles produced"
 bundle_path() { find "${OUT}" -type d -name "$1" -maxdepth 3 -print -quit 2>/dev/null; }
 VST3="$(bundle_path 'Keith.vst3')"
-AU="$(bundle_path 'Keith.component')"
+AU="$(bundle_path 'MagsSynth.component')"
 APP="$(bundle_path 'Keith.app')"
 for b in "$VST3" "$AU" "$APP"; do [[ -n "$b" ]] && echo "    $b"; done
 

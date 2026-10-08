@@ -62,10 +62,10 @@ def main():
     cfg = parse_config()
 
     formats = [
-        ("AU", "audiounit", OUT / "Keith.component" / "Contents" / "Info.plist",
-         OUT / "Keith.component" / "Contents" / "MacOS" / "Keith"),
-        ("VST3", "vst3", OUT / "Keith.vst3" / "Contents" / "Info.plist",
-         OUT / "Keith.vst3" / "Contents" / "MacOS" / "Keith"),
+        ("AU", "audiounit", OUT / "MagsSynth.component" / "Contents" / "Info.plist",
+         OUT / "MagsSynth.component" / "Contents" / "MacOS" / "MagsSynth"),
+        ("VST3", "vst3", OUT / "MagsSynth.vst3" / "Contents" / "Info.plist",
+         OUT / "MagsSynth.vst3" / "Contents" / "MacOS" / "MagsSynth"),
     ]
 
     for label, api_ext, plist_path, binary_path in formats:
@@ -91,7 +91,7 @@ def main():
                   f"{label} binary carries the compiled BUNDLE_ID",
                   "stale object - delete build/build/*-{au,vst3}.build/Release/Objects-normal/*/Keith.o and rebuild")
 
-    au_plist = OUT / "Keith.component" / "Contents" / "Info.plist"
+    au_plist = OUT / "MagsSynth.component" / "Contents" / "Info.plist"
     if au_plist.exists():
         with au_plist.open("rb") as handle:
             components = plistlib.load(handle).get("AudioComponents") or []

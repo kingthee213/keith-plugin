@@ -20,8 +20,8 @@ The script asks for deployment target **11.7.10** and a universal binary (`arm64
 
 Expected products, printed by the script if the build finishes:
 
-- `build/out/Keith.vst3`
-- `build/out/Keith.component`
+- `build/out/MagsSynth.vst3`
+- `build/out/MagsSynth.component`
 - `build/out/Keith.app`
 
 Xcode sometimes nests those under `build/out/Release/`. The script lists the directories it actually finds.
@@ -43,7 +43,7 @@ Editor fonts are copied into each bundle's `Contents/Resources`, which is where 
 Unzip the folder somewhere you can find it. A finished Mac package would contain:
 
 - `Keith.vst3`
-- `Keith.component`
+- `MagsSynth.component`
 - this note
 
 That package does not exist yet.
@@ -65,7 +65,7 @@ Open Terminal (Applications ▸ Utilities ▸ Terminal) and paste these two line
 
 ```
 xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/Keith.vst3
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Keith.component
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/MagsSynth.component
 ```
 
 Nothing printed back means it worked. (If you copied the plugins to the system-wide `Library` folders instead, swap in `/Library/Audio/Plug-Ins/...`.)

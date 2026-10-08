@@ -1,6 +1,6 @@
-# Yote Machine — macOS build & demo instructions
+# Mags Synth — macOS build & demo instructions
 
-**The Youth Hostel DSP — Yote Machine.** A synthesizer instrument (standalone app, VST3 and AU).
+**The Youth Hostel DSP — Mags Synth.** A synthesizer instrument (standalone app, VST3 and AU).
 
 You have the source. It builds on your Mac with one command. Read "Read this first" honestly — this
 build has not been run on a Mac yet, so treat the first run as a test.
@@ -65,8 +65,8 @@ Copy the plugin into your plug-in folders:
 
 ```bash
 mkdir -p ~/Library/Audio/Plug-Ins/VST3 ~/Library/Audio/Plug-Ins/Components
-cp -R build/out/Keith.vst3      ~/Library/Audio/Plug-Ins/VST3/
-cp -R build/out/Keith.component ~/Library/Audio/Plug-Ins/Components/
+cp -R build/out/MagsSynth.vst3      ~/Library/Audio/Plug-Ins/VST3/
+cp -R build/out/MagsSynth.component ~/Library/Audio/Plug-Ins/Components/
 ```
 
 - **VST3** works in Ableton, Reaper, Bitwig, Studio One and others.
@@ -80,8 +80,8 @@ not load it, clear the flag:
 
 ```bash
 xattr -dr com.apple.quarantine build/out/Keith.app
-xattr -dr com.apple.quarantine build/out/Keith.vst3
-xattr -dr com.apple.quarantine build/out/Keith.component
+xattr -dr com.apple.quarantine build/out/MagsSynth.vst3
+xattr -dr com.apple.quarantine build/out/MagsSynth.component
 ```
 
 The build script signs everything ad-hoc, which is what Apple Silicon Macs need in order to load an
