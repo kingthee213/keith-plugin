@@ -362,6 +362,7 @@ public:
   }
 
   void SetKitLevel(float db) { mParams.levelDb = db; }
+  bool Audible() const { return mParams.levelDb > kSilenceDb; }
 
   void Trigger(int slot, float velocity)
   {

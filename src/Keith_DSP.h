@@ -153,13 +153,18 @@ public:
       const double bendOct = mInputs[kVoiceControlPitchBend].endValue;
       const float glideNote = static_cast<float>(69.0 + 12.0 * (pitchOct + bendOct));
       mVoice.SetBaseNote(glideNote);
+      // NoteOn runs before this pitch is current, so key-scaled times are applied here,
+      // once the voice actually knows which note it is sounding.
+      mVoice.ApplyEnvTimes(*mParams);
 
       for (int i = startIdx; i < startIdx + nFrames; ++i)
       {
-        const T sample = static_cast<T>(mVoice.Process(*mParams, *mRuntime));
-        outputs[0][i] += sample;
+        float left = 0.f;
+        float right = 0.f;
+        mVoice.ProcessFrame(*mParams, *mRuntime, left, right);
+        outputs[0][i] += static_cast<T>(left);
         if (nOutputs > 1)
-          outputs[1][i] += sample;
+          outputs[1][i] += static_cast<T>(right);
       }
     }
 
@@ -319,7 +324,9 @@ public:
   {
     const IMidiMsg::EStatusMsg status = msg.StatusMsg();
     const bool noteMessage = status == IMidiMsg::kNoteOn || status == IMidiMsg::kNoteOff;
-    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()))
+    // An audible kit owns MIDI 36-51. A kit at -inf does not, so those notes
+    // reach the synth. Existing presets keep an audible kit, so this is a no-op for them.
+    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
     {
       if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
         QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),

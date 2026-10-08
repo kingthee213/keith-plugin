@@ -38,6 +38,8 @@ public:
     mWowPhase = 0.;
     mFlutterPhase = 0.;
     mHissSeed = 0x12345678u;
+    mBumpZ1L = mBumpZ2L = mBumpZ1R = mBumpZ2R = static_cast<T>(0);
+    mHissLpL = mHissLpR = static_cast<T>(0);
     mPrintWrite = 0;
     std::memset(mPrintBuffer, 0, sizeof(mPrintBuffer));
     std::memset(mDelayBuffer, 0, sizeof(mDelayBuffer));

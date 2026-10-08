@@ -5,7 +5,7 @@
 
 #include <atomic>
 
-const int kNumPresets = 103;
+const int kNumPresets = 106;
 
 enum EControlTags
 {
@@ -168,6 +168,18 @@ enum EParams
   kParamMod4Source = 98,
   kParamMod4Dest = 99,
   kParamMod4Amount = 100,
+
+  // U17 appends. IDs 0-100 stay put.
+  kParamNoiseKey = 101,
+  kParamAmpAttackKey = 102,
+  kParamAmpAttackCurve = 103,
+  kParamAmpDecayKey = 104,
+  kParamAmpDecayCurve = 105,
+  kParamStereoDelay = 106,
+  kParamStereoDelayKey = 107,
+  kParamStereoSpread = 108,
+  kParamDirectLevel = 109,
+  kParamFilterKeyCurve = 110,
 
   kNumParams
 };

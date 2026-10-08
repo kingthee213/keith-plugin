@@ -6,7 +6,9 @@ Contract between the editor lane and the composer / engine lane.
 Reconciled **U15 (2026-10-07)** against `src/Keith.h` / `src/Keith.cpp`.
 U1/U4 host IDs **0-8**, U7 IDs **9-42**, U9 IDs **43-55**, U10 IDs **56-74** and
 U11 IDs **75-84** are preserved. U13 appends the second LFO at IDs **85-88**. U15 appends
-the four-slot modulation matrix at IDs **89-100**. Current `kNumParams` is **101**.
+the four-slot modulation matrix at IDs **89-100**. U17 appends pitch-tracked noise,
+envelope curves, a stereo path, direct level and filter-key bend at IDs **101-110**.
+Current `kNumParams` is **111**.
 
 Column meanings:
 
@@ -86,7 +88,7 @@ Column meanings:
 | `synth_filter_type` | Filt Type | list | LP24 / LP12 / BP / HP | LP24 | synth | Synth Filter Type | proposed | live - added U7 |
 | `synth_filter_env` | Filt Env | knob | -100-+100 % | 40 % | synth | Synth Filter Env | proposed | live - added U7 |
 | `synth_amp_attack` | Attack | knob | 0.1 ms-10 s | 5 ms | synth | Synth Amp Attack | proposed | live - added U7 |
-| `synth_amp_decay` | Decay | knob | 1 ms-10 s | 200 ms | synth | Synth Amp Decay | proposed | live - added U7 |
+| `synth_amp_decay` | Decay | knob | 1 ms-30 s | 200 ms | synth | Synth Amp Decay | proposed | live - added U7 |
 | `synth_amp_sustain` | Sustain | knob | 0-100 % | 70 % | synth | Synth Amp Sustain | proposed | live - added U7 |
 | `synth_amp_release` | Release | knob | 1 ms-10 s | 300 ms | synth | Synth Amp Release | proposed | live - added U7 |
 | `synth_pitch_attack` | P Att | knob | 0.1 ms-10 s | 10 ms | synth | Synth Pitch Attack | proposed | live - added U7 |
@@ -100,7 +102,7 @@ Column meanings:
 | `synth_filt_release` | F Rel | knob | 1 ms-10 s | 300 ms | synth | Synth Filt Release | proposed | live - added U7 |
 | `synth_osc_sync` | Osc Sync | switch | Free / Sync | Free | synth | Synth Osc Sync | proposed | live - added U9 |
 | `synth_osc_ring` | Osc Ring | switch | Off / On | Off | synth | Synth Osc Ring | proposed | live - added U9 |
-| `synth_filter_key_track` | Key Track | knob | 0-100 % | 0 % | synth | Synth Filter Key Track | proposed | live - added U9 |
+| `synth_filter_key_track` | Key Track | knob | 0-200 % | 0 % | synth | Synth Filter Key Track | proposed | live - added U9 |
 | `synth_filter_drive` | Drive | knob | 0-100 % | 0 % | synth | Synth Filter Drive | proposed | live - added U9 |
 | `synth_lfo_rate` | LFO Rate | knob | 0.01-30 Hz | 1 Hz | synth | Synth LFO Rate | proposed | live - added U9 |
 | `synth_lfo_shape` | LFO Shape | list | Sine / Tri / Saw / Square / S&H | Sine | synth | Synth LFO Shape | proposed | live - added U9 |
@@ -122,6 +124,16 @@ Column meanings:
 | `synth_mod4_source` | Mod4 Src | list | Off / LFO 1 / LFO 2 / Mod Wheel / Velocity / Key | Off | synth | Mod4 Src | proposed | live - added U15 |
 | `synth_mod4_dest` | Mod4 Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Mod4 Dest | proposed | live - added U15 |
 | `synth_mod4_amount` | Mod4 Amt | knob | -100-+100 % | 0 % | synth | Mod4 Amt | proposed | live - added U15 |
+| `synth_noise_key` | Noise Key | knob | -100-+100 % | 0 % | synth | Synth Noise Key | proposed | live - added U17 |
+| `synth_amp_attack_key` | Atk Key | knob | -100-+100 % | 0 % | synth | Synth Amp Attack Key | proposed | live - added U17 |
+| `synth_amp_attack_curve` | Atk Bend | knob | -100-+100 % | 0 % | synth | Synth Amp Attack Curve | proposed | live - added U17 |
+| `synth_amp_decay_key` | Dec Key | knob | -100-+100 % | 0 % | synth | Synth Amp Decay Key | proposed | live - added U17 |
+| `synth_amp_decay_curve` | Dec Bend | knob | -100-+100 % | 0 % | synth | Synth Amp Decay Curve | proposed | live - added U17 |
+| `synth_stereo_delay` | St Delay | knob | 0-40 ms | 0 ms | synth | Synth Stereo Delay | proposed | live - added U17 |
+| `synth_stereo_delay_key` | St Track | knob | -100-+100 % | 0 % | synth | Synth Stereo Delay Key | proposed | live - added U17 |
+| `synth_stereo_spread` | St Width | knob | -100-+100 % | 0 % | synth | Synth Stereo Spread | proposed | live - added U17 |
+| `synth_direct_level` | Direct | knob | 0-100 % | 0 % | synth | Synth Direct Level | proposed | live - added U17 |
+| `synth_filter_key_curve` | Cut Bend | knob | -100-+100 % | 0 % | synth | Synth Filter Key Curve | proposed | live - added U17 |
 | `synth_mod_wheel` | Mod Dest | list | Off / Cutoff / Pitch / Shape / Level / FM | Off | synth | Synth Mod Dest | proposed | live - added U9 |
 | `synth_mod_amount` | Mod Amt | knob | -100-+100 % | 0 % | synth | Synth Mod Amount | proposed | live - added U9 |
 | `synth_vel_to_amp` | Vel To Amp | knob | 0-100 % | 0 % | synth | Synth Vel To Amp | proposed | live - added U9 |
@@ -323,28 +335,53 @@ destination and bipolar amount. Source Off, destination Off and amount 0 are ine
 full-scale route per destination before it is added to the fixed LFO 1, LFO 2 and mod-wheel routes.
 `src/editor/EditorialLayout.h` exposes all four rows on the `MATRIX` sub-tab. IDs 0-88 are unchanged.
 
-`kNumParams` = **101**.
+`kNumParams` = **101** at the end of U15. U17 below takes it to **111**.
 
 ---
 
-## Row counts (U15 reconcile)
+## U17 code surface (source of truth for `live`)
+
+Appended after ID 100. Every default is 0, so earlier presets stay on the previous voice.
+Key and bend knobs use ±100% as ±2 octaves of change per octave from MIDI note 60.
+Bend is that amount times octaves squared. Filter key track itself now runs to 200%
+(two octaves of cutoff per octave). Stereo width 0 leaves the voice mono and bit-identical.
+
+| Code enum | ID | Host name | Manifest `id` | Default |
+|---|---:|---|---|---|
+| `kParamNoiseKey` | 101 | Synth Noise Key | `synth_noise_key` | 0 % |
+| `kParamAmpAttackKey` | 102 | Synth Amp Attack Key | `synth_amp_attack_key` | 0 % |
+| `kParamAmpAttackCurve` | 103 | Synth Amp Attack Curve | `synth_amp_attack_curve` | 0 % |
+| `kParamAmpDecayKey` | 104 | Synth Amp Decay Key | `synth_amp_decay_key` | 0 % |
+| `kParamAmpDecayCurve` | 105 | Synth Amp Decay Curve | `synth_amp_decay_curve` | 0 % |
+| `kParamStereoDelay` | 106 | Synth Stereo Delay | `synth_stereo_delay` | 0 ms |
+| `kParamStereoDelayKey` | 107 | Synth Stereo Delay Key | `synth_stereo_delay_key` | 0 % |
+| `kParamStereoSpread` | 108 | Synth Stereo Spread | `synth_stereo_spread` | 0 % |
+| `kParamDirectLevel` | 109 | Synth Direct Level | `synth_direct_level` | 0 % |
+| `kParamFilterKeyCurve` | 110 | Synth Filter Key Curve | `synth_filter_key_curve` | 0 % |
+
+`kNumParams` = **111**.
+
+---
+
+## Row counts (U17 reconcile)
 
 | Metric | Count |
 |---|---|
-| Total rows | **127** |
-| Real parameters (`kNumParams`, IDs 0-100) | **101** |
+| Total rows | **137** |
+| Real parameters (`kNumParams`, IDs 0-110) | **111** |
 | Host preset action, not a parameter (`preset_family`) | **1** |
 | MIDI pad rows, live but not parameters | **16** |
 | Rows `not yet implemented` | **8** |
 | Rows `not applicable` | **1** (`drum_kit_swing`) |
 | Rows added for LFO 2 | **4** (`synth_lfo2_rate`, `synth_lfo2_shape`, `synth_lfo2_dest`, `synth_lfo2_amount`) |
 | Rows added for the modulation matrix | **12** (`synth_mod1_*` through `synth_mod4_*`) |
+| Rows added for U17 | **10** (noise key, amp attack/decay key and bend, stereo delay/track/width, direct, filter key bend) |
 
 ---
 
 ## Notes for the editor lane
 
-1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-100. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
+1. Visible editor controls stay 1:1 with real params. The editor exposes live IDs 0-110. Preset families and baked preset selection are host preset actions, not automatable parameter rows.
 2. `gain` remains overall output gain (smoothed). `synth_master_level` is synth-bus level in dB before that gain/tape chain.
 3. Deferred intentionally: `synth_part` and the remaining `preset_*` actions. Two LFOs, CC1 and the four-slot modulation matrix are live.
 4. No Korg, Splice, Freakshow, Surge, or OB-XF names appear in `label` or `automatable`.

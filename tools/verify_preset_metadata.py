@@ -152,6 +152,10 @@ def main():
         missing = [role for role in ROLE_ORDER if role not in present]
         if missing:
             fail(f"family {family} missing roles: {', '.join(missing)}")
+        # The original catalogue stays in role order. Measured recreations are
+        # appended after that catalogue, still inside the family, and do not
+        # have to continue the role sequence.
+        catalogue = {1: 20, 2: 21, 3: 21, 4: 20, 5: 21}[family]
         last_role = -1
         last_title = ""
         last_category = ""
@@ -161,6 +165,8 @@ def main():
             number = int(re.search(r"/ (\d{3}) ", name).group(1))
             if number != offset + 1:
                 fail(f"{name} is not numbered {offset + 1:03d} inside its family")
+            if offset >= catalogue:
+                continue
             role_index = ROLE_INDEX[category]
             if role_index < last_role:
                 fail(f"{name} is out of sound-role order")
@@ -231,7 +237,13 @@ def main():
             fail(f"SOURCES.md has no row for {name}")
             continue
         line = next(line for line in LEDGER.splitlines() if name in line)
-        if "our own recreation" not in line or "none — our own design" not in line:
+        measured = "matched by analysis" in line
+        if measured:
+            if "no audio was ingested or shipped" not in line:
+                fail(f"SOURCES.md row for {name} does not record that no audio was ingested")
+            if "our own design" in line:
+                fail(f"SOURCES.md row for {name} is labelled as our own design")
+        elif "our own recreation" not in line or "none — our own design" not in line:
             fail(f"SOURCES.md row for {name} is not an own-design recreation")
 
     if failures:

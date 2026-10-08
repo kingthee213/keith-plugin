@@ -28,6 +28,8 @@ enable_testing()
 add_executable(keith-synth-tests tools/synth_offline_test.cpp)
 target_compile_features(keith-synth-tests PRIVATE cxx_std_17)
 add_test(NAME synth-offline COMMAND keith-synth-tests)
+add_executable(keith-render-voice tools/render_voice.cpp)
+target_compile_features(keith-render-voice PRIVATE cxx_std_17)
 add_executable(keith-editor-tests tools/editor_geometry_test.cpp)
 target_compile_features(keith-editor-tests PRIVATE cxx_std_17)
 add_test(NAME editor-geometry COMMAND keith-editor-tests)
@@ -192,6 +194,68 @@ if(APPLE)
 endif()
 add_test(NAME preset-restore COMMAND keith-preset-restore-tests)
 add_dependencies(keith-synth-tests keith-preset-restore-tests)
+
+# Plugin-path render for the recreation gate. The assertion lives in Python so
+# it calls the same measure_signal.py that analyse_references.py imports.
+add_executable(keith-recreation-render
+  tools/recreation_render.cpp
+  src/Keith.cpp
+  "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3.cpp"
+  "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3_ProcessorBase.cpp"
+  "${_keith_vst3_sdk}/base/source/baseiids.cpp"
+  "${_keith_vst3_sdk}/base/source/fdebug.cpp"
+  "${_keith_vst3_sdk}/base/source/fobject.cpp"
+  "${_keith_vst3_sdk}/base/source/fstring.cpp"
+  "${_keith_vst3_sdk}/base/source/updatehandler.cpp"
+  "${_keith_vst3_sdk}/base/thread/source/flock.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/funknown.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/ustring.cpp"
+  "${_keith_vst3_sdk}/pluginterfaces/base/coreiids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/common/pluginview.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/common/commoniids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstbus.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstcomponent.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstcomponentbase.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstinitiids.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstparameters.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/vst/vstsinglecomponenteffect.cpp"
+  "${_keith_vst3_sdk}/public.sdk/source/main/pluginfactory.cpp"
+  ${_keith_vst3_entry}
+)
+target_compile_features(keith-recreation-render PRIVATE cxx_std_17)
+target_include_directories(keith-recreation-render PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+  "${IPLUG2_DIR}/IPlug/VST3"
+  "${_keith_vst3_sdk}"
+  "${_keith_vst3_sdk}/pluginterfaces"
+  "${_keith_vst3_sdk}/public.sdk"
+  "${_keith_vst3_sdk}/public.sdk/source"
+  "${_keith_vst3_sdk}/base"
+)
+target_compile_definitions(keith-recreation-render PRIVATE
+  VST3_API
+  IPLUG_DSP=1
+  IPLUG_EDITOR=0
+  NO_IGRAPHICS
+  $<$<CONFIG:Debug>:DEVELOPMENT>
+  $<$<NOT:$<CONFIG:Debug>>:RELEASE>
+)
+target_link_libraries(keith-recreation-render PRIVATE iPlug2::IPlug iPlug2::Extras::Synth)
+if(APPLE)
+  set_source_files_properties(
+    "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3.cpp"
+    "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3_ProcessorBase.cpp"
+    TARGET_DIRECTORY keith-recreation-render
+    PROPERTIES LANGUAGE OBJCXX)
+  target_link_libraries(keith-recreation-render PRIVATE
+    "-framework CoreFoundation" "-framework Cocoa")
+endif()
+add_test(NAME recreation-gate
+  COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/recreation_gate.py" $<TARGET_FILE:keith-recreation-render>)
+set_tests_properties(recreation-gate PROPERTIES TIMEOUT 1800)
+add_dependencies(keith-synth-tests keith-recreation-render)
 
 if(WIN32 AND TARGET Keith-app)
   keith_stage_files(Keith-app "${CMAKE_BINARY_DIR}/out"

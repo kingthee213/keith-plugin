@@ -1,6 +1,6 @@
 # Yote Machine — final state
 
-**The Youth Hostel DSP.** Branch `editorial-redesign`, 8 commits. Working tree clean.
+**The Youth Hostel DSP.** Branch `editorial-redesign`. The U17 recreations are in the working tree and are not committed.
 This is the hand-back record: what exists, what is proven, and what is not.
 
 ---
@@ -12,7 +12,7 @@ oscillators with sub, noise, FM, ring and hard sync; a key-tracked multimode fil
 filter and pitch envelopes; two LFOs, mod wheel, velocity, key tracking and a 4-slot modulation matrix;
 a global tape bus; a per-patch insert/master FX chain; and a 16-voice synthesized drum engine.
 
-**101 live parameters. 103 presets across five families.**
+**111 live parameters. 106 presets across five families.**
 
 | | |
 |---|---|

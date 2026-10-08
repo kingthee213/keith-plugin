@@ -157,11 +157,25 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   shape->AddChildControl(new KeithNavButton(IRECT(58,225,340,262), "VOLUME", envelopes,0));
   shape->AddChildControl(new KeithNavButton(IRECT(358,225,640,262), "PITCH", envelopes,1));
   shape->AddChildControl(new KeithNavButton(IRECT(658,225,940,262), "FILTER", envelopes,2));
-  const IRECT plot(74, 318, 800, 658);
+  const IRECT plot(74, 300, 980, 500);
+  auto voiceKnob = [](IContainerBase* page, float x, int param, const char* label, bool bipolar) {
+    page->AddChildControl(new KeithKnobControl(IRECT(x, 508, x + 100, 690), param, label,
+                                               kGreen, true, bipolar, 4.0, 16.f, true));
+  };
+  voiceKnob(amp, 40, kParamAmpAttackKey, "ATK KEY", true);
+  voiceKnob(amp, 144, kParamAmpAttackCurve, "ATK BEND", true);
+  voiceKnob(amp, 248, kParamAmpDecayKey, "DEC KEY", true);
+  voiceKnob(amp, 352, kParamAmpDecayCurve, "DEC BEND", true);
+  voiceKnob(amp, 456, kParamNoiseKey, "NOISE KEY", true);
+  voiceKnob(amp, 560, kParamDirectLevel, "DIRECT", false);
+  voiceKnob(amp, 664, kParamStereoDelay, "ST DELAY", false);
+  voiceKnob(amp, 768, kParamStereoDelayKey, "ST TRACK", true);
+  voiceKnob(amp, 872, kParamStereoSpread, "ST WIDTH", true);
   amp->AddChildControl(new KeithEnvelopeControl(plot, kParamAmpAttack, kParamAmpDecay,
     kParamAmpSustain, kParamAmpRelease, kNoParameter, kGreen));
   pitch->AddChildControl(new KeithEnvelopeControl(plot, kParamPitchAttack, kParamPitchDecay,
     kParamPitchSustain, kParamPitchRelease, kParamPitchAmount, kMagenta));
+  voiceKnob(filter, 40, kParamFilterKeyCurve, "CUT BEND", true);
   filter->AddChildControl(new KeithEnvelopeControl(plot, kParamFiltAttack, kParamFiltDecay,
     kParamFiltSustain, kParamFiltRelease, kNoParameter, kGreen));
   text(amp, IRECT(828,328,980,358), "AMPLITUDE", MonoBold(13,kPaper));

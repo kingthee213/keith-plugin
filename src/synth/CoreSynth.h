@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 // Clean-room subtractive / hybrid voice core for Keith.
 // No Surge, OB-Xf, or Freakshow code. Standard oscillator / SVF / ADSR maths only.
@@ -210,7 +211,8 @@ struct Params
   // --- U9 appends. Every default is inert, so pre-U9 presets are unchanged. ---
   bool oscSync = false;     // hard sync: osc2 wrap restarts osc1
   bool oscRing = false;     // ring modulation added to the mixer
-  float filterKeyTrack = 0.f; // 0..1: cutoff follows the played note, 1 = 1 octave per octave
+  float filterKeyTrack = 0.f; // octaves of cutoff per octave from MIDI 60. 1 = 1:1
+  float filterKeyCurve = 0.f; // same unit times octaves squared. 0 keeps the linear track
   float filterDrive = 0.f;    // 0..1: pre-filter saturation
 
   float lfoRateHz = 1.f;      // 0.01..30
@@ -234,6 +236,19 @@ struct Params
 
   // --- U15 append: four additive source -> destination -> amount routes. Defaults are inert. ---
   ModRoute modMatrix[kNumModSlots] {};
+
+  // U17 append. Every default is inert, so earlier presets stay bit-identical.
+  // Key amounts are octaves of change per octave of pitch away from MIDI 60.
+  // Curve amounts are the same unit, times octaves-squared, so a decay can peak mid-keyboard.
+  float noiseKey = 0.f;
+  float ampAttackKey = 0.f;
+  float ampAttackCurve = 0.f;
+  float ampDecayKey = 0.f;
+  float ampDecayCurve = 0.f;
+  float stereoDelayMs = 0.f;
+  float stereoDelayKey = 0.f;
+  float stereoSpread = 0.f; // -1..1. Negative inverts the delayed right channel.
+  float directLevel = 0.f;  // post-filter copy of the oscillators, before noise
 };
 
 class Envelope
@@ -631,6 +646,9 @@ public:
     mFiltEnv.SetSampleRate(mSampleRate);
     mLfo.SetSampleRate(mSampleRate);
     mLfo2.SetSampleRate(mSampleRate);
+    const int delaySamples = std::clamp(static_cast<int>(mSampleRate * 0.042) + 8, 64, 8192);
+    mStereoDelay.assign(static_cast<size_t>(delaySamples), 0.f);
+    mStereoWrite = 0;
     for (auto& o : mUniOsc1)
       o.SetSampleRate(mSampleRate);
     for (auto& o : mUniOsc2)
@@ -651,6 +669,7 @@ public:
     mAnalogSoft = 0.f;
     mLfo.Reset();
     mLfo2.Reset();
+    ClearStereoDelay();
     for (int i = 0; i < kMaxUnison; ++i)
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
@@ -673,6 +692,7 @@ public:
     mFilter.Reset();
     mLfo.Reset();
     mLfo2.Reset();
+    ClearStereoDelay();
     for (int i = 0; i < kMaxUnison; ++i)
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
@@ -702,7 +722,21 @@ public:
 
   void ApplyEnvTimes(const Params& p)
   {
-    mAmpEnv.SetTimes(p.ampAttackMs, p.ampDecayMs, p.ampReleaseMs);
+    float attack = p.ampAttackMs;
+    float decay = p.ampDecayMs;
+    if (p.ampAttackKey != 0.f || p.ampAttackCurve != 0.f ||
+        p.ampDecayKey != 0.f || p.ampDecayCurve != 0.f)
+    {
+      const float oct = (mNote - 60.f) / 12.f;
+      const float oct2 = oct * oct;
+      if (p.ampAttackKey != 0.f || p.ampAttackCurve != 0.f)
+        attack *= std::pow(2.f, p.ampAttackKey * oct + p.ampAttackCurve * oct2);
+      if (p.ampDecayKey != 0.f || p.ampDecayCurve != 0.f)
+        decay *= std::pow(2.f, p.ampDecayKey * oct + p.ampDecayCurve * oct2);
+      attack = std::clamp(attack, 0.1f, 30000.f);
+      decay = std::clamp(decay, 1.f, 80000.f);
+    }
+    mAmpEnv.SetTimes(attack, decay, p.ampReleaseMs);
     mAmpEnv.SetSustain(p.ampSustain);
     mPitchEnv.SetTimes(p.pitchAttackMs, p.pitchDecayMs, p.pitchReleaseMs);
     mPitchEnv.SetSustain(p.pitchSustain);
@@ -712,14 +746,28 @@ public:
 
   float Process(const Params& p, const RuntimeMod& mod)
   {
+    float left = 0.f;
+    float right = 0.f;
+    ProcessFrame(p, mod, left, right);
+    return left;
+  }
+
+  void ProcessFrame(const Params& p, const RuntimeMod& mod, float& left, float& right)
+  {
     if (!mActive && !mAmpEnv.Busy())
-      return 0.f;
+    {
+      left = 0.f;
+      right = 0.f;
+      return;
+    }
 
     const float amp = mAmpEnv.Process();
     if (!mAmpEnv.Busy())
     {
       mActive = false;
-      return 0.f;
+      left = 0.f;
+      right = 0.f;
+      return;
     }
 
     const float pitchEnv = mPitchEnv.Process();
@@ -797,11 +845,20 @@ public:
     const float subFreq = MidiNoteToHz(baseNote - 12.f);
     const float sub = mSub.Process(subFreq, 0.05f, 0.5f); // near-sine
     mix += sub * p.subLevel;
+    const float tonal = mix;
 
-    // Noise
+    // Noise. Key amount 0 keeps the old multiply.
     mNoise = mNoise * 1664525u + 1013904223u;
     const float noise = (static_cast<float>(mNoise >> 8) / 8388608.f) - 1.f;
-    mix += noise * p.noiseLevel;
+    float noiseGain = p.noiseLevel;
+    if (p.noiseKey != 0.f)
+    {
+      const float oct = (mNote - 60.f) / 12.f;
+      noiseGain *= std::pow(2.f, std::clamp(p.noiseKey * oct, -6.f, 6.f));
+      if (noiseGain > 8.f)
+        noiseGain = 8.f;
+    }
+    mix += noise * noiseGain;
 
     // Soft clip mix headroom. Drive adds pre-filter saturation and backs the level off again,
     // so drive 0 is bit-identical to the pre-U9 path.
@@ -809,7 +866,11 @@ public:
     mix = std::tanh(mix * 0.85f * driveGain) * (1.f / (1.f + 1.6f * p.filterDrive));
 
     // Cutoff: key tracking, velocity offset, envelope and modulation all land on the same cut.
-    const float keyOct = p.filterKeyTrack * (mNote - 60.f) / 12.f;
+    // Curve 0 uses the original multiply, so existing patches stay bit-identical.
+    const float keyOct = p.filterKeyCurve == 0.f
+      ? p.filterKeyTrack * (mNote - 60.f) / 12.f
+      : p.filterKeyTrack * (mNote - 60.f) / 12.f
+        + p.filterKeyCurve * ((mNote - 60.f) / 12.f) * ((mNote - 60.f) / 12.f);
     const float velOct = p.velToFilter * (mVelocity - 0.5f) * 4.f; // +/- 2 octaves at 100 %
     float cutoff = p.filterCutoffHz * std::pow(2.f, keyOct + velOct + cutoffOct);
     // Env amount: bipolar, ±4 octaves around cutoff at full amount.
@@ -818,13 +879,34 @@ public:
     cutoff = std::clamp(cutoff, 20.f, static_cast<float>(mSampleRate * 0.45));
 
     float filtered = mFilter.Process(mix, cutoff, p.filterReso, p.filterType);
+    if (p.directLevel > 0.f)
+      filtered += tonal * p.directLevel;
     if (p.engine == EngineMode::Analog)
       filtered = filtered * 0.92f + mAnalogSoft * 0.08f;
     mAnalogSoft = filtered;
 
     const float velAmp = 1.f + p.velToAmp * (mVelocity - 0.5f) * 2.f;
     const float tremolo = std::max(0.f, 1.f + levelMod);
-    return filtered * amp * velAmp * tremolo * p.masterLevel;
+    const float mono = filtered * amp * velAmp * tremolo * p.masterLevel;
+    left = mono;
+    if (p.stereoSpread == 0.f)
+    {
+      right = mono;
+      return;
+    }
+
+    const float spread = std::clamp(p.stereoSpread, -1.f, 1.f);
+    float delayMs = std::max(0.f, p.stereoDelayMs);
+    if (p.stereoDelayKey != 0.f)
+    {
+      const float oct = (mNote - 60.f) / 12.f;
+      delayMs *= std::pow(2.f, std::clamp(p.stereoDelayKey * oct, -4.f, 4.f));
+    }
+    delayMs = std::min(delayMs, 40.f);
+    const float delayed = WriteStereoDelay(mono, delayMs * 0.001f * static_cast<float>(mSampleRate));
+    const float mag = std::fabs(spread);
+    const float side = spread >= 0.f ? delayed : -delayed;
+    right = mono * (1.f - mag) + side * mag;
   }
 
 private:
@@ -839,11 +921,41 @@ private:
   Envelope mFiltEnv;
   Lfo mLfo;
   Lfo mLfo2;
+  void ClearStereoDelay()
+  {
+    std::fill(mStereoDelay.begin(), mStereoDelay.end(), 0.f);
+    mStereoWrite = 0;
+  }
+
+  float WriteStereoDelay(float sample, float delaySamples)
+  {
+    if (mStereoDelay.size() < 4)
+    {
+      mStereoDelay.assign(64, 0.f);
+      mStereoWrite = 0;
+    }
+    const int length = static_cast<int>(mStereoDelay.size());
+    mStereoDelay[static_cast<size_t>(mStereoWrite)] = sample;
+    const float limited = std::clamp(delaySamples, 0.f, static_cast<float>(length - 2));
+    float read = static_cast<float>(mStereoWrite) - limited;
+    if (read < 0.f)
+      read += static_cast<float>(length);
+    const int i0 = static_cast<int>(read) % length;
+    const float frac = read - static_cast<float>(static_cast<int>(read));
+    const int i1 = (i0 + 1) % length;
+    const float out = mStereoDelay[static_cast<size_t>(i0)] +
+                      (mStereoDelay[static_cast<size_t>(i1)] - mStereoDelay[static_cast<size_t>(i0)]) * frac;
+    mStereoWrite = (mStereoWrite + 1) % length;
+    return out;
+  }
+
   uint32_t mNoise = 0x12345678u;
   float mNote = 60.f;
   float mVelocity = 0.f;
   float mAnalogSoft = 0.f;
   bool mActive = false;
+  std::vector<float> mStereoDelay;
+  int mStereoWrite = 0;
 };
 
 // Standalone poly engine for offline tests (no iPlug2 MidiSynth dependency).
@@ -988,6 +1100,20 @@ public:
     for (int i = 0; i < kMaxVoices; ++i)
       sum += mVoices[i].Process(mParams, mRuntime);
     return sum;
+  }
+
+  void ProcessStereo(float& left, float& right)
+  {
+    left = 0.f;
+    right = 0.f;
+    for (int i = 0; i < kMaxVoices; ++i)
+    {
+      float voiceLeft = 0.f;
+      float voiceRight = 0.f;
+      mVoices[i].ProcessFrame(mParams, mRuntime, voiceLeft, voiceRight);
+      left += voiceLeft;
+      right += voiceRight;
+    }
   }
 
   int ActiveVoiceCount() const

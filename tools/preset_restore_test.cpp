@@ -77,6 +77,7 @@ void PrepareProcessing(Keith& plugin)
   setup.maxSamplesPerBlock = kRenderBlock;
   setup.sampleRate = kRenderRate;
   plugin.setupProcessing(setup);
+  plugin.OnReset();
 }
 
 struct Render

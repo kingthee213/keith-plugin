@@ -1903,6 +1903,115 @@ int main()
     Expect(preserved, "drum_new_defaults_preserve_presets");
   }
 
+  {
+    Params mid = SteadyPatch();
+    mid.osc1Level = 0.f;
+    mid.osc2Level = 0.f;
+    mid.noiseLevel = 0.2f;
+    mid.filterCutoffHz = 6000.f;
+    mid.filterEnvAmt = 0.f;
+    mid.ampSustain = 1.f;
+    OfflineEngine plain;
+    OfflineEngine keyed;
+    plain.Reset(sr);
+    keyed.Reset(sr);
+    plain.SetParams(mid);
+    Params up = mid;
+    up.noiseKey = 1.5f;
+    keyed.SetParams(up);
+    plain.NoteOn(60, 0.8f);
+    keyed.NoteOn(60, 0.8f);
+    bool same = true;
+    for (int i = 0; i < sr / 8; ++i)
+      same = same && plain.Process() == keyed.Process();
+    Expect(same, "noise_key_is_inert_at_middle_c");
+
+    auto noiseRms = [&](float key, int note) {
+      Params q = mid;
+      q.noiseKey = key;
+      OfflineEngine eng;
+      eng.Reset(sr);
+      eng.SetParams(q);
+      auto buf = RenderHold(eng, note, 0.8f, sr / 6);
+      return Rms(buf, static_cast<size_t>(sr / 20), static_cast<size_t>(sr / 10));
+    };
+    const double low = noiseRms(1.5f, 36);
+    const double high = noiseRms(1.5f, 84);
+    Expect(high > low * 3.0, "noise_key_brightens_higher_notes");
+  }
+
+  {
+    Params dry = SteadyPatch();
+    dry.osc1Shape = 0.2f;
+    dry.filterEnvAmt = 0.f;
+    dry.ampSustain = 1.f;
+    dry.stereoSpread = 0.f;
+    OfflineEngine mono;
+    mono.Reset(sr);
+    mono.SetParams(dry);
+    mono.NoteOn(36, 0.8f);
+    Params wide = dry;
+    wide.stereoSpread = -1.f;
+    wide.stereoDelayMs = 2.f;
+    OfflineEngine side;
+    side.Reset(sr);
+    side.SetParams(wide);
+    side.NoteOn(36, 0.8f);
+    double ll = 0., rr = 0., lr = 0.;
+    bool leftMatches = true;
+    for (int i = 0; i < sr / 5; ++i)
+    {
+      const float m = mono.Process();
+      float l = 0.f, r = 0.f;
+      side.ProcessStereo(l, r);
+      leftMatches = leftMatches && l == m;
+      ll += static_cast<double>(l) * l;
+      rr += static_cast<double>(r) * r;
+      lr += static_cast<double>(l) * r;
+    }
+    const double corr = lr / std::sqrt(std::max(1.0e-18, ll * rr));
+    if (!(leftMatches && corr < -0.25))
+      std::printf("  stereo left-match %d corr %g\n", leftMatches ? 1 : 0, corr);
+    Expect(leftMatches && corr < -0.25, "stereo_spread_can_go_out_of_phase");
+  }
+
+  {
+    Params bent = SteadyPatch();
+    bent.osc1Shape = 0.85f;
+    bent.filterCutoffHz = 900.f;
+    bent.filterKeyTrack = 1.f;
+    bent.filterEnvAmt = 0.f;
+    bent.ampSustain = 1.f;
+    bent.filterKeyCurve = 0.f;
+    OfflineEngine straight;
+    straight.Reset(sr);
+    straight.SetParams(bent);
+    straight.NoteOn(60, 0.8f);
+    Params curved = bent;
+    curved.filterKeyCurve = 0.4f;
+    OfflineEngine mid;
+    mid.Reset(sr);
+    mid.SetParams(curved);
+    mid.NoteOn(60, 0.8f);
+    bool sameAtMiddle = true;
+    for (int i = 0; i < sr / 8; ++i)
+      sameAtMiddle = sameAtMiddle && straight.Process() == mid.Process();
+    Expect(sameAtMiddle, "filter_key_curve_is_inert_at_middle_c");
+
+    auto holdRms = [&](float curve, int note) {
+      Params q = bent;
+      q.filterKeyCurve = curve;
+      OfflineEngine eng;
+      eng.Reset(sr);
+      eng.SetParams(q);
+      auto buf = RenderHold(eng, note, 0.8f, sr / 6);
+      return Rms(buf, static_cast<size_t>(sr / 20), static_cast<size_t>(sr / 10));
+    };
+    const double dark = holdRms(0.f, 48);
+    const double bentLow = holdRms(0.6f, 48);
+    Expect(bentLow != dark, "filter_key_curve_bends_lower_notes");
+  }
+
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);
   return gFail == 0 ? 0 : 1;
 }
