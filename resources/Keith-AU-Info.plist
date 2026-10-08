@@ -6,17 +6,17 @@
 	<array>
 		<dict>
 			<key>description</key>
-			<string>Keith</string>
+			<string>MAGS SYNTH</string>
 			<key>factoryFunction</key>
 			<string>Keith_Factory</string>
 			<key>manufacturer</key>
-			<string>Prvt</string>
+			<string>Mags</string>
 			<key>name</key>
-			<string>PrivateAudio: Keith</string>
+			<string>Mags: MAGS SYNTH</string>
 			<key>sandboxSafe</key>
 			<true/>
 			<key>subtype</key>
-			<string>Kth1</string>
+			<string>MgS1</string>
 			<key>type</key>
 			<string>aumu</string>
 			<key>version</key>
@@ -30,19 +30,19 @@
 	<key>CFBundleExecutable</key>
 	<string>Keith</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Keith v0.1.0</string>
+	<string>MAGS SYNTH v0.1.0</string>
 	<key>CFBundleIdentifier</key>
-	<string>audio.PrivateAudio.audiounit.Keith</string>
+	<string>audio.Mags.audiounit.MagsSynth</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Keith</string>
+	<string>MagsSynth</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleSignature</key>
-	<string>Kth1</string>
+	<string>MgS1</string>
 	<key>CFBundleVersion</key>
 	<string>0.1.0</string>
 	<key>CSResourcesFileMapped</key>
