@@ -15,7 +15,7 @@ measured result:
 | quietest preset | -35.63 LUFS | -19.91 LUFS |
 | presets clipping above 0 dBFS | **12** | **0** |
 | worst sample peak | **+17.45 dBFS** | -1.50 dBFS |
-| presets at the -12 LUFS target within 0.01 dB | 0 | **75** |
+| presets at the -12 LUFS target within 0.01 dB | 0 | **78** |
 
 Four presets, all basses, were peaking between +12 and +17.5 dBFS. That is not a loud
 patch, it is a clipped one, and it was the main reason switching patches by hand sounded
@@ -64,8 +64,8 @@ It resets the generated block first, so it is safe to re-run after any preset ch
 
 ## What is still wrong
 
-32 presets sit at the -1.5 dBFS peak ceiling, which means they are as loud as they can be
-without clipping. 17 of those land more than 3 dB below the -12 LUFS target, between -12.5
+28 presets sit at the -1.5 dBFS peak ceiling, which means they are as loud as they can be
+without clipping. 14 of those land more than 3 dB below the -12 LUFS target, between -15.1
 and -19.9 LUFS. They are all short percussive patches, stabs, plucks, arps and kits, whose
 peak-to-loudness ratio is large: one hard transient and very little sustain.
 

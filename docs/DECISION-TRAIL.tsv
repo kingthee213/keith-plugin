@@ -1,0 +1,17 @@
+id	when_utc	actor	unit	what	why	evidence	verdict
+D01	2026-10-08T09:20Z	solace	scope	Target macOS first, Windows later	He said so; macOS is the priority OS	conversation 2026-10-08	taken
+D02	2026-10-08T09:20Z	solace	art	Comic painted interface, no characters, as close to his reference as possible	He directed it; the earlier attempt failed on quality, not style	BRIEF.md 10, DECISIONS.md D4	taken
+D03	2026-10-08T09:20Z	solace	licence	Approve GPL-3.0 code reuse from Surge and OB-Xf	Keith supports the projects; the plugin is never sold	DECISIONS.md D3	taken
+D04	2026-10-08T09:20Z	solace	loudness	Target -12 LUFS, no clipping	He picked it; the presets jumped in volume	docs/LEVEL-ALIGNMENT.md	taken
+D05	2026-10-08T09:20Z	solace	identity	Fix the plugin identity now, before any host saves a set	The stored id is a one-way door once a host stores it	commit 7a32e52	taken
+D06	2026-10-08T09:20Z	solace	scope	Re-layout the existing 111 parameters, add no new engines in this pass	His answer to question 5	commit 7a32e52, briefs/W2	taken
+U01	2026-10-08T09:05Z	sam	verify	Run auval on the shipped v0.1.0 build	The handoff said the AU was never validated and could not be over SSH	auval -v aumu Kth1 Prvt -> AU VALIDATION SUCCEEDED (before any change)	PASS
+U02	2026-10-08T09:30Z	sam	identity	Set the identity to MAGS SYNTH, subtype MgS1, maker Mags	Template defaults showed as PrivateAudio: Keith in a host	auval -v aumu MgS1 Mags -> AU VALIDATION SUCCEEDED	PASS
+U03	2026-10-08T09:28Z	sam	identity	Gate the compiled BUNDLE_ID against the plist	The first attempt shipped a bundle whose plist said MagsSynth while the compiled object still said PrivateAudio, and auval segfaulted in CFBundleCopyBundleURL	tools/verify_plugin_identity.py 10 passed 0 failed	PASS
+U04	2026-10-08T09:35Z	sam	levels	Measure every preset loudness and peak	A 46.86 dB spread and 12 presets clipping	docs/level-measurements-before.tsv	MEASURED
+U05	2026-10-08T09:40Z	sam	levels	Trim on output level, not on the synth bus	The synth bus feeds the inserts, tape and master, so a trim there is not a level change; the first pass did not land	docs/LEVEL-ALIGNMENT.md	PASS
+U06	2026-10-08T09:44Z	sam	levels	Fix the parser that read generated signed values	The generator wrote +11.60 and the parser accepted only an optional minus, so pass two read zeros and reset every trim	commit e3a8008	FIXED
+U07	2026-10-08T09:45Z	sam	levels	Align all 109 presets	Measured spread 46.86 -> 7.92 dB, clipping 12 -> 0, 75 presets within 0.01 dB	docs/level-measurements-after.tsv	PASS
+U08	2026-10-08T09:45Z	sam	levels	32 presets still sit at the peak ceiling, 17 more than 3 dB below target	Short percussive patches have a high peak-to-loudness ratio; a higher level would clip	docs/LEVEL-ALIGNMENT.md	OPEN
+U09	2026-10-08T09:32Z	worker:composer-2.5	engine	Analog engine gets its own voice: ladder filter, sub, per-voice drift, noise floor	OB-Xf is a pure analog emulation and GPL reuse is approved	briefs/W1; tests 131 -> 137, hybrid hash unchanged	PASS
+U10	2026-10-08T09:31Z	worker:composer-2.5	docs	Rank every Surge and OB-Xf capability Keith lacks, with a call	He asked what it takes to compete	docs/SURGE-GAP-ANALYSIS.md, 25 rows, file+symbol citations	PASS

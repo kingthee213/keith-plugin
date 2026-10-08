@@ -1429,6 +1429,7 @@ const PresetDelta kPresetDeltas[] = {
   {108, kParamMstMix, 45},
 
 
+
   // --- BEGIN measured level trims (tools/measure_preset_levels.py)
   // Target -12 LUFS momentary loudness, sample peak at or below -1.5 dBFS.
   // These sit last in kPresetDeltas on purpose: a later delta wins, so these
@@ -1453,34 +1454,34 @@ const PresetDelta kPresetDeltas[] = {
   {16, kParamOutLevel, +4.13}, {16, kParamSynthMasterLevel, -6.00},  // Family 01 / 017 Low Drone  measured -12.00 LUFS, applied +0.00 dB
   {17, kParamOutLevel, +10.40}, {17, kParamSynthMasterLevel, +0.00},  // Family 01 / 018 Glass Arp  measured -16.14 LUFS, applied +0.00 dB
   {18, kParamOutLevel, +8.57}, {18, kParamSynthMasterLevel, +0.00},  // Family 01 / 019 Heavy Delay  measured -12.00 LUFS, applied +0.00 dB
-  {19, kParamOutLevel, +7.14}, {19, kParamSynthMasterLevel, -0.00},  // Family 01 / 020 Room Kit  measured -13.59 LUFS, applied +0.00 dB
+  {19, kParamOutLevel, +7.84}, {19, kParamSynthMasterLevel, +0.00},  // Family 01 / 020 Room Kit  measured -14.86 LUFS, applied +0.00 dB
   {20, kParamOutLevel, +9.20}, {20, kParamSynthMasterLevel, -11.06},  // Family 01 / 021 Upright Bass  measured -12.00 LUFS, applied -0.00 dB
   {21, kParamOutLevel, +12.00}, {21, kParamSynthMasterLevel, -12.55},  // Family 01 / 022 Hammer Keys  measured -12.00 LUFS, applied -0.00 dB
   {22, kParamOutLevel, +12.00}, {22, kParamSynthMasterLevel, -6.29},  // Family 01 / 023 Swell Choir  measured -12.01 LUFS, applied +0.01 dB
   {23, kParamOutLevel, +12.00}, {23, kParamSynthMasterLevel, -11.69},  // Family 01 / 024 Bright Reed  measured -12.01 LUFS, applied +0.01 dB
   {24, kParamOutLevel, +12.00}, {24, kParamSynthMasterLevel, +2.07},  // Family 01 / 025 Snap Bass  measured -12.44 LUFS, applied +0.44 dB
   {25, kParamOutLevel, +10.54}, {25, kParamSynthMasterLevel, -10.00},  // Family 01 / 026 Short Bass  measured -12.00 LUFS, applied +0.00 dB
-  {26, kParamOutLevel, +1.23}, {26, kParamSynthMasterLevel, +0.00},  // Family 02 / 001 Neon Keys  measured -12.01 LUFS, applied +0.01 dB
-  {27, kParamOutLevel, +3.08}, {27, kParamSynthMasterLevel, -2.00},  // Family 02 / 002 Thin Piano  measured -12.00 LUFS, applied +0.00 dB
-  {28, kParamOutLevel, +7.41}, {28, kParamSynthMasterLevel, +0.00},  // Family 02 / 003 Thin Clav  measured -14.39 LUFS, applied +0.00 dB
-  {29, kParamOutLevel, +2.20}, {29, kParamSynthMasterLevel, +0.00},  // Family 02 / 004 Perc Organ  measured -12.00 LUFS, applied +0.00 dB
-  {30, kParamOutLevel, +7.21}, {30, kParamSynthMasterLevel, -5.00},  // Family 02 / 005 Metal Bells  measured -12.00 LUFS, applied -0.00 dB
+  {26, kParamOutLevel, +1.08}, {26, kParamSynthMasterLevel, +0.00},  // Family 02 / 001 Neon Keys  measured -12.00 LUFS, applied +0.00 dB
+  {27, kParamOutLevel, +1.30}, {27, kParamSynthMasterLevel, -2.00},  // Family 02 / 002 Thin Piano  measured -12.00 LUFS, applied +0.00 dB
+  {28, kParamOutLevel, +8.38}, {28, kParamSynthMasterLevel, -0.00},  // Family 02 / 003 Thin Clav  measured -13.09 LUFS, applied -0.00 dB
+  {29, kParamOutLevel, +3.27}, {29, kParamSynthMasterLevel, +0.00},  // Family 02 / 004 Perc Organ  measured -11.99 LUFS, applied -0.01 dB
+  {30, kParamOutLevel, +6.39}, {30, kParamSynthMasterLevel, -5.00},  // Family 02 / 005 Metal Bells  measured -12.00 LUFS, applied -0.00 dB
   {31, kParamOutLevel, +11.11}, {31, kParamSynthMasterLevel, +0.00},  // Family 02 / 006 Neon Pluck  measured -12.51 LUFS, applied +0.00 dB
-  {32, kParamOutLevel, +11.00}, {32, kParamSynthMasterLevel, -3.00},  // Family 02 / 007 Sparse Pluck  measured -13.09 LUFS, applied +0.00 dB
+  {32, kParamOutLevel, +10.15}, {32, kParamSynthMasterLevel, -3.00},  // Family 02 / 007 Sparse Pluck  measured -13.94 LUFS, applied +0.00 dB
   {33, kParamOutLevel, -17.47}, {33, kParamSynthMasterLevel, +0.00},  // Family 02 / 008 Thin Stab  measured -19.91 LUFS, applied -0.00 dB
-  {34, kParamOutLevel, -15.68}, {34, kParamSynthMasterLevel, -0.00},  // Family 02 / 009 Hard Bass  measured -12.43 LUFS, applied +0.00 dB
-  {35, kParamOutLevel, -14.03}, {35, kParamSynthMasterLevel, -2.00},  // Family 02 / 010 Sparse Bass  measured -12.51 LUFS, applied +0.00 dB
-  {36, kParamOutLevel, -18.10}, {36, kParamSynthMasterLevel, -0.00},  // Family 02 / 011 Sync Lead  measured -12.00 LUFS, applied -0.00 dB
-  {37, kParamOutLevel, +3.05}, {37, kParamSynthMasterLevel, +0.00},  // Family 02 / 012 Stab Brass  measured -12.00 LUFS, applied +0.00 dB
-  {38, kParamOutLevel, +6.93}, {38, kParamSynthMasterLevel, +0.00},  // Family 02 / 013 Tight Strings  measured -12.00 LUFS, applied -0.00 dB
-  {39, kParamOutLevel, +12.00}, {39, kParamSynthMasterLevel, +1.87},  // Family 02 / 014 Breath Choir  measured -14.01 LUFS, applied +2.01 dB
-  {40, kParamOutLevel, +4.62}, {40, kParamSynthMasterLevel, +0.00},  // Family 02 / 015 Poly Pad  measured -12.00 LUFS, applied +0.00 dB
-  {41, kParamOutLevel, +2.19}, {41, kParamSynthMasterLevel, +0.00},  // Family 02 / 016 Sweep Motion  measured -12.00 LUFS, applied +0.00 dB
-  {42, kParamOutLevel, +1.69}, {42, kParamSynthMasterLevel, +0.00},  // Family 02 / 017 Skew Texture  measured -12.00 LUFS, applied -0.00 dB
-  {43, kParamOutLevel, -1.45}, {43, kParamSynthMasterLevel, -6.00},  // Family 02 / 018 Pulse Drone  measured -12.00 LUFS, applied +0.00 dB
+  {34, kParamOutLevel, -12.93}, {34, kParamSynthMasterLevel, +0.00},  // Family 02 / 009 Hard Bass  measured -12.00 LUFS, applied -0.00 dB
+  {35, kParamOutLevel, -20.94}, {35, kParamSynthMasterLevel, -2.00},  // Family 02 / 010 Sparse Bass  measured -12.00 LUFS, applied -0.00 dB
+  {36, kParamOutLevel, -13.13}, {36, kParamSynthMasterLevel, +0.00},  // Family 02 / 011 Sync Lead  measured -12.00 LUFS, applied -0.00 dB
+  {37, kParamOutLevel, +5.77}, {37, kParamSynthMasterLevel, +0.00},  // Family 02 / 012 Stab Brass  measured -12.00 LUFS, applied -0.00 dB
+  {38, kParamOutLevel, +6.22}, {38, kParamSynthMasterLevel, +0.00},  // Family 02 / 013 Tight Strings  measured -12.01 LUFS, applied +0.01 dB
+  {39, kParamOutLevel, +12.00}, {39, kParamSynthMasterLevel, -1.57},  // Family 02 / 014 Breath Choir  measured -12.25 LUFS, applied +0.25 dB
+  {40, kParamOutLevel, +6.00}, {40, kParamSynthMasterLevel, +0.00},  // Family 02 / 015 Poly Pad  measured -12.00 LUFS, applied -0.00 dB
+  {41, kParamOutLevel, +7.96}, {41, kParamSynthMasterLevel, +0.00},  // Family 02 / 016 Sweep Motion  measured -12.00 LUFS, applied +0.00 dB
+  {42, kParamOutLevel, +0.52}, {42, kParamSynthMasterLevel, +0.00},  // Family 02 / 017 Skew Texture  measured -12.00 LUFS, applied +0.00 dB
+  {43, kParamOutLevel, +3.49}, {43, kParamSynthMasterLevel, -6.00},  // Family 02 / 018 Pulse Drone  measured -12.00 LUFS, applied +0.00 dB
   {44, kParamOutLevel, +12.00}, {44, kParamSynthMasterLevel, +2.27},  // Family 02 / 019 Wide Arp  measured -14.48 LUFS, applied +0.00 dB
-  {45, kParamOutLevel, +5.61}, {45, kParamSynthMasterLevel, +0.00},  // Family 02 / 020 Heavy Crush  measured -12.00 LUFS, applied +0.00 dB
-  {46, kParamOutLevel, +9.24}, {46, kParamSynthMasterLevel, +0.00},  // Family 02 / 021 Punch Kit  measured -16.37 LUFS, applied +0.00 dB
+  {45, kParamOutLevel, +6.50}, {45, kParamSynthMasterLevel, +0.00},  // Family 02 / 020 Heavy Crush  measured -12.00 LUFS, applied +0.00 dB
+  {46, kParamOutLevel, +9.54}, {46, kParamSynthMasterLevel, +0.00},  // Family 02 / 021 Punch Kit  measured -14.84 LUFS, applied +0.00 dB
   {47, kParamOutLevel, +3.89}, {47, kParamSynthMasterLevel, +0.00},  // Family 03 / 001 Piano Stack  measured -12.00 LUFS, applied -0.00 dB
   {48, kParamOutLevel, +3.11}, {48, kParamSynthMasterLevel, +0.00},  // Family 03 / 002 Soft EP  measured -12.00 LUFS, applied -0.00 dB
   {49, kParamOutLevel, +3.25}, {49, kParamSynthMasterLevel, +0.00},  // Family 03 / 003 Soul Piano  measured -12.01 LUFS, applied +0.01 dB
@@ -1501,7 +1502,7 @@ const PresetDelta kPresetDeltas[] = {
   {64, kParamOutLevel, +6.00}, {64, kParamSynthMasterLevel, -5.00},  // Family 03 / 018 Warm Drone  measured -12.00 LUFS, applied +0.00 dB
   {65, kParamOutLevel, +10.01}, {65, kParamSynthMasterLevel, -0.00},  // Family 03 / 019 Mallet Arp  measured -14.24 LUFS, applied +0.00 dB
   {66, kParamOutLevel, +11.35}, {66, kParamSynthMasterLevel, +0.00},  // Family 03 / 020 Slap Delay  measured -14.10 LUFS, applied -0.00 dB
-  {67, kParamOutLevel, +7.65}, {67, kParamSynthMasterLevel, -0.00},  // Family 03 / 021 Dry Perc  measured -16.57 LUFS, applied -0.00 dB
+  {67, kParamOutLevel, +7.28}, {67, kParamSynthMasterLevel, +0.00},  // Family 03 / 021 Dry Perc  measured -14.61 LUFS, applied +0.00 dB
   {68, kParamOutLevel, +7.21}, {68, kParamSynthMasterLevel, +0.00},  // Family 04 / 001 Vector Keys  measured -12.00 LUFS, applied +0.00 dB
   {69, kParamOutLevel, +5.78}, {69, kParamSynthMasterLevel, +0.00},  // Family 04 / 002 Phase Piano  measured -12.00 LUFS, applied +0.00 dB
   {70, kParamOutLevel, +10.41}, {70, kParamSynthMasterLevel, -0.00},  // Family 04 / 003 Wave Clav  measured -13.44 LUFS, applied +0.00 dB
@@ -1521,7 +1522,7 @@ const PresetDelta kPresetDeltas[] = {
   {84, kParamOutLevel, +2.24}, {84, kParamSynthMasterLevel, +0.00},  // Family 04 / 017 Slow Drone  measured -12.00 LUFS, applied -0.00 dB
   {85, kParamOutLevel, +10.39}, {85, kParamSynthMasterLevel, -0.00},  // Family 04 / 018 Seq Arp  measured -16.61 LUFS, applied +0.00 dB
   {86, kParamOutLevel, +10.57}, {86, kParamSynthMasterLevel, -3.00},  // Family 04 / 019 Wash Delay  measured -12.00 LUFS, applied +0.00 dB
-  {87, kParamOutLevel, +9.64}, {87, kParamSynthMasterLevel, -0.00},  // Family 04 / 020 Metal Kit  measured -14.73 LUFS, applied -0.00 dB
+  {87, kParamOutLevel, +12.00}, {87, kParamSynthMasterLevel, +0.74},  // Family 04 / 020 Metal Kit  measured -12.37 LUFS, applied +0.37 dB
   {88, kParamOutLevel, +3.50}, {88, kParamSynthMasterLevel, +0.00},  // Family 05 / 001 Stage Keys  measured -12.00 LUFS, applied -0.00 dB
   {89, kParamOutLevel, +0.20}, {89, kParamSynthMasterLevel, +0.00},  // Family 05 / 002 Reed Piano  measured -12.00 LUFS, applied +0.00 dB
   {90, kParamOutLevel, +0.08}, {90, kParamSynthMasterLevel, +0.00},  // Family 05 / 003 Funk Clav  measured -17.02 LUFS, applied +0.00 dB
@@ -1530,18 +1531,18 @@ const PresetDelta kPresetDeltas[] = {
   {93, kParamOutLevel, +4.51}, {93, kParamSynthMasterLevel, +0.00},  // Family 05 / 006 Mute Pluck  measured -18.36 LUFS, applied +0.00 dB
   {94, kParamOutLevel, -1.12}, {94, kParamSynthMasterLevel, +0.00},  // Family 05 / 007 Short Stab  measured -19.30 LUFS, applied -0.00 dB
   {95, kParamOutLevel, -23.23}, {95, kParamSynthMasterLevel, +0.00},  // Family 05 / 008 Round Bass  measured -12.00 LUFS, applied -0.00 dB
-  {96, kParamOutLevel, -18.53}, {96, kParamSynthMasterLevel, -0.00},  // Family 05 / 009 Saw Lead  measured -12.01 LUFS, applied +0.01 dB
+  {96, kParamOutLevel, -16.30}, {96, kParamSynthMasterLevel, +0.00},  // Family 05 / 009 Saw Lead  measured -12.00 LUFS, applied +0.00 dB
   {97, kParamOutLevel, +7.02}, {97, kParamSynthMasterLevel, +0.00},  // Family 05 / 010 Section Brass  measured -12.00 LUFS, applied +0.00 dB
   {98, kParamOutLevel, +6.59}, {98, kParamSynthMasterLevel, -2.00},  // Family 05 / 011 Small Strings  measured -12.00 LUFS, applied -0.00 dB
   {99, kParamOutLevel, +3.53}, {99, kParamSynthMasterLevel, +0.00},  // Family 05 / 012 Close Choir  measured -12.00 LUFS, applied -0.00 dB
   {100, kParamOutLevel, +3.50}, {100, kParamSynthMasterLevel, +0.00},  // Family 05 / 013 Tape Pad  measured -12.00 LUFS, applied +0.00 dB
   {101, kParamOutLevel, -0.90}, {101, kParamSynthMasterLevel, +0.00},  // Family 05 / 014 Filter Motion  measured -12.00 LUFS, applied +0.00 dB
-  {102, kParamOutLevel, +4.90}, {102, kParamSynthMasterLevel, +0.00},  // Family 05 / 015 Broken Texture  measured -15.64 LUFS, applied -0.00 dB
+  {102, kParamOutLevel, +11.12}, {102, kParamSynthMasterLevel, +0.00},  // Family 05 / 015 Broken Texture  measured -12.00 LUFS, applied -0.00 dB
   {103, kParamOutLevel, -0.85}, {103, kParamSynthMasterLevel, -8.00},  // Family 05 / 016 Dark Drone  measured -12.00 LUFS, applied +0.00 dB
   {104, kParamOutLevel, +4.01}, {104, kParamSynthMasterLevel, -0.00},  // Family 05 / 017 Tight Arp  measured -19.78 LUFS, applied -0.00 dB
-  {105, kParamOutLevel, +4.16}, {105, kParamSynthMasterLevel, +0.00},  // Family 05 / 018 Room Crush  measured -12.00 LUFS, applied -0.00 dB
+  {105, kParamOutLevel, +4.90}, {105, kParamSynthMasterLevel, +0.00},  // Family 05 / 018 Room Crush  measured -12.00 LUFS, applied +0.00 dB
   {106, kParamOutLevel, +4.93}, {106, kParamSynthMasterLevel, -0.00},  // Family 05 / 019 Dry Kit  measured -14.58 LUFS, applied -0.00 dB
-  {107, kParamOutLevel, +6.02}, {107, kParamSynthMasterLevel, +0.00},  // Family 05 / 020 Hard Kit  measured -18.02 LUFS, applied -0.00 dB
+  {107, kParamOutLevel, +7.79}, {107, kParamSynthMasterLevel, +0.00},  // Family 05 / 020 Hard Kit  measured -16.59 LUFS, applied +0.00 dB
   {108, kParamOutLevel, +6.81}, {108, kParamSynthMasterLevel, +0.00},  // Family 05 / 021 Tape Kit  measured -12.00 LUFS, applied -0.00 dB
   // --- END measured level trims
 };
