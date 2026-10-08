@@ -38,10 +38,13 @@ control, synth recreation gate 40 passed 0 failed.
 
 ## Open, and visible in `design/screenshots/w5-verified.png` and the running window
 
-- Several toggle and tab controls draw with no visible label, so they read as blank coloured squares.
-  Locations: beside `SYNC` in OSCILLATORS, the top left of FILTER, beside `HYBRID` in VINTAGE ANALOG,
-  beside `OFF` in GLOBAL, and beside each of the three algorithm menus in EFFECTS. The label is drawn;
-  its colour matches the button fill. This is the largest remaining cosmetic defect.
+- Several toggle controls read as blank coloured squares at normal size, but they are not blank. The
+  label is drawn in a pale colour on a pale fill, so it vanishes. Two sites: the button style at
+  `src/editor/EditorialLayout.h:38` pairs a cream fill with cream text for the active option, so `FREE`
+  and `OFF` sit cream on cream while the inactive `SYNC` and `ON` are crisp white on dark, which is
+  backwards; and the effects indicator at `src/editor/EditorialControls.h:143` draws `ACT` in cream on
+  the bright green fill. Reading the buttons at 1:1 confirms the text is present. The fix is dark ink
+  for the label wherever the fill is light. This is the largest remaining cosmetic defect.
 - The preset selector row in LOADED SOUNDS renders its text partly overlapping the neighbouring buttons.
 - `NOISE` in OSCILLATORS is legible as `NOTSE` at the current size because the glyphs touch. The string
   is correct, the size is not.
