@@ -206,6 +206,21 @@ int main()
   if (rowPitchClear)
     std::printf("PASS row pitch fits label and value between neighbours\n");
 
+  bool abbrevClear = true;
+  for (const ControlRect& item : keith::ui::kControlRects)
+  {
+    const bool ok = keith::ui::LabelPassesAbbrevGate(item.label);
+    std::printf("%s parameter %d label \"%s\" passes abbreviation gate\n",
+                ok ? "PASS" : "FAIL", item.parameter, item.label);
+    if (!ok)
+    {
+      abbrevClear = false;
+      failed += 1;
+    }
+  }
+  if (abbrevClear)
+    std::printf("PASS every control label is declared or long enough\n");
+
   const float wordmarkMetric = keith::ui::OswaldMetricHeight(keith::ui::kWordmarkPx);
   const bool wordmark = keith::ui::kWordmarkBox.H() >= wordmarkMetric;
   std::printf("%s wordmark box fits spray metric %.1f in %.0f\n", wordmark ? "PASS" : "FAIL",

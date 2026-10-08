@@ -15,7 +15,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   g->AttachCornerResizer(EUIResizerMode::Scale, false);
   g->EnableMouseOver(true);
   g->AttachPanelBackground(kWood);
-  g->LoadFont("Bangers", BANGERS_FN);
   g->LoadFont(kFontTitle, OSWALD_FN);
   g->LoadFont(kFontMono, SPACEMONO_FN);
   g->LoadFont(kFontMonoBold, SPACEMONO_BOLD_FN);
@@ -89,21 +88,15 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamFilterReso, "RESO");
   freeKnob(kParamFilterEnv, "ENV", kGreen, true);
   freeKnob(kParamFilterKeyTrack, "KEY");
-  freeKnob(kParamFiltAttack, "F ATK");
-  freeKnob(kParamFiltDecay, "F DEC");
-  freeKnob(kParamFiltSustain, "F SUS");
-  freeKnob(kParamFiltRelease, "F REL");
+  freeKnob(kParamVelToFilter, ControlFor(kParamVelToFilter).label, kGreen, true);
 
-  // AMP — ADSR faders plus compact modifier row.
-  fader(kParamAmpAttack, "A");
-  fader(kParamAmpDecay, "D");
-  fader(kParamAmpSustain, "S");
-  fader(kParamAmpRelease, "R");
+  // AMP — ADSR knobs plus amp-modifier knobs in the strip beside the skyline.
+  for (int p = kParamAmpAttack; p <= kParamAmpRelease; ++p)
+    freeKnob(p, ControlFor(p).label, kMagenta);
+  for (int p = kParamFiltAttack; p <= kParamFiltRelease; ++p)
+    freeKnob(p, ControlFor(p).label, kGreen);
   for (int p = kParamNoiseKey; p <= kParamStereoSpread; ++p)
-  {
-    const auto& c = ControlFor(p);
-    freeKnob(p, c.label, kGreen, true);
-  }
+    freeKnob(p, ControlFor(p).label, kGreen, true);
 
   // LFO 1 + LFO 2 stacked.
   g->AttachControl(new KeithTextControl(IRECT(776, 24, 868, 38), "LFO 1", MonoBold(9, kHotPink)));
@@ -135,7 +128,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
          {"OFF", "CUTOFF", "PITCH", "SHAPE", "LEVEL", "FM"});
     freeKnob(matrixAmounts[slot], "AMT", kGreen, true);
   }
-  freeKnob(kParamVelToFilter, "V FLT");
 
   // Middle row: artwork plate (painted in chassis), sampler + drums.
   g->AttachControl(new KeithPresetMenu(IRECT(kPanelSample.l + 8, kPanelSample.t + 108,
@@ -143,7 +135,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
                                  kParamPitchRelease, kParamPitchAmount};
   for (int p : pitchParams)
-    freeKnob(p, "P", kMagenta, p == kParamPitchAmount);
+    freeKnob(p, ControlFor(p).label, kMagenta, p == kParamPitchAmount);
   freeKnob(kParamDrumSlotLevel, "LVL", kGreen, true);
   freeKnob(kParamDrumSlotPan, "PAN", kGreen, true);
   freeKnob(kParamDrumSlotTune, "TUNE", kMagenta, true);
@@ -181,6 +173,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamTapeHiss, "HISS", kMagenta);
   freeKnob(kParamTapePrint, "PRINT", kMagenta);
   freeKnob(kParamTapeMix, "MIX", kPaper);
+  g->AttachControl(new KeithTextControl(IRECT(8, 572, 202, 590), "BYPASS", MonoBold(10, kPaper)));
   tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
   freeKnob(kParamOutLevel, "OUT", kMagenta, true);
   freeKnob(kParamDirectLevel, ControlFor(kParamDirectLevel).label, kGreen, true);

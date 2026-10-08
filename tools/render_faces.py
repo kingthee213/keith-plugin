@@ -499,6 +499,7 @@ def main() -> None:
         ("kPanelOsc", "charcoal", "OSCILLATORS"), ("kPanelFilter", "teal", "FILTER"),
         ("kPanelAmp", "charcoal", "AMP"), ("kPanelLfo", "charcoal", "LFO"),
         ("kPanelMod", "charcoal", "MOD MATRIX"), ("kPanelArt", None, ""),
+        ("kPanelAmpMods", "charcoal", "AMP MODIFIERS"),
         ("kPanelSample", "charcoal", "LOADED SOUNDS"), ("kPanelPads", "charcoal", "DRUM PADS"),
         ("kPanelVintage", "olive", "VINTAGE ANALOG"), ("kPanelGlobal", "charcoal", "GLOBAL"),
         ("kPanelFx", "olive", "EFFECTS"),

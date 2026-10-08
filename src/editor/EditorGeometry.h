@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace keith { namespace ui {
 
@@ -29,15 +30,126 @@ constexpr Box kPanelFilter {458.0f, 14.0f, 634.0f, 350.0f};
 constexpr Box kPanelAmp {636.0f, 14.0f, 876.0f, 350.0f};
 constexpr Box kPanelLfo {878.0f, 14.0f, 1054.0f, 350.0f};
 constexpr Box kPanelMod {1056.0f, 14.0f, 1272.0f, 350.0f};
-constexpr Box kPanelArt {218.0f, 356.0f, 578.0f, 542.0f};
+constexpr Box kPanelArt {218.0f, 356.0f, 298.0f, 542.0f};
+constexpr Box kPanelAmpMods {304.0f, 356.0f, 578.0f, 542.0f};
 constexpr Box kPanelSample {584.0f, 356.0f, 848.0f, 542.0f};
 constexpr Box kPanelPads {854.0f, 356.0f, 1272.0f, 542.0f};
 constexpr Box kPanelVintage {218.0f, 548.0f, 368.0f, 743.0f};
 constexpr Box kPanelGlobal {374.0f, 548.0f, 664.0f, 743.0f};
 constexpr Box kPanelFx {670.0f, 548.0f, 1272.0f, 743.0f};
 constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};
-constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
+constexpr const char* kLabelAbbreviations[] = {
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "ABND",
+  "AKEY",
+  "ATT",
+  "B1",
+  "B2",
+  "BYP",
+  "C1",
+  "C2",
+  "CBND",
+  "COMP",
+  "CUT",
+  "D1",
+  "D2",
+  "D3",
+  "D4",
+  "DBND",
+  "DEC",
+  "DEP",
+  "DET",
+  "DIR",
+  "DIST",
+  "DKEY",
+  "DRV",
+  "DST",
+  "ENV",
+  "FATT",
+  "FDEC",
+  "FILT",
+  "FLT",
+  "FLUT",
+  "FM",
+  "FREL",
+  "FSUS",
+  "GLIDE",
+  "HISS",
+  "I1",
+  "I2",
+  "KEY",
+  "KIT",
+  "LEG",
+  "LVL",
+  "M1",
+  "M2",
+  "MA",
+  "MB",
+  "MC",
+  "MIX",
+  "MS",
+  "MUT",
+  "MWA",
+  "MWD",
+  "MX",
+  "NKEY",
+  "NOISE",
+  "OUT",
+  "PAD",
+  "PAMT",
+  "PAN",
+  "PATK",
+  "PDEC",
+  "POLY",
+  "PREL",
+  "PRINT",
+  "PSUS",
+  "PW",
+  "RATE",
+  "REL",
+  "RES",
+  "RING",
+  "RT",
+  "S1",
+  "S2",
+  "S3",
+  "S4",
+  "SDLY",
+  "SHP",
+  "SOL",
+  "STRK",
+  "SUB",
+  "SUS",
+  "SWID",
+  "SYN",
+  "SYNC",
+  "TONE",
+  "TUN",
+  "TUNE",
+  "TYPE",
+  "UNI",
+  "VEL",
+  "VOL",
+  "WOW",
+};
+constexpr int kNumLabelAbbreviations = static_cast<int>(sizeof(kLabelAbbreviations) / sizeof(const char*));
+inline bool LabelIsDeclaredAbbrev(const char* label) {
+  for (int i = 0; i < kNumLabelAbbreviations; ++i)
+    if (std::strcmp(label, kLabelAbbreviations[i]) == 0) return true;
+  return false;
+}
+inline bool LabelPassesAbbrevGate(const char* label) {
+  const std::size_t n = std::strlen(label);
+  if (n == 0) return false;
+  if (n == 1) return LabelIsDeclaredAbbrev(label);
+  if (n >= 4) return true;
+  return LabelIsDeclaredAbbrev(label);
+}
 
+constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
 
 constexpr PanelSpec kPanels[] = {
   {"OSCILLATORS", kPanelOsc, "panel"},
@@ -45,6 +157,8 @@ constexpr PanelSpec kPanels[] = {
   {"AMP", kPanelAmp, "panel"},
   {"LFO", kPanelLfo, "panel"},
   {"MOD MATRIX", kPanelMod, "panel"},
+  {"ART", kPanelArt, "panel"},
+  {"AMP MODIFIERS", kPanelAmpMods, "panel"},
   {"LOADED SOUNDS", kPanelSample, "panel"},
   {"DRUM PADS", kPanelPads, "panel"},
   {"VINTAGE ANALOG MODELING", kPanelVintage, "panel"},
@@ -61,7 +175,7 @@ inline constexpr ControlRect kControlRects[] = {
   {5, {8.0f, 284.0f, 202.0f, 357.0f}, "HISS", 10.0f, 2448, ControlKind::Knob},
   {6, {8.0f, 361.0f, 202.0f, 434.0f}, "PRINT", 10.0f, 3060, ControlKind::Knob},
   {7, {8.0f, 438.0f, 202.0f, 511.0f}, "MIX", 10.0f, 1836, ControlKind::Knob},
-  {8, {8.0f, 515.0f, 202.0f, 543.0f}, "BYP", 10.0f, 1836, ControlKind::Tab},
+  {8, {8.0f, 594.0f, 202.0f, 622.0f}, "BYP", 10.0f, 1836, ControlKind::Tab},
   {9, {226.0f, 574.0f, 360.0f, 602.0f}, "TYPE", 10.0f, 2448, ControlKind::Tab},
   {10, {554.0f, 584.5f, 602.0f, 636.5f}, "POLY", 10.0f, 2448, ControlKind::Dropdown},
   {11, {439.3f, 574.0f, 490.7f, 647.0f}, "GLIDE", 10.0f, 3060, ControlKind::Knob},
@@ -82,20 +196,20 @@ inline constexpr ControlRect kControlRects[] = {
   {26, {466.0f, 74.0f, 543.0f, 147.0f}, "CUT", 10.0f, 1836, ControlKind::Knob},
   {27, {549.0f, 74.0f, 626.0f, 147.0f}, "RES", 10.0f, 1836, ControlKind::Knob},
   {28, {466.0f, 153.0f, 543.0f, 226.0f}, "ENV", 10.0f, 1836, ControlKind::Knob},
-  {29, {644.0f, 44.0f, 698.0f, 140.0f}, "A", 10.0f, 612, ControlKind::Fader},
-  {30, {708.0f, 44.0f, 762.0f, 140.0f}, "D", 10.0f, 612, ControlKind::Fader},
-  {31, {644.0f, 148.0f, 698.0f, 244.0f}, "S", 10.0f, 612, ControlKind::Fader},
-  {32, {708.0f, 148.0f, 762.0f, 244.0f}, "R", 10.0f, 612, ControlKind::Fader},
-  {33, {592.0f, 382.0f, 649.5f, 455.0f}, "PA", 10.0f, 1224, ControlKind::Knob},
-  {34, {655.5f, 382.0f, 713.0f, 455.0f}, "PD", 10.0f, 1224, ControlKind::Knob},
-  {35, {719.0f, 382.0f, 776.5f, 455.0f}, "PS", 10.0f, 1224, ControlKind::Knob},
-  {36, {592.0f, 461.0f, 646.0f, 534.0f}, "PR", 10.0f, 1224, ControlKind::Knob},
-  {37, {652.0f, 461.0f, 706.0f, 534.0f}, "AMT", 10.0f, 1836, ControlKind::Knob},
+  {29, {644.0f, 44.0f, 698.0f, 117.0f}, "ATT", 10.0f, 1836, ControlKind::Knob},
+  {30, {704.0f, 44.0f, 758.0f, 117.0f}, "DEC", 10.0f, 1836, ControlKind::Knob},
+  {31, {764.0f, 44.0f, 818.0f, 117.0f}, "SUS", 10.0f, 1836, ControlKind::Knob},
+  {32, {824.0f, 44.0f, 878.0f, 117.0f}, "REL", 10.0f, 1836, ControlKind::Knob},
+  {33, {592.0f, 382.0f, 649.5f, 455.0f}, "PATK", 10.0f, 1836, ControlKind::Knob},
+  {34, {655.5f, 382.0f, 713.0f, 455.0f}, "PDEC", 10.0f, 1836, ControlKind::Knob},
+  {35, {719.0f, 382.0f, 776.5f, 455.0f}, "PSUS", 10.0f, 1836, ControlKind::Knob},
+  {36, {782.5f, 382.0f, 840.0f, 455.0f}, "PREL", 10.0f, 1836, ControlKind::Knob},
+  {37, {592.0f, 461.0f, 649.5f, 534.0f}, "PAMT", 10.0f, 1836, ControlKind::Knob},
   {38, {449.3f, 662.0f, 510.7f, 735.0f}, "SYN", 10.0f, 1836, ControlKind::Knob},
-  {39, {644.0f, 260.0f, 698.0f, 333.0f}, "FA", 10.0f, 1224, ControlKind::Knob},
-  {40, {704.0f, 260.0f, 758.0f, 333.0f}, "FD", 10.0f, 1224, ControlKind::Knob},
-  {41, {764.0f, 260.0f, 818.0f, 333.0f}, "FS", 10.0f, 1224, ControlKind::Knob},
-  {42, {824.0f, 260.0f, 878.0f, 333.0f}, "FR", 10.0f, 1224, ControlKind::Knob},
+  {39, {644.0f, 125.0f, 698.0f, 198.0f}, "FATT", 10.0f, 1836, ControlKind::Knob},
+  {40, {704.0f, 125.0f, 758.0f, 198.0f}, "FDEC", 10.0f, 1836, ControlKind::Knob},
+  {41, {764.0f, 125.0f, 818.0f, 198.0f}, "FSUS", 10.0f, 1836, ControlKind::Knob},
+  {42, {824.0f, 125.0f, 878.0f, 198.0f}, "FREL", 10.0f, 1836, ControlKind::Knob},
   {43, {226.0f, 314.0f, 294.0f, 342.0f}, "SYNC", 10.0f, 2448, ControlKind::Tab},
   {44, {302.0f, 314.0f, 370.0f, 342.0f}, "RING", 10.0f, 2448, ControlKind::Tab},
   {45, {549.0f, 153.0f, 626.0f, 226.0f}, "KEY", 10.0f, 1836, ControlKind::Knob},
@@ -106,8 +220,8 @@ inline constexpr ControlRect kControlRects[] = {
   {50, {969.0f, 40.0f, 1046.0f, 113.0f}, "DEP", 10.0f, 1836, ControlKind::Knob},
   {51, {584.0f, 662.0f, 656.0f, 714.0f}, "MWD", 10.0f, 1836, ControlKind::Dropdown},
   {52, {516.7f, 662.0f, 578.0f, 735.0f}, "MWA", 10.0f, 1836, ControlKind::Knob},
-  {53, {466.0f, 232.0f, 543.0f, 305.0f}, "VA", 10.0f, 1224, ControlKind::Knob},
-  {54, {549.0f, 232.0f, 626.0f, 305.0f}, "VF", 10.0f, 1224, ControlKind::Knob},
+  {53, {466.0f, 232.0f, 543.0f, 305.0f}, "VEL", 10.0f, 1836, ControlKind::Knob},
+  {54, {549.0f, 232.0f, 626.0f, 305.0f}, "FILT", 10.0f, 1836, ControlKind::Knob},
   {55, {608.0f, 584.5f, 656.0f, 636.5f}, "LEG", 10.0f, 1836, ControlKind::Dropdown},
   {56, {678.0f, 574.0f, 868.0f, 626.0f}, "I1", 10.0f, 1224, ControlKind::Dropdown},
   {57, {678.0f, 662.0f, 723.2f, 735.0f}, "A1", 10.0f, 1224, ControlKind::Knob},
@@ -124,7 +238,7 @@ inline constexpr ControlRect kControlRects[] = {
   {70, {1120.5f, 662.0f, 1165.7f, 735.0f}, "MB", 10.0f, 1224, ControlKind::Knob},
   {71, {1169.7f, 662.0f, 1214.8f, 735.0f}, "MC", 10.0f, 1224, ControlKind::Knob},
   {72, {1218.8f, 662.0f, 1264.0f, 735.0f}, "MX", 10.0f, 1224, ControlKind::Knob},
-  {74, {8.0f, 547.0f, 202.0f, 620.0f}, "OUT", 10.0f, 1836, ControlKind::Knob},
+  {74, {8.0f, 515.0f, 202.0f, 588.0f}, "OUT", 10.0f, 1836, ControlKind::Knob},
   {75, {862.0f, 382.0f, 1082.0f, 534.0f}, "PAD", 10.0f, 1836, ControlKind::Pad},
   {76, {1090.0f, 386.0f, 1144.0f, 459.0f}, "LVL", 10.0f, 1836, ControlKind::Knob},
   {77, {1150.0f, 386.0f, 1204.0f, 459.0f}, "PAN", 10.0f, 1836, ControlKind::Knob},
@@ -132,9 +246,9 @@ inline constexpr ControlRect kControlRects[] = {
   {79, {1090.0f, 463.0f, 1144.0f, 536.0f}, "DEC", 10.0f, 1836, ControlKind::Knob},
   {80, {1150.0f, 463.0f, 1204.0f, 536.0f}, "FLT", 10.0f, 1836, ControlKind::Knob},
   {81, {1210.0f, 463.0f, 1264.0f, 536.0f}, "DRV", 10.0f, 1836, ControlKind::Knob},
-  {82, {712.0f, 483.5f, 776.0f, 511.5f}, "MUT", 10.0f, 1836, ControlKind::Tab},
-  {83, {782.0f, 483.5f, 846.0f, 511.5f}, "SOL", 10.0f, 1836, ControlKind::Tab},
-  {84, {782.5f, 382.0f, 840.0f, 455.0f}, "KIT", 10.0f, 1836, ControlKind::Knob},
+  {82, {719.0f, 483.5f, 772.5f, 511.5f}, "MUT", 10.0f, 1836, ControlKind::Tab},
+  {83, {782.5f, 483.5f, 836.0f, 511.5f}, "SOL", 10.0f, 1836, ControlKind::Tab},
+  {84, {655.5f, 461.0f, 713.0f, 534.0f}, "KIT", 10.0f, 1836, ControlKind::Knob},
   {85, {886.0f, 179.0f, 963.0f, 252.0f}, "RT", 10.0f, 1224, ControlKind::Knob},
   {86, {886.0f, 258.0f, 963.0f, 310.0f}, "SHP", 10.0f, 1836, ControlKind::Dropdown},
   {87, {969.0f, 258.0f, 1046.0f, 310.0f}, "DST", 10.0f, 1836, ControlKind::Dropdown},
@@ -151,16 +265,16 @@ inline constexpr ControlRect kControlRects[] = {
   {98, {1064.0f, 271.0f, 1135.0f, 323.0f}, "S4", 10.0f, 1224, ControlKind::Dropdown},
   {99, {1139.0f, 271.0f, 1210.0f, 323.0f}, "D4", 10.0f, 1224, ControlKind::Dropdown},
   {100, {1210.0f, 271.0f, 1264.0f, 344.0f}, "A4", 10.0f, 1224, ControlKind::Knob},
-  {101, {226.0f, 382.0f, 307.5f, 455.0f}, "NK", 10.0f, 1224, ControlKind::Knob},
-  {102, {313.5f, 382.0f, 395.0f, 455.0f}, "AK", 10.0f, 1224, ControlKind::Knob},
-  {103, {401.0f, 382.0f, 482.5f, 455.0f}, "AB", 10.0f, 1224, ControlKind::Knob},
-  {104, {488.5f, 382.0f, 570.0f, 455.0f}, "DK", 10.0f, 1224, ControlKind::Knob},
-  {105, {226.0f, 461.0f, 307.5f, 534.0f}, "DB", 10.0f, 1224, ControlKind::Knob},
-  {106, {313.5f, 461.0f, 395.0f, 534.0f}, "SD", 10.0f, 1224, ControlKind::Knob},
-  {107, {401.0f, 461.0f, 482.5f, 534.0f}, "ST", 10.0f, 1224, ControlKind::Knob},
-  {108, {488.5f, 461.0f, 570.0f, 534.0f}, "SW", 10.0f, 1224, ControlKind::Knob},
-  {109, {8.0f, 630.0f, 102.0f, 703.0f}, "DIR", 10.0f, 1836, ControlKind::Knob},
-  {110, {108.0f, 630.0f, 202.0f, 703.0f}, "CB", 10.0f, 1224, ControlKind::Knob},
+  {101, {312.0f, 386.0f, 372.0f, 459.0f}, "NKEY", 10.0f, 1836, ControlKind::Knob},
+  {102, {378.0f, 386.0f, 438.0f, 459.0f}, "AKEY", 10.0f, 1836, ControlKind::Knob},
+  {103, {444.0f, 386.0f, 504.0f, 459.0f}, "ABND", 10.0f, 1836, ControlKind::Knob},
+  {104, {510.0f, 386.0f, 570.0f, 459.0f}, "DKEY", 10.0f, 1836, ControlKind::Knob},
+  {105, {312.0f, 465.0f, 372.0f, 538.0f}, "DBND", 10.0f, 1836, ControlKind::Knob},
+  {106, {378.0f, 465.0f, 438.0f, 538.0f}, "SDLY", 10.0f, 1836, ControlKind::Knob},
+  {107, {444.0f, 465.0f, 504.0f, 538.0f}, "STRK", 10.0f, 1836, ControlKind::Knob},
+  {108, {510.0f, 465.0f, 570.0f, 538.0f}, "SWID", 10.0f, 1836, ControlKind::Knob},
+  {109, {8.0f, 632.0f, 102.0f, 705.0f}, "DIR", 10.0f, 1836, ControlKind::Knob},
+  {110, {108.0f, 632.0f, 202.0f, 705.0f}, "CBND", 10.0f, 1836, ControlKind::Knob},
 };
 
 constexpr int kNumControlRects = static_cast<int>(sizeof(kControlRects) / sizeof(ControlRect));

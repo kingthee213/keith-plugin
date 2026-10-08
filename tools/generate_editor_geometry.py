@@ -23,7 +23,8 @@ PANELS = {
     "kPanelAmp": (636, 14, 876, 350),
     "kPanelLfo": (878, 14, 1054, 350),
     "kPanelMod": (1056, 14, 1272, 350),
-    "kPanelArt": (218, 356, 578, 542),
+    "kPanelArt": (218, 356, 298, 542),
+    "kPanelAmpMods": (304, 356, 578, 542),
     "kPanelSample": (584, 356, 848, 542),
     "kPanelPads": (854, 356, 1272, 542),
     "kPanelVintage": (218, 548, 368, BOTTOM_PANEL_B),
@@ -52,16 +53,16 @@ LABELS = {
     18: ("SHP", "knob", 1836), 19: ("TUNE", "knob", 2448), 20: ("LVL", "knob", 1836),
     21: ("PW", "knob", 1224), 22: ("SUB", "knob", 1836), 23: ("NOISE", "knob", 3060),
     24: ("FM", "knob", 1224), 25: ("TYPE", "tab", 2448), 26: ("CUT", "knob", 1836),
-    27: ("RES", "knob", 1836), 28: ("ENV", "knob", 1836), 29: ("A", "fader", 612),
-    30: ("D", "fader", 612), 31: ("S", "fader", 612), 32: ("R", "fader", 612),
-    33: ("PA", "knob", 1224), 34: ("PD", "knob", 1224), 35: ("PS", "knob", 1224),
-    36: ("PR", "knob", 1224), 37: ("AMT", "knob", 1836), 38: ("SYN", "knob", 1836),
-    39: ("FA", "knob", 1224), 40: ("FD", "knob", 1224), 41: ("FS", "knob", 1224),
-    42: ("FR", "knob", 1224), 43: ("SYNC", "tab", 2448), 44: ("RING", "tab", 2448),
+    27: ("RES", "knob", 1836), 28: ("ENV", "knob", 1836), 29: ("ATT", "knob", 1836),
+    30: ("DEC", "knob", 1836), 31: ("SUS", "knob", 1836), 32: ("REL", "knob", 1836),
+    33: ("PATK", "knob", 1836), 34: ("PDEC", "knob", 1836), 35: ("PSUS", "knob", 1836),
+    36: ("PREL", "knob", 1836), 37: ("PAMT", "knob", 1836), 38: ("SYN", "knob", 1836),
+    39: ("FATT", "knob", 1836), 40: ("FDEC", "knob", 1836), 41: ("FSUS", "knob", 1836),
+    42: ("FREL", "knob", 1836), 43: ("SYNC", "tab", 2448), 44: ("RING", "tab", 2448),
     45: ("KEY", "knob", 1836), 46: ("COMP", "knob", 2448), 47: ("RATE", "knob", 2448),
     48: ("SHP", "dropdown", 1836), 49: ("DST", "dropdown", 1836), 50: ("DEP", "knob", 1836),
-    51: ("MWD", "dropdown", 1836), 52: ("MWA", "knob", 1836), 53: ("VA", "knob", 1224),
-    54: ("VF", "knob", 1224), 55: ("LEG", "dropdown", 1836), 56: ("I1", "dropdown", 1224),
+    51: ("MWD", "dropdown", 1836), 52: ("MWA", "knob", 1836), 53: ("VEL", "knob", 1836),
+    54: ("FILT", "knob", 1836), 55: ("LEG", "dropdown", 1836), 56: ("I1", "dropdown", 1224),
     57: ("A1", "knob", 1224), 58: ("B1", "knob", 1224), 59: ("C1", "knob", 1224),
     60: ("M1", "knob", 1224), 62: ("I2", "dropdown", 1224), 63: ("A2", "knob", 1224),
     64: ("B2", "knob", 1224), 65: ("C2", "knob", 1224), 66: ("M2", "knob", 1224),
@@ -75,11 +76,38 @@ LABELS = {
     90: ("D1", "dropdown", 1224), 91: ("A1", "knob", 1224), 92: ("S2", "dropdown", 1224),
     93: ("D2", "dropdown", 1224), 94: ("A2", "knob", 1224), 95: ("S3", "dropdown", 1224),
     96: ("D3", "dropdown", 1224), 97: ("A3", "knob", 1224), 98: ("S4", "dropdown", 1224),
-    99: ("D4", "dropdown", 1224), 100: ("A4", "knob", 1224), 101: ("NK", "knob", 1224),
-    102: ("AK", "knob", 1224), 103: ("AB", "knob", 1224), 104: ("DK", "knob", 1224),
-    105: ("DB", "knob", 1224), 106: ("SD", "knob", 1224), 107: ("ST", "knob", 1224),
-    108: ("SW", "knob", 1224), 109: ("DIR", "knob", 1836), 110: ("CB", "knob", 1224),
+    99: ("D4", "dropdown", 1224), 100: ("A4", "knob", 1224), 101: ("NKEY", "knob", 1836),
+    102: ("AKEY", "knob", 1836), 103: ("ABND", "knob", 1836), 104: ("DKEY", "knob", 1836),
+    105: ("DBND", "knob", 1836), 106: ("SDLY", "knob", 1836), 107: ("STRK", "knob", 1836),
+    108: ("SWID", "knob", 1836), 109: ("DIR", "knob", 1836), 110: ("CBND", "knob", 1836),
 }
+
+LABEL_ABBREVIATIONS = sorted({label for label, _kind, _units in LABELS.values()})
+
+
+def label_abbrev_lines():
+    lines = [
+        "constexpr const char* kLabelAbbreviations[] = {",
+    ]
+    for label in LABEL_ABBREVIATIONS:
+        lines.append(f'  "{label}",')
+    lines.extend([
+        "};",
+        "constexpr int kNumLabelAbbreviations = static_cast<int>(sizeof(kLabelAbbreviations) / sizeof(const char*));",
+        "inline bool LabelIsDeclaredAbbrev(const char* label) {",
+        "  for (int i = 0; i < kNumLabelAbbreviations; ++i)",
+        "    if (std::strcmp(label, kLabelAbbreviations[i]) == 0) return true;",
+        "  return false;",
+        "}",
+        "inline bool LabelPassesAbbrevGate(const char* label) {",
+        "  const std::size_t n = std::strlen(label);",
+        "  if (n == 0) return false;",
+        "  if (n == 1) return LabelIsDeclaredAbbrev(label);",
+        "  if (n >= 4) return true;",
+        "  return LabelIsDeclaredAbbrev(label);",
+        "}",
+    ])
+    return lines
 
 BYPASS_VIA_ALGO = {61, 67, 73}
 rects: dict[int, tuple[float, float, float, float]] = {}
@@ -152,32 +180,30 @@ for row_params in ([26, 27], [28, 45], [53, 54]):
         rects[p] = box(x, y_filt, x + kw_filt, y_filt + KNOB_H)
     y_filt += KNOB_H + 6
 
-# AMP — ADSR faders, filter env row, modifier row (8 knobs; DIR/CB on global overflow)
+# AMP — ADSR knobs and filter envelope row
 al, at, ar, ab = PANELS["kPanelAmp"]
-fader_x0 = al + PAD
-fader_y0 = content_top(at) + 4
+y_amp = content_top(at) + 4
+kw_amp = max(MIN_W, (ar - al - 2 * PAD - 3 * 6) / 4)
 for i, p in enumerate([29, 30, 31, 32]):
-    col = i % 2
-    row = i // 2
-    x = fader_x0 + col * (FADER_W + 10)
-    y = fader_y0 + row * (FADER_H + 8)
-    rects[p] = box(x, y, x + FADER_W, y + FADER_H)
-y_fa = fader_y0 + 2 * (FADER_H + 8) + 8
-kw_f = max(MIN_W, (ar - al - 2 * PAD - 3 * 6) / 4)
+    rects[p] = box(al + PAD + i * (kw_amp + 6), y_amp, al + PAD + i * (kw_amp + 6) + kw_amp, y_amp + KNOB_H)
+y_fa = y_amp + KNOB_H + 8
 for i, p in enumerate([39, 40, 41, 42]):
-    rects[p] = box(al + PAD + i * (kw_f + 6), y_fa, al + PAD + i * (kw_f + 6) + kw_f, y_fa + KNOB_H)
-# ART — cityscape plate plus amp modifier knobs (secondary row at bottom)
-arl, art, arr, arb = PANELS["kPanelArt"]
+    rects[p] = box(al + PAD + i * (kw_amp + 6), y_fa, al + PAD + i * (kw_amp + 6) + kw_amp, y_fa + KNOB_H)
+# AMP MODIFIERS — dedicated strip beside the skyline art plate
+aml, amt, amr, amb = PANELS["kPanelAmpMods"]
 amp_mods = [101, 102, 103, 104, 105, 106, 107, 108]
 cols = 4
-mod_w = max(MIN_W, (arr - arl - 2 * PAD - (cols - 1) * ROW_GAP) / cols)
-row_y1 = arb - PAD - KNOB_H
-row_y0 = row_y1 - ROW_GAP - KNOB_H
+inner = amr - aml - 2 * PAD
+mod_w = (inner - (cols - 1) * ROW_GAP) / cols
+if mod_w < 44:
+    raise SystemExit(f"amp mod knob width {mod_w:.1f} too narrow")
+row_y0 = content_top(amt) + 4
+row_y1 = row_y0 + KNOB_H + ROW_GAP
 for i, p in enumerate(amp_mods):
     row = i // cols
     col = i % cols
     y = row_y0 if row == 0 else row_y1
-    x = arl + PAD + col * (mod_w + ROW_GAP)
+    x = aml + PAD + col * (mod_w + ROW_GAP)
     rects[p] = box(x, y, x + mod_w, y + KNOB_H)
 
 # LFO
@@ -208,20 +234,20 @@ for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97)
     rects[dst] = box(ml + PAD + dw + 4, y, ml + PAD + 2 * dw + 4, y + DROPDOWN_H)
     rects[amt] = box(mr - PAD - MIN_W, y, mr - PAD, y + KNOB_H)
 
-# SAMPLE — pitch row, amount row, tab row below title band
+# SAMPLE — two rows of four (pitch env, amount/kit/mute/solo)
 sl, st, sr, sb = PANELS["kPanelSample"]
 inner_w = sr - sl - 2 * PAD
 y1 = content_top(st)
-kw4 = max(MIN_W, (inner_w - 18) / 4)
-for i, p in enumerate([33, 34, 35, 84]):
-    rects[p] = box(sl + PAD + i * (kw4 + 6), y1, sl + PAD + i * (kw4 + 6) + kw4, y1 + KNOB_H)
-y2 = y1 + KNOB_H + 6
-kw2 = max(MIN_W, (inner_w - 6 - 64 - 6 - 64) / 2)
-for i, p in enumerate([36, 37]):
-    rects[p] = box(sl + PAD + i * (kw2 + 6), y2, sl + PAD + i * (kw2 + 6) + kw2, y2 + KNOB_H)
+kw4 = max(MIN_W, (inner_w - 3 * ROW_GAP) / 4)
+for i, p in enumerate([33, 34, 35, 36]):
+    rects[p] = box(sl + PAD + i * (kw4 + ROW_GAP), y1, sl + PAD + i * (kw4 + ROW_GAP) + kw4, y1 + KNOB_H)
+y2 = y1 + KNOB_H + ROW_GAP
+for i, p in enumerate([37, 84]):
+    rects[p] = box(sl + PAD + i * (kw4 + ROW_GAP), y2, sl + PAD + i * (kw4 + ROW_GAP) + kw4, y2 + KNOB_H)
 tab_y = y2 + (KNOB_H - TAB_H) / 2
-rects[82] = box(sl + PAD + 2 * (kw2 + 6), tab_y, sl + PAD + 2 * (kw2 + 6) + 64, tab_y + TAB_H)
-rects[83] = box(sl + PAD + 2 * (kw2 + 6) + 70, tab_y, sl + PAD + 2 * (kw2 + 6) + 134, tab_y + TAB_H)
+tab_w = min(64, kw4 - 4)
+rects[82] = box(sl + PAD + 2 * (kw4 + ROW_GAP), tab_y, sl + PAD + 2 * (kw4 + ROW_GAP) + tab_w, tab_y + TAB_H)
+rects[83] = box(sl + PAD + 3 * (kw4 + ROW_GAP), tab_y, sl + PAD + 3 * (kw4 + ROW_GAP) + tab_w, tab_y + TAB_H)
 
 # PADS
 pl, pt, pr, pb = PANELS["kPanelPads"]
@@ -268,13 +294,15 @@ rects[51] = box(x, knob_y, x + drop_w, knob_y + DROPDOWN_H)
 # Left rail — tape bus stacked vertically (full rail width)
 lr_l, _lr_t, lr_r, _lr_b = PANELS["kLeftRail"]
 rail_inner = lr_r - lr_l - 2 * PAD
-tape_items = [3, 4, 5, 6, 7, 8, 74]
+tape_items = [3, 4, 5, 6, 7, 74]
 tape_y = 130
 y = tape_y
 for p in tape_items:
-    h = TAB_H if p == 8 else KNOB_H
-    rects[p] = box(lr_l + PAD, y, lr_r - PAD, y + h)
-    y += h + 4
+    rects[p] = box(lr_l + PAD, y, lr_r - PAD, y + KNOB_H)
+    y += KNOB_H + 4
+bypass_y = y + 2
+rects[8] = box(lr_l + PAD, bypass_y, lr_r - PAD, bypass_y + TAB_H)
+y = bypass_y + TAB_H + 4
 rw = (rail_inner - ROW_GAP) / 2
 rects[109] = box(lr_l + PAD, y + 6, lr_l + PAD + rw, y + 6 + KNOB_H)
 rects[110] = box(lr_l + PAD + rw + ROW_GAP, y + 6, lr_r - PAD, y + 6 + KNOB_H)
@@ -423,7 +451,7 @@ def apply_to_repo():
     geom = geom_path.read_text()
     panel_block = "\n".join(panel_lines())
     geom = re.sub(
-        r"constexpr float kPanelTitleBand = .*?\nconstexpr Box kWordmarkBox \{.*?\};",
+        r"constexpr float kPanelTitleBand = .*?\nconstexpr Box kLeftRail \{.*?\};",
         panel_block,
         geom,
         count=1,
@@ -431,7 +459,7 @@ def apply_to_repo():
     )
     if "kPanelTitleBand" not in geom:
         geom = re.sub(
-            r"constexpr Box kPanelOsc \{.*?\nconstexpr Box kWordmarkBox \{.*?\};",
+            r"constexpr Box kPanelOsc \{.*?\nconstexpr Box kLeftRail \{.*?\};",
             panel_block,
             geom,
             count=1,
@@ -445,6 +473,32 @@ def apply_to_repo():
         count=1,
         flags=re.S,
     )
+    abbrev_block = "\n".join(label_abbrev_lines())
+    if "LabelPassesAbbrevGate" in geom:
+        geom = re.sub(
+            r"constexpr const char\* kLabelAbbreviations\[\] = \{.*?\ninline bool LabelPassesAbbrevGate\(const char\* label\) \{.*?\n\}",
+            abbrev_block,
+            geom,
+            count=1,
+            flags=re.S,
+        )
+    else:
+        geom = re.sub(
+            r"(constexpr Box kLeftRail \{[^}]+\};)\n",
+            "\1\n" + abbrev_block + "\n",
+            geom,
+            count=1,
+        )
+    if "LabelPassesAbbrevGate" not in geom:
+        raise SystemExit("failed to inject abbreviation table")
+    if "constexpr Box kWordmarkBox" not in geom:
+        geom = geom.replace(
+            "constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};",
+            "constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};\nconstexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};",
+            1,
+        )
+    if "#include <cstring>" not in geom:
+        geom = geom.replace("#include <cmath>\n", "#include <cmath>\n#include <cstring>\n", 1)
     geom_path.write_text(geom)
     (root / "src/editor/ControlLayout.h").write_text("\n".join(knob_placement_lines()) + "\n")
     print(f"wrote {geom_path} and ControlLayout.h", flush=True)
