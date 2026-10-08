@@ -1,4 +1,4 @@
-static const char* kWorstValueStr[111] = {
+static const char* kWorstValueStr[kNumParams] = {
   "-8.00",
   "-100 %",
   "-100 %",

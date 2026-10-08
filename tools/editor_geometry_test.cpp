@@ -1,9 +1,9 @@
 #include "../src/editor/EditorGeometry.h"
-#include "worst_values.inc"
 #include <cstdio>
 #include <cstring>
 
 constexpr int kNumParams = 111;
+#include "worst_values.inc"
 constexpr float kAdvanceEm = 0.60f;
 
 static float TextWidth(const char* text, float fontPx)
