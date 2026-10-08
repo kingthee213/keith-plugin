@@ -56,9 +56,6 @@ iplug_add_plugin(${PROJECT_NAME}
     resources/resource.h
   RESOURCES
     resources/images/chassis.png
-    resources/images/workspace-source.png
-    resources/images/workspace-pitch.png
-    resources/images/workspace-tape.png
     resources/fonts/Bangers-Regular.ttf
     resources/fonts/Oswald-Bold.ttf
     resources/fonts/SpaceMono-Regular.ttf
@@ -79,10 +76,7 @@ set(KEITH_FONT_RESOURCES
   fonts/SpaceMono-Regular.ttf
   fonts/SpaceMono-Bold.ttf)
 set(KEITH_IMAGE_RESOURCES
-  images/chassis.png
-  images/workspace-source.png
-  images/workspace-pitch.png
-  images/workspace-tape.png)
+  images/chassis.png)
 
 if(APPLE)
   foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)

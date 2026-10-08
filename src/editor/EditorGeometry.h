@@ -3,184 +3,161 @@
 #include <cmath>
 
 namespace keith { namespace ui {
-// Fixed time lanes keep one handle's drag from moving every other handle.
-inline float EnvelopeTimeX(int segment, double value)
-{
-  const float v = static_cast<float>(std::clamp(value, 0., 1.));
-  if (segment == 0) return 0.04f + 0.22f * v;
-  if (segment == 1) return 0.30f + 0.22f * v;
-  return 0.70f + 0.27f * v;
-}
-inline double EnvelopeTimeValue(int segment, float x)
-{
-  if (segment == 0) return std::clamp((x - 0.04) / 0.22, 0., 1.);
-  if (segment == 1) return std::clamp((x - 0.30) / 0.22, 0., 1.);
-  return std::clamp((x - 0.70) / 0.27, 0., 1.);
-}
-inline float ScrollOffset(float offset, float delta, float content, float viewport)
-{
-  return std::clamp(offset - delta * 32.f, 0.f, std::max(0.f, content - viewport));
-}
 
-struct Box
-{
-  float l, t, r, b;
-  constexpr float W() const { return r - l; }
-  constexpr float H() const { return b - t; }
-  constexpr bool Contains(Box o) const
-  {
-    return o.l >= l && o.t >= t && o.r <= r && o.b <= b;
-  }
-  constexpr bool Overlaps(Box o) const
-  {
-    return l < o.r && o.l < r && t < o.b && o.t < b;
-  }
+struct Box { float l,t,r,b; constexpr float W() const { return r-l; } constexpr float H() const { return b-t; } constexpr bool Contains(Box o) const { return o.l>=l&&o.t>=t&&o.r<=r&&o.b<=b; } constexpr bool Overlaps(Box o) const { return l<o.r&&o.l<r&&t<o.b&&o.t<b; } };
+
+constexpr float kCanvasW = 1280.0f;
+constexpr float kCanvasH = 800.0f;
+constexpr float kLeftRailW = 210.0f;
+constexpr bool kSingleWindowEditor = true;
+constexpr Box kCanvas {0.f, 0.f, kCanvasW, kCanvasH};
+
+struct PanelSpec { const char* title; Box bounds; const char* tint; };
+constexpr Box kPanelOsc {218.0f, 14.0f, 416.0f, 270.0f};
+constexpr Box kPanelFilter {422.0f, 14.0f, 592.0f, 270.0f};
+constexpr Box kPanelAmp {598.0f, 14.0f, 764.0f, 270.0f};
+constexpr Box kPanelLfo {770.0f, 14.0f, 956.0f, 270.0f};
+constexpr Box kPanelMod {962.0f, 14.0f, 1272.0f, 270.0f};
+constexpr Box kPanelArt {218.0f, 276.0f, 698.0f, 580.0f};
+constexpr Box kPanelSample {704.0f, 276.0f, 994.0f, 580.0f};
+constexpr Box kPanelPads {1000.0f, 276.0f, 1272.0f, 580.0f};
+constexpr Box kPanelVintage {218.0f, 586.0f, 558.0f, 786.0f};
+constexpr Box kPanelGlobal {564.0f, 586.0f, 904.0f, 786.0f};
+constexpr Box kPanelFx {910.0f, 586.0f, 1272.0f, 786.0f};
+constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};
+constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
+constexpr PanelSpec kPanels[] = {
+  {"OSCILLATORS", kPanelOsc, "panel"},
+  {"FILTER", kPanelFilter, "panel"},
+  {"AMP", kPanelAmp, "panel"},
+  {"LFO", kPanelLfo, "panel"},
+  {"MOD MATRIX", kPanelMod, "panel"},
+  {"LOADED SOUNDS", kPanelSample, "panel"},
+  {"DRUM PADS", kPanelPads, "panel"},
+  {"VINTAGE ANALOG MODELING", kPanelVintage, "panel"},
+  {"GLOBAL", kPanelGlobal, "panel"},
+  {"EFFECTS", kPanelFx, "panel"},
 };
-
-// Page well and the seven-button nav. Space Mono Bold's advance is 612/1000 em
-// (resources/fonts/SpaceMono-Bold.ttf), so a 15px glyph is 9.18px wide.
-constexpr Box kPageWell {34.f, 204.f, 1004.f, 718.f};
-constexpr Box kNavBar {34.f, 144.f, 1022.f, 185.f};
-constexpr int kNavCount = 7;
-constexpr float kNavGap = 4.f;
-constexpr float kNavTextPad = 4.f;
-constexpr float kNavFontPx = 15.f;
-constexpr float kSpaceMonoBoldEm = 0.612f;
-constexpr int kNavLabelChars[] = {10, 14, 10, 13, 8, 11, 6}; // "01  SOURCE" .. "07  FX"
-
-inline Box NavCell(int index)
-{
-  const float span = kNavBar.W() - kNavGap * static_cast<float>(kNavCount - 1);
-  const float w = span / static_cast<float>(kNavCount);
-  const float l = kNavBar.l + static_cast<float>(index) * (w + kNavGap);
-  return {l, kNavBar.t, l + w, kNavBar.b};
-}
-
-// Modulation page. Knobs carry a flat body because this page has no baked material.
-constexpr Box kModLfoHeader {58.f, 218.f, 250.f, 264.f};
-constexpr Box kModRate {58.f, 268.f, 210.f, 430.f};
-constexpr Box kModLfoAmount {220.f, 268.f, 372.f, 430.f};
-constexpr Box kModShapeLabel {58.f, 444.f, 148.f, 484.f};
-constexpr Box kModShapeTabs {150.f, 440.f, 500.f, 484.f};
-constexpr Box kModLfoDestLabel {58.f, 500.f, 148.f, 540.f};
-constexpr Box kModLfoDestTabs {150.f, 496.f, 500.f, 540.f};
-constexpr Box ModMatrixSourceBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {88.f, top + 6.f, 214.f, top + 60.f};
-}
-constexpr Box ModMatrixDestinationBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {220.f, top + 6.f, 346.f, top + 60.f};
-}
-constexpr Box ModMatrixAmountBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {354.f, top, 500.f, top + 68.f};
-}
-constexpr Box kModWheelHeader {530.f, 218.f, 820.f, 264.f};
-constexpr Box kModWheelCc {830.f, 218.f, 980.f, 264.f};
-constexpr Box kModWheelAmount {530.f, 268.f, 682.f, 430.f};
-constexpr Box kModWheelDestLabel {700.f, 300.f, 980.f, 324.f};
-constexpr Box kModWheelDestTabs {700.f, 328.f, 980.f, 372.f};
-constexpr Box kVelHeader {530.f, 460.f, 780.f, 506.f};
-constexpr Box kVelAmp {530.f, 508.f, 680.f, 680.f};
-constexpr Box kVelFilter {690.f, 508.f, 840.f, 680.f};
-constexpr Box kLegatoLabel {850.f, 520.f, 980.f, 544.f};
-constexpr Box kLegatoTabs {850.f, 548.f, 980.f, 592.f};
-
-// Filter page. Cutoff, resonance and type stay on the permanent channel.
-constexpr Box kFilterHeader {58.f, 218.f, 360.f, 264.f};
-constexpr Box kFilterPlot {58.f, 268.f, 700.f, 680.f};
-constexpr Box kKeyTrack {740.f, 280.f, 960.f, 460.f};
-constexpr Box kFilterDrive {740.f, 490.f, 960.f, 680.f};
-
-// FX page. Every knob has a flat native body; this page has no baked material.
-constexpr Box kFxIns1Region {50.f, 218.f, 354.f, 700.f};
-constexpr Box kFxIns1Algo {50.f, 265.f, 354.f, 305.f};
-constexpr Box kFxIns1A {50.f, 318.f, 146.f, 472.f};
-constexpr Box kFxIns1B {154.f, 318.f, 250.f, 472.f};
-constexpr Box kFxIns1C {258.f, 318.f, 354.f, 472.f};
-constexpr Box kFxIns1Mix {104.f, 490.f, 300.f, 622.f};
-constexpr Box kFxIns1Bypass {50.f, 650.f, 354.f, 690.f};
-
-constexpr Box kFxIns2Region {374.f, 218.f, 678.f, 700.f};
-constexpr Box kFxIns2Algo {374.f, 265.f, 678.f, 305.f};
-constexpr Box kFxIns2A {374.f, 318.f, 470.f, 472.f};
-constexpr Box kFxIns2B {478.f, 318.f, 574.f, 472.f};
-constexpr Box kFxIns2C {582.f, 318.f, 678.f, 472.f};
-constexpr Box kFxIns2Mix {428.f, 490.f, 624.f, 622.f};
-constexpr Box kFxIns2Bypass {374.f, 650.f, 678.f, 690.f};
-
-constexpr Box kFxMasterRegion {698.f, 218.f, 992.f, 700.f};
-constexpr Box kFxMasterAlgo {698.f, 265.f, 992.f, 305.f};
-constexpr Box kFxMasterA {698.f, 318.f, 790.f, 472.f};
-constexpr Box kFxMasterB {799.f, 318.f, 891.f, 472.f};
-constexpr Box kFxMasterC {900.f, 318.f, 992.f, 472.f};
-constexpr Box kFxMasterMix {698.f, 490.f, 838.f, 622.f};
-constexpr Box kFxOutLevel {852.f, 490.f, 992.f, 622.f};
-constexpr Box kFxMasterBypass {698.f, 650.f, 992.f, 690.f};
-
-// Source-page switches in the open band between the two mixer rows.
-// Mixer knob rects are the baked placements; these switches must not cover them.
-constexpr Box kSyncLabel {786.f, 418.f, 980.f, 434.f};
-constexpr Box kSyncTabs {786.f, 434.f, 980.f, 466.f};
-constexpr Box kRingLabel {786.f, 468.f, 980.f, 484.f};
-constexpr Box kRingTabs {786.f, 484.f, 980.f, 502.f};
-constexpr Box kMixerSub {784.f, 292.f, 876.f, 414.f};
-constexpr Box kMixerNoise {888.f, 292.f, 980.f, 414.f};
-constexpr Box kMixerFm {784.f, 505.f, 876.f, 627.f};
-constexpr Box kMixerLevel {888.f, 505.f, 980.f, 627.f};
-
-// Static Oswald Bold hhea metrics (resources/fonts/Oswald-Bold.ttf, no fvar table).
-// NanoVG middle-aligns
-// on this box, and each control is clipped to its rect, so the metric box has to
-// fit. Advances are hmtx sums for the live heading strings.
-constexpr float kOswaldUnits = 1000.f;
-constexpr float kOswaldAscender = 1193.f;
-constexpr float kOswaldDescender = -289.f;
-constexpr int kOswaldKeithUnits = 2370;
-constexpr int kOswaldLfoUnits = 1463;
-constexpr int kOswaldModWheelUnits = 4776;
-constexpr int kOswaldVelocityUnits = 3804;
-constexpr int kOswaldResponseUnits = 4240;
-constexpr float kHeadingPx = 28.f;
-constexpr float kWordmarkPx = 48.f;
-constexpr Box kWordmarkBox {49.f, 39.f, 299.f, 112.f};
-
-inline float OswaldMetricHeight(float px)
-{
-  return px * (kOswaldAscender - kOswaldDescender) / kOswaldUnits;
-}
-inline float OswaldAdvance(int units, float px)
-{
-  return static_cast<float>(units) * px / kOswaldUnits;
-}
-
-inline constexpr Box kModulationBoxes[] = {
-  kModLfoHeader, kModRate, kModLfoAmount, kModShapeLabel, kModShapeTabs,
-  kModLfoDestLabel, kModLfoDestTabs, kModWheelHeader, kModWheelCc, kModWheelAmount,
-  kModWheelDestLabel, kModWheelDestTabs, kVelHeader, kVelAmp, kVelFilter,
-  kLegatoLabel, kLegatoTabs
+struct ControlRect { int parameter; Box rect; const char* label; float labelFontPx; int labelUnits; };
+inline constexpr ControlRect kControlRects[] = {
+  {0, {572.0f, 640.0f, 636.0f, 704.0f}, "VOL", 10.0f, 1836},
+  {1, {450.0f, 660.0f, 510.0f, 720.0f}, "DIST", 10.0f, 2448},
+  {2, {322.0f, 660.0f, 382.0f, 720.0f}, "TONE", 10.0f, 2448},
+  {3, {916.0f, 592.0f, 968.0f, 622.0f}, "WOW", 10.0f, 1836},
+  {4, {974.0f, 592.0f, 1026.0f, 622.0f}, "FLUT", 10.0f, 2448},
+  {5, {1032.0f, 592.0f, 1084.0f, 622.0f}, "HISS", 10.0f, 2448},
+  {6, {1090.0f, 592.0f, 1142.0f, 622.0f}, "PRINT", 10.0f, 3060},
+  {7, {1148.0f, 592.0f, 1200.0f, 622.0f}, "MIX", 10.0f, 1836},
+  {8, {1206.0f, 592.0f, 1258.0f, 622.0f}, "BYP", 10.0f, 1836},
+  {9, {226.0f, 620.0f, 316.0f, 648.0f}, "TYPE", 10.0f, 2448},
+  {10, {642.0f, 600.0f, 732.0f, 628.0f}, "POLY", 10.0f, 2448},
+  {11, {642.0f, 640.0f, 706.0f, 704.0f}, "GLIDE", 10.0f, 3060},
+  {12, {712.0f, 640.0f, 776.0f, 704.0f}, "UNI", 10.0f, 1836},
+  {13, {782.0f, 640.0f, 846.0f, 704.0f}, "DET", 10.0f, 1836},
+  {14, {222.0f, 48.0f, 274.0f, 96.0f}, "SHP", 10.0f, 1836},
+  {15, {222.0f, 104.0f, 268.0f, 152.0f}, "TUNE", 10.0f, 2448},
+  {16, {222.0f, 158.0f, 268.0f, 206.0f}, "LVL", 10.0f, 1836},
+  {17, {222.0f, 212.0f, 268.0f, 252.0f}, "PW", 10.0f, 1224},
+  {18, {278.0f, 48.0f, 330.0f, 96.0f}, "SHP", 10.0f, 1836},
+  {19, {278.0f, 104.0f, 324.0f, 152.0f}, "TUNE", 10.0f, 2448},
+  {20, {278.0f, 158.0f, 324.0f, 206.0f}, "LVL", 10.0f, 1836},
+  {21, {278.0f, 212.0f, 324.0f, 252.0f}, "PW", 10.0f, 1224},
+  {22, {340.0f, 72.0f, 388.0f, 120.0f}, "SUB", 10.0f, 1836},
+  {23, {340.0f, 126.0f, 388.0f, 174.0f}, "NOISE", 10.0f, 3060},
+  {24, {340.0f, 180.0f, 388.0f, 228.0f}, "FM", 10.0f, 1224},
+  {25, {426.0f, 36.0f, 586.0f, 62.0f}, "TYPE", 10.0f, 2448},
+  {26, {426.0f, 72.0f, 488.0f, 140.0f}, "CUT", 10.0f, 1836},
+  {27, {492.0f, 72.0f, 554.0f, 140.0f}, "RES", 10.0f, 1836},
+  {28, {426.0f, 148.0f, 472.0f, 206.0f}, "ENV", 10.0f, 1836},
+  {29, {600.0f, 36.0f, 636.0f, 172.0f}, "A", 10.0f, 612},
+  {30, {640.0f, 36.0f, 676.0f, 172.0f}, "D", 10.0f, 612},
+  {31, {680.0f, 36.0f, 716.0f, 172.0f}, "S", 10.0f, 612},
+  {32, {720.0f, 36.0f, 756.0f, 172.0f}, "R", 10.0f, 612},
+  {33, {710.0f, 286.0f, 988.0f, 318.0f}, "PA", 10.0f, 1224},
+  {34, {710.0f, 320.0f, 988.0f, 352.0f}, "PD", 10.0f, 1224},
+  {35, {710.0f, 354.0f, 988.0f, 386.0f}, "PS", 10.0f, 1224},
+  {36, {710.0f, 388.0f, 988.0f, 420.0f}, "PR", 10.0f, 1224},
+  {37, {710.0f, 422.0f, 988.0f, 454.0f}, "AMT", 10.0f, 1836},
+  {38, {712.0f, 708.0f, 796.0f, 772.0f}, "SYN", 10.0f, 1836},
+  {39, {556.0f, 148.0f, 590.0f, 174.0f}, "FA", 10.0f, 1224},
+  {40, {556.0f, 178.0f, 590.0f, 204.0f}, "FD", 10.0f, 1224},
+  {41, {556.0f, 208.0f, 590.0f, 234.0f}, "FS", 10.0f, 1224},
+  {42, {556.0f, 238.0f, 590.0f, 264.0f}, "FR", 10.0f, 1224},
+  {43, {222.0f, 254.0f, 290.0f, 268.0f}, "SYNC", 10.0f, 2448},
+  {44, {296.0f, 254.0f, 364.0f, 268.0f}, "RING", 10.0f, 2448},
+  {45, {476.0f, 148.0f, 522.0f, 206.0f}, "KEY", 10.0f, 1836},
+  {46, {386.0f, 660.0f, 446.0f, 720.0f}, "COMP", 10.0f, 2448},
+  {47, {776.0f, 40.0f, 820.0f, 84.0f}, "RATE", 10.0f, 2448},
+  {48, {872.0f, 40.0f, 950.0f, 66.0f}, "SHP", 10.0f, 1836},
+  {49, {872.0f, 70.0f, 950.0f, 96.0f}, "DST", 10.0f, 1836},
+  {50, {824.0f, 40.0f, 868.0f, 84.0f}, "DEP", 10.0f, 1836},
+  {51, {776.0f, 220.0f, 858.0f, 248.0f}, "MWD", 10.0f, 1836},
+  {52, {776.0f, 252.0f, 834.0f, 270.0f}, "MWA", 10.0f, 1836},
+  {53, {850.0f, 600.0f, 898.0f, 628.0f}, "VA", 10.0f, 1224},
+  {54, {850.0f, 636.0f, 898.0f, 664.0f}, "VF", 10.0f, 1224},
+  {55, {736.0f, 600.0f, 826.0f, 628.0f}, "LEG", 10.0f, 1836},
+  {56, {916.0f, 626.0f, 968.0f, 656.0f}, "I1", 10.0f, 1224},
+  {57, {974.0f, 626.0f, 1026.0f, 656.0f}, "A1", 10.0f, 1224},
+  {58, {1032.0f, 626.0f, 1084.0f, 656.0f}, "B1", 10.0f, 1224},
+  {59, {1090.0f, 626.0f, 1142.0f, 656.0f}, "C1", 10.0f, 1224},
+  {60, {1148.0f, 626.0f, 1200.0f, 656.0f}, "M1", 10.0f, 1224},
+  {61, {1206.0f, 626.0f, 1258.0f, 656.0f}, "B1", 10.0f, 1224},
+  {62, {916.0f, 660.0f, 968.0f, 690.0f}, "I2", 10.0f, 1224},
+  {63, {974.0f, 660.0f, 1026.0f, 690.0f}, "A2", 10.0f, 1224},
+  {64, {1032.0f, 660.0f, 1084.0f, 690.0f}, "B2", 10.0f, 1224},
+  {65, {1090.0f, 660.0f, 1142.0f, 690.0f}, "C2", 10.0f, 1224},
+  {66, {1148.0f, 660.0f, 1200.0f, 690.0f}, "M2", 10.0f, 1224},
+  {67, {1206.0f, 660.0f, 1258.0f, 690.0f}, "B2", 10.0f, 1224},
+  {68, {916.0f, 694.0f, 968.0f, 724.0f}, "MS", 10.0f, 1224},
+  {69, {974.0f, 694.0f, 1026.0f, 724.0f}, "MA", 10.0f, 1224},
+  {70, {1032.0f, 694.0f, 1084.0f, 724.0f}, "MB", 10.0f, 1224},
+  {71, {1090.0f, 694.0f, 1142.0f, 724.0f}, "MC", 10.0f, 1224},
+  {72, {1148.0f, 694.0f, 1200.0f, 724.0f}, "MX", 10.0f, 1224},
+  {73, {1206.0f, 694.0f, 1258.0f, 724.0f}, "BP", 10.0f, 1224},
+  {74, {916.0f, 728.0f, 968.0f, 758.0f}, "OUT", 10.0f, 1836},
+  {75, {1006.0f, 286.0f, 1266.0f, 570.0f}, "PAD", 10.0f, 1836},
+  {76, {712.0f, 460.0f, 764.0f, 508.0f}, "LVL", 10.0f, 1836},
+  {77, {768.0f, 460.0f, 820.0f, 508.0f}, "PAN", 10.0f, 1836},
+  {78, {824.0f, 460.0f, 876.0f, 508.0f}, "TUN", 10.0f, 1836},
+  {79, {880.0f, 460.0f, 932.0f, 508.0f}, "DEC", 10.0f, 1836},
+  {80, {712.0f, 512.0f, 764.0f, 560.0f}, "FLT", 10.0f, 1836},
+  {81, {768.0f, 512.0f, 820.0f, 560.0f}, "DRV", 10.0f, 1836},
+  {82, {824.0f, 512.0f, 900.0f, 536.0f}, "MUT", 10.0f, 1836},
+  {83, {904.0f, 512.0f, 980.0f, 536.0f}, "SOL", 10.0f, 1836},
+  {84, {880.0f, 540.0f, 964.0f, 576.0f}, "KIT", 10.0f, 1836},
+  {85, {776.0f, 150.0f, 820.0f, 194.0f}, "RT", 10.0f, 1224},
+  {86, {872.0f, 150.0f, 950.0f, 176.0f}, "SHP", 10.0f, 1836},
+  {87, {872.0f, 180.0f, 950.0f, 206.0f}, "DST", 10.0f, 1836},
+  {88, {824.0f, 150.0f, 868.0f, 194.0f}, "DEP", 10.0f, 1836},
+  {89, {968.0f, 36.0f, 1052.0f, 60.0f}, "S1", 10.0f, 1224},
+  {90, {1056.0f, 36.0f, 1140.0f, 60.0f}, "D1", 10.0f, 1224},
+  {91, {1144.0f, 36.0f, 1266.0f, 84.0f}, "A1", 10.0f, 1224},
+  {92, {968.0f, 92.0f, 1052.0f, 116.0f}, "S2", 10.0f, 1224},
+  {93, {1056.0f, 92.0f, 1140.0f, 116.0f}, "D2", 10.0f, 1224},
+  {94, {1144.0f, 92.0f, 1266.0f, 140.0f}, "A2", 10.0f, 1224},
+  {95, {968.0f, 148.0f, 1052.0f, 172.0f}, "S3", 10.0f, 1224},
+  {96, {1056.0f, 148.0f, 1140.0f, 172.0f}, "D3", 10.0f, 1224},
+  {97, {1144.0f, 148.0f, 1266.0f, 196.0f}, "A3", 10.0f, 1224},
+  {98, {968.0f, 204.0f, 1052.0f, 228.0f}, "S4", 10.0f, 1224},
+  {99, {1056.0f, 204.0f, 1140.0f, 228.0f}, "D4", 10.0f, 1224},
+  {100, {1144.0f, 204.0f, 1266.0f, 252.0f}, "A4", 10.0f, 1224},
+  {101, {600.0f, 176.0f, 630.0f, 214.0f}, "NK", 10.0f, 1224},
+  {102, {632.0f, 176.0f, 662.0f, 214.0f}, "AK", 10.0f, 1224},
+  {103, {664.0f, 176.0f, 694.0f, 214.0f}, "AB", 10.0f, 1224},
+  {104, {696.0f, 176.0f, 726.0f, 214.0f}, "DK", 10.0f, 1224},
+  {105, {728.0f, 176.0f, 758.0f, 214.0f}, "DB", 10.0f, 1224},
+  {106, {600.0f, 220.0f, 630.0f, 258.0f}, "SD", 10.0f, 1224},
+  {107, {632.0f, 220.0f, 662.0f, 258.0f}, "ST", 10.0f, 1224},
+  {108, {664.0f, 220.0f, 694.0f, 258.0f}, "SW", 10.0f, 1224},
+  {109, {696.0f, 220.0f, 726.0f, 258.0f}, "DIR", 10.0f, 1836},
+  {110, {728.0f, 220.0f, 758.0f, 258.0f}, "CB", 10.0f, 1224},
 };
-inline constexpr Box kModMatrixBoxes[] = {
-  ModMatrixSourceBox(0), ModMatrixDestinationBox(0), ModMatrixAmountBox(0),
-  ModMatrixSourceBox(1), ModMatrixDestinationBox(1), ModMatrixAmountBox(1),
-  ModMatrixSourceBox(2), ModMatrixDestinationBox(2), ModMatrixAmountBox(2),
-  ModMatrixSourceBox(3), ModMatrixDestinationBox(3), ModMatrixAmountBox(3)
-};
-inline constexpr Box kFilterBoxes[] = {kFilterHeader, kFilterPlot, kKeyTrack, kFilterDrive};
-inline constexpr Box kFxInsert1Boxes[] = {
-  kFxIns1Algo, kFxIns1A, kFxIns1B, kFxIns1C, kFxIns1Mix, kFxIns1Bypass
-};
-inline constexpr Box kFxInsert2Boxes[] = {
-  kFxIns2Algo, kFxIns2A, kFxIns2B, kFxIns2C, kFxIns2Mix, kFxIns2Bypass
-};
-inline constexpr Box kFxMasterBoxes[] = {
-  kFxMasterAlgo, kFxMasterA, kFxMasterB, kFxMasterC, kFxMasterMix, kFxOutLevel,
-  kFxMasterBypass
-};
-inline constexpr Box kSourceSwitchBoxes[] = {kSyncLabel, kSyncTabs, kRingLabel, kRingTabs};
-inline constexpr Box kMixerKnobBoxes[] = {kMixerSub, kMixerNoise, kMixerFm, kMixerLevel};
+constexpr int kNumControlRects = static_cast<int>(sizeof(kControlRects) / sizeof(ControlRect));
+inline const ControlRect& ControlFor(int parameter) { for (const auto& item : kControlRects) if (item.parameter == parameter) return item; return kControlRects[0]; }
+inline float EnvelopeTimeX(int segment, double value){const float v=static_cast<float>(std::clamp(value,0.,1.));if(segment==0)return 0.04f+0.22f*v;if(segment==1)return 0.30f+0.22f*v;return 0.70f+0.27f*v;}
+inline double EnvelopeTimeValue(int segment,float x){if(segment==0)return std::clamp((x-0.04)/0.22,0.,1.);if(segment==1)return std::clamp((x-0.30)/0.22,0.,1.);return std::clamp((x-0.70)/0.27,0.,1.);}
+inline float ScrollOffset(float offset,float delta,float content,float viewport){return std::clamp(offset-delta*32.f,0.f,std::max(0.f,content-viewport));}
+constexpr float kSpaceMonoEm=0.612f; constexpr float kWordmarkPx=42.f;
+inline float MonoAdvance(int units,float px){return static_cast<float>(units)*px/1000.f;}
+inline float OswaldMetricHeight(float px){return px*1.482f;}
 } }
