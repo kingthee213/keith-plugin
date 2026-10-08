@@ -1,0 +1,33 @@
+YOTE MACHINE
+The Youth Hostel DSP
+=========================
+
+If someone sent you this to try out, read:
+
+    docs/INSTALL-MACOS.md
+
+That file has the whole thing: the tools to install, the single command to
+build, how to run it without a DAW, and how to load it into Logic, Ableton or
+GarageBand.
+
+The short version:
+
+    xcode-select --install          # once
+    (install Xcode from the App Store)
+    (install cmake)
+    ./tools/build-macos.sh          # builds everything
+    open build/out/Keith.app        # play it, no DAW needed
+
+Two honest notes:
+
+- This has NOT been built or tested on macOS yet. It was prepared on Windows and no
+  Mac was available to verify against, so treat your first build as a test. If it
+  fails, send the terminal output back and it can be fixed quickly - the script
+  checks your toolchain first, so most failures will say what is missing.
+
+- macOS may quarantine files that arrived from another computer. If the app will not
+  open or a DAW will not load the plugin, see the "If macOS blocks it" section at the
+  end of docs/INSTALL-MACOS.md.
+
+What it is: a synthesizer instrument with 109 factory presets, drum pads, effects
+and a modulation matrix.
