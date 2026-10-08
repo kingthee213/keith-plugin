@@ -23,3 +23,6 @@ __pycache__/
 # analysis material: reference recordings used to derive synthesis targets.
 # Never shipped, never committed. See docs/DECISIONS.md D2 and docs/REFERENCE-ANALYSIS.md
 reference-audio/
+
+# ephemeral worker dispatch prompts
+.prompt-*.txt
