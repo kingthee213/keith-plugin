@@ -39,6 +39,12 @@ cd /path/to/keith-editorial
 ./tools/build-macos.sh
 ```
 
+**Expect some scary-looking errors during the dependency step — they are harmless.** You will see
+`sudo: a password is required` and `fatal: destination path 'WAM_AWP' already exists` a few times while
+dependencies are fetched. Those concern SDKs for CLAP, AAX, WAM and VST2, which this project
+deliberately does not build (`EXCLUDE_FORMATS` in `CMakeLists.txt`). Ignore them; the build proceeds and
+succeeds without those.
+
 That fetches the framework, builds, signs the result, and prints where everything landed. The last
 lines tell you exactly which files you now have.
 
