@@ -19,7 +19,11 @@ Five rounds, each ending in a check that would have caught the previous round's 
    the value off the bottom of its bounds, and the oscillator knobs were 46 to 52 px tall, so the body
    had 7 to 13 px. That was the whole "looks unfinished" effect.
 2. The panels were rebalanced off a measured occupancy table. Effects was at 2,896 square pixels per
-   control and vintage analog at 17,000. Every panel is now above 6,000, with no canvas change.
+   control and vintage analog at 17,000. Every panel is now above 6,000, with no canvas change. Treat
+   those per-panel figures as indicative only. `tools/fit_budget.py` keeps its own panel boxes and they
+   do not match the generator's: it reports 144,480 square pixels for `kPanelFx`, which is 602 by 195 in
+   `EditorGeometry.h`, and 66,960 for an `kPanelArt` that is 80 by 186. Re-derive the table from the
+   header before quoting a number from it.
 3. The 111 control rectangles were re-sized so each holds its body, label and value, and the effects
    panel lost controls instead of gaining space, by folding bypass into the algorithm row.
 4. Panel titles got a reserved band and the keyboard its own strip, both enforced by new checks, plus a
@@ -74,10 +78,14 @@ control, synth recreation gate 40 passed 0 failed.
   are already at the peak ceiling and a level control cannot lift them without clipping. They need a
   tone pass and the owner's ear.
 - The Windows build has not been regenerated since `resources/main.rc` changed.
-- The drum sound-sourcing plan is still unwritten.
-- The on-disk bundle names are now `MagsSynth.*`; the build script `tools/build-macos.sh` still looks
-  for `Keith.vst3` and `Keith.app`, so its printed install paths are wrong even though the build itself
-  is correct.
+- The drum sound-sourcing plan is written, not outstanding. `docs/DRUM-SOUND-SOURCING-PLAN.md` is a
+  96-line proposal with a provenance manifest, a per-file audio gate and a calibration step, and
+  `docs/DRUM-MAP.md` holds the slot map. It waits on one decision, which sources may be harvested, and
+  that is a licensing call rather than a technical one. An earlier note of mine in this file called it
+  unwritten, which was wrong.
+- The bundle names are `MagsSynth.*` and `tools/build-macos.sh` matches them. It searched for
+  `Keith.vst3` and `Keith.app` until this session, which resolved to nothing and printed dead install
+  paths; both the names and the script's stale "never run on a Mac" header are corrected.
 
 ## The orphaned parameter, and the guard that found it
 
