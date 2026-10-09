@@ -6,12 +6,19 @@ Structure B, as agreed. Not one module filling the window.
     ~/.venvs/keith-measure/bin/python tools/wireframe.py
 
 Writes design/screenshots/wireframe-rows.png, one image per switcher state.
+
+Header rule: one number owns each band. A row title is centred vertically inside HEADER_BAND
+with the switcher buttons centred on the same band and placed to the right of the title's
+measured textlength; the row body starts at `y + HEADER_BAND`. A panel title inside a box is
+centred in BOX_BAND. Nothing is placed by a second, independent constant.
 """
 
 import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+
+from osc_wave import wave_points
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "design" / "screenshots" / "wireframe-rows.png"
@@ -21,6 +28,20 @@ W, H = 1280, 800
 RAIL = 176
 M, GAP, TAB_H = 8, 8, 30
 TOP_H, BOT_H = 42, 132
+
+# --- header bands, one number each -------------------------------------------------------
+HEADER_BAND = 34          # row band: fits a 12 px title with the switcher on the same band
+BOX_BAND = 30             # panel band inside a box: fits an 11 px title
+HEADER_INSET = 8
+BOX_INSET = 7
+TITLE_SIZE = 12
+BOX_TITLE_SIZE = 11
+CHIP_GAP = 6
+
+# Audit trail. tools/check_layout_render.py walks this and asserts that no title box
+# overlaps a switcher box and that every title clears the container's top edge by >= 8 px.
+HEADER_GEOM = []
+_TAG = "wireframe"
 
 BG = (13, 14, 16)
 RAIL_FILL = (104, 56, 28)
@@ -43,6 +64,10 @@ KEY_B = (20, 21, 24)
 INK = (236, 231, 216)
 DIM = (140, 146, 156)
 
+# (shape %, pw %) for the two real oscillators, docs/PARAM-MANIFEST.md ids 14/17 and 18/21.
+OSC_PARAMS = [(0, 50), (85, 35)]
+MIX_PARAMS = ["SUB", "NOISE", "FM"]
+
 
 def fnt(s):
     return ImageFont.truetype(str(FONT), s)
@@ -60,6 +85,14 @@ def knob(d, cx, cy, r, label, value="0.0"):
     txt(d, (cx, cy + r + 3), value, int(max(8, min(11, r * 0.4))), DIM, "ma")
 
 
+def knob_compact(d, cx, cy, r, label, value):
+    """A knob with its label and value on one line underneath: 2r + 14 px tall."""
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=BODY, outline=BODY_HI, width=2)
+    a = math.radians(-55)
+    d.line([cx, cy, cx + r * 0.62 * math.cos(a), cy + r * 0.62 * math.sin(a)], fill=CAP, width=3)
+    txt(d, (cx, cy + r + 4), f"{label} {value}", 9, DIM, "ma")
+
+
 def fader(d, cx, y, h, label, value="0.0"):
     d.rounded_rectangle([cx - 6, y, cx + 6, y + h], radius=3, fill=(30, 33, 39), outline=BODY_HI)
     cy = y + h * 0.42
@@ -68,9 +101,11 @@ def fader(d, cx, y, h, label, value="0.0"):
     txt(d, (cx, y + h + 4), value, 9, DIM, "ma")
 
 
-def switch(d, x, y, w, h, label, on=False):
+def switch(d, x, y, w, h, label, on=False, boxes=None):
     d.rounded_rectangle([x, y, x + w, y + h], radius=3, fill=SW_ON if on else SW_OFF)
     txt(d, (x + w / 2, y + h / 2), label, 11, BG if on else INK, "mm")
+    if boxes is not None:
+        boxes.append((x, y, x + w, y + h))
 
 
 def menu(d, x, y, w, h, label, value=""):
@@ -88,6 +123,18 @@ def scope(d, x, y, w, h, label, cycles=1.0):
     pts = [(x + 2 + i, y + h / 2 - math.sin(i / max(1, w - 4) * math.pi * 2 * cycles) * h * 0.3)
            for i in range(0, w - 4)]
     d.line(pts, fill=CURVE, width=2)
+    txt(d, (x + 4, y + 2), label, 9, DIM)
+
+
+def wave_scope(d, x, y, w, h, label, shape, pw):
+    """A scope tile whose trace is generated from the shape and pulse-width values.
+
+    Nothing in the trace is fixed: `tools/osc_wave.py` computes every point from `shape`
+    and `pw`, so turning either control moves the picture.
+    """
+    w, h = int(w), int(h)
+    d.rectangle([x, y, x + w, y + h], fill=SCOPE, outline=BODY_HI)
+    d.line(wave_points(x, y, w, h, shape, pw), fill=CURVE, width=2)
     txt(d, (x + 4, y + 2), label, 9, DIM)
 
 
@@ -113,9 +160,18 @@ def keyboard(d, x, y, w, h):
 
 
 def box(d, x, y, w, h, title=None):
+    """A panel. Its title is centred in BOX_BAND, so the body can never squeeze it."""
     d.rounded_rectangle([x, y, x + w, y + h], radius=5, fill=PANEL, outline=(40, 44, 52))
     if title:
-        txt(d, (x + 7, y + 5), title, 11, DIM)
+        f = fnt(BOX_TITLE_SIZE)
+        bx0, by0, bx1, by1 = d.textbbox((0, 0), title, font=f, anchor="la")
+        ink_h = by1 - by0
+        ink_top = y + (BOX_BAND - ink_h) / 2.0
+        tx = x + BOX_INSET
+        d.text((tx, ink_top - by0), title, font=f, fill=DIM, anchor="la")
+        HEADER_GEOM.append({"script": _TAG + ".box", "container_top": y, "title": title,
+                            "title_box": (tx + bx0, ink_top, tx + bx1, ink_top + ink_h),
+                            "chip_boxes": [], "band": BOX_BAND, "body_top": y + BOX_BAND})
 
 
 def chrome(d):
@@ -150,34 +206,79 @@ def pin(d):
 
 
 def switcher(d, x, y, names, on):
+    """Row switcher buttons, centred on the header band whose top is y.
+
+    Returns (x just past the last button, [the button boxes actually drawn]).
+    """
+    top = y + (HEADER_BAND - (TAB_H - 8)) / 2.0
     cx = x
+    boxes = []
     for name in names:
         w = 14 + len(name) * 7
-        switch(d, cx, y, w, TAB_H - 8, name, name == on)
+        switch(d, cx, top, w, TAB_H - 8, name, name == on, boxes=boxes)
         cx += w + 5
-    return cx
+    return cx, boxes
 
 
 def row(d, x, y, w, h, title, names, on):
+    """A row container. Its title and switcher share one band; the body starts at its foot."""
     d.rectangle([x, y, x + w, y + h], fill=STRIP)
-    txt(d, (x + 8, y + h // 2), title, 12, DIM, "lm")
-    cx = switcher(d, x + 74, y + 4, names, on)
-    return x + 74 + (cx - (x + 74)) + 6, y + TAB_H, x + w - (cx + 6), h - TAB_H - 6
+    f = fnt(TITLE_SIZE)
+    bx0, by0, bx1, by1 = d.textbbox((0, 0), title, font=f, anchor="la")
+    ink_h = by1 - by0
+    ink_top = y + (HEADER_BAND - ink_h) / 2.0
+    tx = x + HEADER_INSET
+    d.text((tx, ink_top - by0), title, font=f, fill=DIM, anchor="la")
+    cx, chip_boxes = switcher(d, tx + d.textlength(title, font=f) + CHIP_GAP, y, names, on)
+    body_top = y + HEADER_BAND
+    HEADER_GEOM.append({"script": _TAG + ".row", "container_top": y, "title": title,
+                        "title_box": (tx + bx0, ink_top, tx + bx1, ink_top + ink_h),
+                        "chip_boxes": chip_boxes, "band": HEADER_BAND, "body_top": body_top})
+    return cx + 6, body_top, x + w - (cx + 6), h - HEADER_BAND - 6
+
+
+def module_switch_strip(d, x, y, w, h):
+    """The module-wide switch strip. SYNC (id 43) and RING (id 44) are one each for the whole
+    oscillator module, not one per oscillator, so they live here and not in an OSC column."""
+    d.rounded_rectangle([x, y, x + w, y + h], radius=4, fill=CELL, outline=BODY_HI)
+    txt(d, (x + 8, y + h / 2), "MODULE   SYNC / RING   one each, module-wide   ids 43-44", 10, DIM, "lm")
+    sw = 84
+    sx = x + w - 8 - 2 * sw - 6
+    switch(d, sx, y + (h - 22) / 2, sw, 22, "SYNC", True)
+    switch(d, sx + sw + 6, y + (h - 22) / 2, sw, 22, "RING")
 
 
 def osc_module(d, x, y, w, h):
-    box(d, x, y, w, h, "OSCILLATORS")
-    blk = (w - 16) / 2
-    for i in range(2):
-        ox = x + 8 + i * blk
-        kx = ox + blk - 170
-        scope(d, ox, y + 24, kx - ox - 8, h - 34, f"OSC {i+1} WAVE", 1.0 + i)
-        cy = y + h / 2 + 6
-        knob(d, kx + 26, cy, 25, "SHAPE", "SINE")
-        knob(d, kx + 74, cy, 19, "TUNE", "0.0")
-        knob(d, kx + 114, cy, 19, "LVL", "80")
-        knob(d, kx + 148, cy, 14, "PW", "50")
-    return
+    """Two oscillators and the mixer, plus the module-wide sync / ring strip.
+
+    Wiring facts this is drawn to, verified against docs/PARAM-MANIFEST.md:
+      * ids 14-17 and 18-21 are the only two oscillators. There is no third oscillator.
+      * ids 22-24 (SUB / NOISE / FM) are the mixer group and are labelled MIXER, not OSC 3.
+      * ids 43 and 44 are one SYNC and one RING for the whole module.
+      * FM is one parameter (id 24) with one control: the knob in the mixer.
+    """
+    box(d, x, y, w, h, "OSCILLATORS   2 osc + mixer   ids 14-17 / 18-21 / 22-24 / 43-44")
+    strip_h = 28
+    top = y + BOX_BAND
+    body_bottom = y + h - 6 - strip_h - 6
+    region = body_bottom - top
+    colw = (w - 16) / 3.0
+    for i, (shape, pw) in enumerate(OSC_PARAMS):
+        ox = x + 8 + i * colw
+        wave_scope(d, ox, top + 2, 140, region - 4, f"OSC {i+1}", shape, pw)
+        ax = ox + 148
+        aw = colw - 12 - 148
+        cy = top + region / 2
+        for j, (lab, val) in enumerate((("SHAPE", f"{shape}%"), ("TUNE", ("0.0", "-12.0")[i]),
+                                        ("LEVEL", ("100", "75")[i]), ("PW", f"{pw}%"))):
+            knob(d, ax + aw * (j + 0.5) / 4, cy, 13, lab, val)
+    ox = x + 8 + 2 * colw
+    cw = colw - 12
+    d.rectangle([ox, top + 2, ox + cw, body_bottom - 2], fill=CELL, outline=BODY_HI)
+    txt(d, (ox + cw / 2, top + 14), "MIXER   SUB / NOISE / FM   not a third oscillator", 10, INK, "mm")
+    for j, lab in enumerate(MIX_PARAMS):
+        knob(d, ox + cw * (j + 0.5) / 3, top + 54, 12, lab, "0%")
+    module_switch_strip(d, x + 8, y + h - 6 - strip_h, w - 16, strip_h)
 
 
 def filter_module(d, x, y, w, h):

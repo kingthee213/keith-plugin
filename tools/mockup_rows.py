@@ -6,6 +6,10 @@ groupings still open: three rows with the drum strip pinned, and four rows with 
     ~/.venvs/keith-measure/bin/python tools/mockup_rows.py
 
 Writes design/screenshots/mockup-rows.png
+
+Header rule, same as tools/mockup_states.py: one number owns the band. The title is centred
+inside HEADER_BAND and the switcher is centred on the same band, placed to the right of the
+title's measured textlength. The body starts at `y + HEADER_BAND`.
 """
 
 from pathlib import Path
@@ -20,6 +24,15 @@ W, H = 1280, 800
 RAIL = 200
 M = 8
 GAP = 8
+
+# --- the header band, one number ---------------------------------------------------------
+HEADER_BAND = 34
+HEADER_INSET = 10
+TITLE_SIZE = 14
+CHIP_W, CHIP_H, CHIP_GAP = 96, 24, 4
+
+# Audit trail for tools/check_layout_render.py.
+HEADER_GEOM = []
 
 BG = (14, 15, 17)
 RAIL_FILL = (108, 59, 30)
@@ -42,12 +55,30 @@ def label(draw, xy, text, size=13, fill=INK, anchor="la"):
     draw.text(xy, text, font=font(size), fill=fill, anchor=anchor)
 
 
-def switcher(draw, x, y, names, on=0, h=26, w=104):
+def row_title(draw, x, y, title, size=TITLE_SIZE):
+    """Centre the title inside the header band. Returns (measured right edge, ink box)."""
+    f = font(size)
+    bx0, by0, bx1, by1 = draw.textbbox((0, 0), title, font=f, anchor="la")
+    ink_h = by1 - by0
+    ink_top = y + (HEADER_BAND - ink_h) / 2.0
+    tx = x + HEADER_INSET
+    draw.text((tx, ink_top - by0), title, font=f, fill=INK, anchor="la")
+    return tx + draw.textlength(title, font=f), (tx + bx0, ink_top, tx + bx1, ink_top + ink_h)
+
+
+def switcher(draw, x, y, names, on=0, h=26, w=CHIP_W):
+    """A row of switcher buttons, vertically centred on the header band whose top is y.
+
+    Returns (x just past the last button, [the button boxes actually drawn]).
+    """
+    top = y + (HEADER_BAND - h) / 2.0
+    boxes = []
     for i, name in enumerate(names):
         bx = x + i * (w + 4)
-        draw.rectangle([bx, y, bx + w, y + h], fill=BTN_ON if i == on else BTN_FILL)
-        label(draw, (bx + 8, y + h // 2), name, 13, BG if i == on else INK, "lm")
-    return x + len(names) * (w + 4)
+        draw.rectangle([bx, top, bx + w, top + h], fill=BTN_ON if i == on else BTN_FILL)
+        label(draw, (bx + 8, top + h // 2), name, 13, BG if i == on else INK, "lm")
+        boxes.append((bx, top, bx + w, top + h))
+    return x + len(names) * (w + 4), boxes
 
 
 def variant(three_rows):
@@ -87,13 +118,18 @@ def variant(three_rows):
 
     for i, (title, modules) in enumerate(rows):
         draw.rectangle([left, y, right, y + row_h], fill=ROW_FILL)
-        label(draw, (left + 10, y + 14), title, 14, INK)
-        switcher(draw, left + 10 + 90, y + 4, modules, 0, 24, 96)
-        bx = left + 10
-        bw = right - 10 - bx
-        draw.rectangle([bx, y + 34, bx + bw, y + row_h - 8], fill=BLOCK[i % len(BLOCK)])
-        label(draw, (bx + bw // 2, y + 34 + (row_h - 42) // 2),
+        title_right, title_box = row_title(draw, left, y, title)
+        _, chip_boxes = switcher(draw, title_right + CHIP_GAP, y, modules, 0, 24, CHIP_W)
+        body_top = y + HEADER_BAND
+        body_bot = y + row_h - 8
+        bx = left + HEADER_INSET
+        bw = right - HEADER_INSET - bx
+        draw.rectangle([bx, body_top, bx + bw, body_bot], fill=BLOCK[i % len(BLOCK)])
+        label(draw, (bx + bw // 2, (body_top + body_bot) // 2),
               f"{modules[0]}  module controls", 16, INK, "mm")
+        HEADER_GEOM.append({"script": "mockup_rows", "container_top": y, "title": title,
+                            "title_box": title_box, "chip_boxes": chip_boxes,
+                            "band": HEADER_BAND, "body_top": body_top})
         y += row_h + GAP
 
     draw.rectangle([left, y, right, y + 168], fill=PIN_FILL)

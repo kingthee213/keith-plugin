@@ -7,11 +7,18 @@ For agreeing on structure, not for judging the look.
     ~/.venvs/keith-measure/bin/python tools/mockup_states.py
 
 Writes design/screenshots/mockup-states.png
+
+Header rule (see docs/LAYOUT-DIRECTION.md and the handoff): one number owns the header band.
+The title is centred vertically inside HEADER_BAND and the switcher chips are centred on the
+same band, placed to the right of the title's measured textlength. The body rectangle's top is
+`y + HEADER_BAND`, derived from the same number, so a body can never be drawn up into a title.
 """
 
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+
+import osc_wave
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "design" / "screenshots" / "mockup-states.png"
@@ -21,6 +28,17 @@ W, H = 1280, 800
 RAIL = 200
 M, GAP = 8, 8
 TOP_H, ROW_H, BOT_H = 44, 180, 168
+
+# --- the header band, one number ---------------------------------------------------------
+HEADER_BAND = 34          # fits a 14 px title with real margin above and below
+HEADER_INSET = 10         # left/right horizontal margin
+TITLE_SIZE = 14
+CHIP_W, CHIP_H, CHIP_GAP = 96, 24, 4
+
+# Audit trail. tools/check_layout_render.py walks this and asserts that no title box
+# overlaps a chip box and that every title clears the container's top edge by >= 8 px.
+HEADER_GEOM = []
+_TAG = "mockup_states"
 
 BG = (14, 15, 17)
 RAIL_FILL = (108, 59, 30)
@@ -50,9 +68,42 @@ def text(d, xy, s, size=13, fill=INK, anchor="la"):
     d.text(xy, s, font=fnt(size), fill=fill, anchor=anchor)
 
 
-def chip(d, x, y, name, on, w=96, h=24):
+def chip(d, x, y, name, on, w=CHIP_W, h=CHIP_H, boxes=None):
     d.rectangle([x, y, x + w, y + h], fill=BTN_ON if on else BTN_FILL)
     text(d, (x + 8, y + h // 2), name, 13, BG if on else INK, "lm")
+    box = (x, y, x + w, y + h)
+    if boxes is not None:
+        boxes.append(box)
+    return box
+
+
+def row_header(d, x, y, w, title, modules, tag=None):
+    """Draw a row's header and return the body top.
+
+    The title is centred vertically inside a band of HEADER_BAND; the chips are centred on
+    the same band and placed to the right of the title's measured textlength, not at a fixed
+    pixel offset. Returns `y + HEADER_BAND`, which is where the body must start.
+    """
+    f = fnt(TITLE_SIZE)
+    bx0, by0, bx1, by1 = d.textbbox((0, 0), title, font=f, anchor="la")
+    ink_h = by1 - by0
+    ink_top = y + (HEADER_BAND - ink_h) / 2.0
+    tx = x + HEADER_INSET
+    d.text((tx, ink_top - by0), title, font=f, fill=INK, anchor="la")
+    title_box = (tx + bx0, ink_top, tx + bx1, ink_top + ink_h)
+
+    chip_top = y + (HEADER_BAND - CHIP_H) / 2.0
+    chip_boxes = []
+    cx = tx + d.textlength(title, font=f) + CHIP_GAP
+    for i, name in enumerate(modules):
+        chip(d, cx, chip_top, name, i == 0, boxes=chip_boxes)
+        cx += CHIP_W + CHIP_GAP
+
+    body_top = y + HEADER_BAND
+    HEADER_GEOM.append({"script": tag or _TAG, "container_top": y, "title": title,
+                        "title_box": title_box, "chip_boxes": chip_boxes,
+                        "band": HEADER_BAND, "body_top": body_top})
+    return body_top
 
 
 def chrome(d, rail_label="BRAND RAIL"):
@@ -67,13 +118,10 @@ def chrome(d, rail_label="BRAND RAIL"):
 
 def row(d, x, y, w, title, modules, fill):
     d.rectangle([x, y, x + w, y + ROW_H], fill=ROW_FILL)
-    text(d, (x + 10, y + 12), title, 14)
-    cx = x + 10 + 88
-    for i, name in enumerate(modules):
-        chip(d, cx, y + 3, name, i == 0)
-        cx += 100
-    d.rectangle([x + 10, y + 33, x + w - 10, y + ROW_H - 8], fill=fill)
-    text(d, (x + w // 2, y + 33 + (ROW_H - 41) // 2), f"{modules[0]}  module controls", 16, INK, "mm")
+    body_top = row_header(d, x, y, w, title, modules)
+    body_bot = y + ROW_H - 8
+    d.rectangle([x + HEADER_INSET, body_top, x + w - HEADER_INSET, body_bot], fill=fill)
+    text(d, (x + w // 2, (body_top + body_bot) // 2), f"{modules[0]}  module controls", 16, INK, "mm")
 
 
 def columns_with_hero_band():
@@ -107,17 +155,16 @@ def hero_in_row():
     row(d, x, y, w, "SOURCE", ["OSC", "FILTER", "AMP"], MODULE)
     y += ROW_H + GAP
     d.rectangle([x, y, x + w, y + ROW_H], fill=ROW_FILL)
-    text(d, (x + 10, y + 12), "SHAPE", 14)
-    chip(d, x + 98, y + 3, "LFO", True)
-    chip(d, x + 198, y + 3, "MOD MATRIX", False)
-    chip(d, x + 298, y + 3, "AMP MODS", False)
+    body_top = row_header(d, x, y, w, "SHAPE", ["LFO", "MOD MATRIX", "AMP MODS"])
+    body_bot = y + ROW_H - 8
     hw = int(w * 0.42)
-    d.rectangle([x + 10, y + 33, x + 10 + hw, y + ROW_H - 8], fill=HERO)
-    text(d, (x + 10 + hw // 2, y + 33 + (ROW_H - 41) // 2), "HERO CITY", 20, INK, "mm")
-    text(d, (x + 10 + hw // 2, y + 33 + (ROW_H - 41) // 2 + 26), "in the row", 13, DIM, "mm")
-    bx = x + 10 + hw + GAP
-    d.rectangle([bx, y + 33, x + w - 10, y + ROW_H - 8], fill=MODULE2)
-    text(d, ((bx + x + w - 10) // 2, y + 33 + (ROW_H - 41) // 2), "LFO  module controls", 16, INK, "mm")
+    d.rectangle([x + HEADER_INSET, body_top, x + HEADER_INSET + hw, body_bot], fill=HERO)
+    text(d, (x + HEADER_INSET + hw // 2, (body_top + body_bot) // 2), "HERO CITY", 20, INK, "mm")
+    text(d, (x + HEADER_INSET + hw // 2, (body_top + body_bot) // 2 + 26), "in the row", 13, DIM, "mm")
+    bx = x + HEADER_INSET + hw + GAP
+    d.rectangle([bx, body_top, x + w - HEADER_INSET, body_bot], fill=MODULE2)
+    text(d, ((bx + x + w - HEADER_INSET) // 2, (body_top + body_bot) // 2),
+         "LFO  module controls", 16, INK, "mm")
     y += ROW_H + GAP
     row(d, x, y, w, "SPACE", ["INSERTS", "VINTAGE", "GLOBAL"], MODULE3)
     pads_and_keys(d, x, H - M - BOT_H, w, BOT_H)
@@ -148,11 +195,8 @@ def drum_open():
     row(d, x, y, w, "SHAPE", ["LFO", "MOD MATRIX", "AMP MODS"], MODULE2)
     y += ROW_H + GAP
     d.rectangle([x, y, x + w, y + ROW_H], fill=ROW_FILL)
-    text(d, (x + 10, y + 12), "SPACE", 14)
-    chip(d, x + 98, y + 3, "INSERTS", False)
-    chip(d, x + 198, y + 3, "VINTAGE", False)
-    chip(d, x + 298, y + 3, "GLOBAL", False)
-    d.rectangle([x + 10, y + 33, x + w - 10, y + ROW_H - 8], fill=MODULE3)
+    body_top = row_header(d, x, y, w, "SPACE", ["INSERTS", "VINTAGE", "GLOBAL"])
+    d.rectangle([x + HEADER_INSET, body_top, x + w - HEADER_INSET, y + ROW_H - 8], fill=MODULE3)
 
     open_h = H - M - (y + ROW_H + GAP) - 44
     oy = y + ROW_H + GAP
