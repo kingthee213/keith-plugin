@@ -34,17 +34,47 @@ The MAGS context, and nothing wider.
 5. Restart `sam-pt`'s gateway. It has its own service and its own token.
 6. The brake. Clear `allowed_channels` or remove the bot from the server and Keith's line is dead.
 
+## Who does what
+
+Noah, or whoever holds server permissions on the Paper Trail server.
+
+1. Check `sam-pt` actually exists and runs somewhere first. Nothing can be invited until there is a
+   bot to invite. Its state is not visible from the MacBook.
+2. Discord Developer Portal, the application that owns `sam-pt`'s bot. OAuth2, URL generator.
+   Scopes `bot` and `applications.commands`. Permissions, the least that works, View Channels, Send
+   Messages, Send Messages in Threads, Attach Files, Read Message History, Add Reactions.
+3. Open the generated URL, pick the Paper Trail server, authorize.
+4. Make the channel, `#mags-synth`. In its permissions, deny View Channel for `@everyone`, then
+   allow it for the bot and for Keith.
+5. Copy the channel ID, with Developer Mode on, right click the channel, Copy Channel ID.
+
+Sam, after step 5.
+
+6. Set `discord.allowed_channels` on `sam-pt` to that one ID.
+7. Load the MAGS context.
+8. Restart the gateway and confirm by posting one wireframe into the channel.
+
 ## Where `sam-pt` runs
 
 ai-chud, not the Mac. A laptop goes dark on lid close and Keith messages whenever he likes. Discord
 is an outbound WebSocket, so a second gateway conflicts with nothing and costs no GPU while
 `sam-pt` answers with a cloud model.
 
+## Reach to ai-chud
+
+The agent session cannot SSH to ai-chud. The cause is settled now. The Mac's key is already in
+ai-chud's `authorized_keys` (`ssh-copy-id` reports all keys already installed), the key is
+passphrase protected, and the agent the session talks to holds no identities, so a non-interactive
+command has no way to supply the passphrase. One line in Noah's own terminal fixes it.
+
+```bash
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+```
+
+This is not needed for the plugin work. Everything for the plugin happens on the MacBook.
+
 ## Open decisions
 
 - Who invites the bot, Noah or whoever holds server permissions.
 - Which model `sam-pt` answers with in this channel.
 - Whether the channel is visible to Paper Trail staff or limited to Noah and Keith.
-- Reach. The agent session cannot SSH to ai-chud today. This Mac's key is offered and ai-chud
-  refuses it, and the session cannot answer a password prompt. `ssh-copy-id ai-chud` from Noah's
-  own terminal resolves it.
