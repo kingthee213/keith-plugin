@@ -2,73 +2,68 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, editorial-redesign, w7-composition, mags-rebuild-and-levels]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build-macos-arm64:
-    name: macOS Apple Silicon (AU + VST3)
+  build-macos:
+    name: macOS universal (VST3 + AU + app)
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bootstrap iPlug2 (pinned)
+      - name: Bootstrap iPlug2
         run: ./tools/bootstrap-deps
 
-      - name: Configure (universal, macOS 11.7.10 floor)
+      - name: Configure
         run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+          cmake -S . -B build -G Xcode \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.7.10 \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
             -DIPLUG_DEPLOY_PLUGINS=OFF
 
-      - name: Build AU + VST3
-        run: cmake --build build --target Keith-vst3 Keith-au
+      - name: Build VST3, AU and app
+        run: cmake --build build --config Release --target MagsSynth-vst3 MagsSynth-au MagsSynth-app
 
-      - name: Upload artefacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: keith-macos-arm64
-          path: |
-            build/out/Keith.vst3
-            build/out/Keith.component
-
-  build-macos-intel:
-    # BRIEF [A2]: macos-13 Intel runners are retired; use macos-15-intel (free tier).
-    name: macOS Intel (AU + VST3)
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Bootstrap iPlug2 (pinned)
-        run: ./tools/bootstrap-deps
-
-      - name: Configure (universal, macOS 11.7.10 floor)
+      - name: Sign ad hoc and verify architectures
         run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DIPLUG_DEPLOY_PLUGINS=OFF
+          cd build/out/Release
+          for bundle in MagsSynth.vst3 MagsSynth.component MagsSynth.app; do
+            codesign --force --deep --sign - "$bundle"
+            echo "$bundle  $(lipo -archs "$bundle/Contents/MacOS/MagsSynth")"
+          done
 
-      - name: Build AU + VST3
-        run: cmake --build build --target Keith-vst3 Keith-au
+      - name: Package
+        run: |
+          cd build/out/Release
+          cat > README.txt <<'EOF'
+          MAGS SYNTH demo build.
 
-      - name: Upload artefacts
+          VST3: copy MagsSynth.vst3 into ~/Library/Audio/Plug-Ins/VST3
+          AU:   copy MagsSynth.component into ~/Library/Audio/Plug-Ins/Components
+          Then restart the host, or rescan plug-ins. It shows as MAGS SYNTH, vendor Mags.
+          No DAW needed at all: open MagsSynth.app and it runs standalone.
+
+          The build is ad hoc signed rather than notarized, so macOS may warn on first
+          load. Right click and Open, or allow it in System Settings, Privacy and Security.
+          EOF
+          zip -qry mags-synth-macos.zip MagsSynth.vst3 MagsSynth.component MagsSynth.app README.txt
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: keith-macos-intel
-          path: |
-            build/out/Keith.vst3
-            build/out/Keith.component
+          name: mags-synth-macos
+          path: build/out/Release/mags-synth-macos.zip
 
   build-windows:
-    name: Windows x64 VST3
+    name: Windows x64 (VST3)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bootstrap iPlug2 (pinned)
+      - name: Bootstrap iPlug2
         shell: bash
         run: ./tools/bootstrap-deps
 
@@ -80,10 +75,10 @@ jobs:
           -DIPLUG_DEPLOY_PLUGINS=OFF
 
       - name: Build VST3
-        run: cmake --build build --config Release --target Keith-vst3
+        run: cmake --build build --config Release --target MagsSynth-vst3
 
-      - name: Upload artefact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: keith-windows-vst3
-          path: build/out/Keith.vst3
+          name: mags-synth-windows-vst3
+          path: build/out/Release/MagsSynth.vst3
