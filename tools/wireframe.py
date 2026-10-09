@@ -197,16 +197,15 @@ def amp_module(d, x, y, w, h):
 
 def lfo_module(d, x, y, w, h):
     box(d, x, y, w, h, "LFO")
-    cy = y + h / 2 + 8
     blk = (w - 16) / 2
     for i in range(2):
         ox = x + 8 + i * blk
-        scope(d, ox, cy - 30, 76, 60, f"LFO {i+1}", 0.5 + i)
-        knob(d, ox + 118, cy, 22, "RATE", "1.0Hz")
-        knob(d, ox + 166, cy, 17, "DEPTH", "0.0")
-        mw = (blk - 200) / 2 - 5
-        menu(d, ox + 188, cy - 11, mw, 22, "SHAPE", "SINE")
-        menu(d, ox + 190 + mw, cy - 11, mw, 22, "DEST", "CUT")
+        scope(d, ox, y + 22, 76, 54, f"LFO {i+1}", 0.5 + i)
+        knob(d, ox + 120, y + 52, 21, "RATE", "1.0Hz")
+        knob(d, ox + 168, y + 52, 16, "DEPTH", "0.0")
+        mw = (blk - 24) / 2 - 5
+        menu(d, ox + 8, y + 90, mw, 22, "SHAPE", "SINE")
+        menu(d, ox + 10 + mw, y + 90, mw, 22, "DEST", "CUT")
 
 
 def mod_module(d, x, y, w, h):
