@@ -6,9 +6,8 @@ reference render already contains the cityscape, the hardware graphic, the wood 
 wordmark plaque and the wood frame edges, and this assembles those crops over the panel rectangles
 the controls are placed from.
 
-Composes at 1536x1024, the reference's own resolution, so the crops land one to one with no resampling
-of his artwork, then upscales once to 2x for the hi-dpi face. At the editor's default scale of 1.0 the
-face maps back to exactly 1536x1024, so it displays at native resolution.
+Composes at 1152x768 (0.75 of the reference grid) with artwork crops scaled to match, then upscales once
+to 2x for the hi-dpi face. At the editor's default scale of 1.0 the face maps back to exactly 1152x768.
 
     ~/.venvs/keith-measure/bin/python tools/compose_face.py
 """
@@ -26,11 +25,13 @@ ASSETS = ROOT / "resources" / "reference"
 OUT = ROOT / "resources" / "images" / "chassis.png"
 FONT_HEAD = ROOT / "resources" / "fonts" / "Oswald-Bold.ttf"
 
-DESIGN = (1536, 1024)
+DESIGN = (1152, 768)
 SCALE = 2
 CANVAS_BG = (10, 11, 13)
 TITLE_INK = (236, 228, 208)
-TITLE_PX = 15
+TITLE_PX = 11
+TITLE_PAD_X = 14
+TITLE_PAD_Y = 6
 
 PANELS = {
     "kPanelOsc": ("OSCILLATORS", (16, 29, 34)),
@@ -69,7 +70,7 @@ def frame(canvas, box, ink=BORDER):
 def title(draw, box, text):
     font = ImageFont.truetype(str(FONT_HEAD), TITLE_PX)
     spaced = " ".join(text)
-    draw.text((box[0] + 18, box[1] + 8), spaced, fill=TITLE_INK, font=font)
+    draw.text((box[0] + TITLE_PAD_X, box[1] + TITLE_PAD_Y), spaced, fill=TITLE_INK, font=font)
 
 
 def main():

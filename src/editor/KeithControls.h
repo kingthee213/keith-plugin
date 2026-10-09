@@ -152,15 +152,15 @@ private:
 class KeithKnobControl : public IKnobControlBase
 {
 public:
-  static constexpr float kLabelHeight = 19.f;
-  static constexpr float kValueHeight = 20.f;
+  static constexpr float kLabelHeight = 14.2f;
+  static constexpr float kValueHeight = 15.0f;
   static constexpr float kAngle1 = -135.f;
   static constexpr float kAngle2 = 135.f;
   /** Cap so wide cells never balloon the dial past the design language (34px at design size). */
-  static constexpr float kMaxBodyRadius = 24.f;
+  static constexpr float kMaxBodyRadius = 18.f;
 
   KeithKnobControl(const IRECT& bounds, int paramIdx, const char* label, const IColor& accent,
-                   bool showValue = true, bool bipolar = false, double gearing = 4.0, float radius = 24.f,
+                   bool showValue = true, bool bipolar = false, double gearing = 4.0, float radius = 18.f,
                    bool nativeBody = false)
   : IKnobControlBase(bounds, paramIdx, EDirection::Vertical, gearing)
   , mAccent(accent)
@@ -170,7 +170,7 @@ public:
   , mNativeBody(nativeBody)
   {
     DisablePrompt(false);
-    SetText(Mono(12.f, kPaper, EAlign::Center));
+    SetText(Mono(9.f, kPaper, EAlign::Center));
     mLabel.Set(label);
   }
 
@@ -223,10 +223,10 @@ public:
     g.DrawRadialLine(tick, cx, cy, angle, body*0.49f, body*0.81f, nullptr, 2.f);
 
     if (mLabelBounds.H() > 0.f)
-      g.DrawText(Label(11.f, kPaper), mLabel.Get(), mLabelBounds);
+      g.DrawText(Label(8.2f, kPaper), mLabel.Get(), mLabelBounds);
 
     if (mValueBounds.H() > 0.f)
-      g.DrawText(Value(mMaxRadius >= 38.f ? 18.f : 12.f, mMouseDown ? kCyan : kPaper), mValueStr.Get(), mValueBounds);
+      g.DrawText(Value(mMaxRadius >= 28.f ? 13.5f : 9.f, mMouseDown ? kCyan : kPaper), mValueStr.Get(), mValueBounds);
   }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override

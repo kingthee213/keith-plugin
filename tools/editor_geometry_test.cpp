@@ -79,9 +79,7 @@ int main()
 
     if (item.kind == ControlKind::Knob)
     {
-      const bool compactStrip = (item.parameter >= 57 && item.parameter <= 72) ||
-                                (item.parameter >= 101 && item.parameter <= 108);
-      const float minKnobH = compactStrip ? 47.f : keith::ui::kKnobMinHeight;
+      const float minKnobH = keith::ui::kKnobMinHeight;
       const bool knobTall = item.rect.H() >= minKnobH;
       std::printf("%s parameter %d knob height %.0f >= %.0f\n",
                   knobTall ? "PASS" : "FAIL", item.parameter, item.rect.H(), minKnobH);

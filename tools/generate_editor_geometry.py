@@ -1,41 +1,54 @@
 #!/usr/bin/env python3
-"""Generate EditorGeometry.h control rects for W7 reference grid (1536x1024)."""
+"""Generate EditorGeometry.h control rects for W7 laptop grid (1152x768, 0.75 of reference)."""
 from __future__ import annotations
 
-LABEL_FONT_PX = 11.0
-KNOB_H = 34 + 19 + 20
-KNOB_H_COMPACT = 47
-KNOB_GAP = 14
-TAB_H = 28
-DROPDOWN_H = 52
-DROPDOWN_H_COMPACT = 36
-FADER_H = 96
-FADER_W = 54
-MIN_W = 42
-PAD = 18
-ROW_GAP = 14
-TITLE_BAND = 28
-VISIBLE_ROW_GAP = 14
-CANVAS = (0, 0, 1536, 1024)
-KEYBOARD = (358.0, 1002.0, 1492.0, 1020.0)
+REF_SCALE = 0.75
 
-PANELS = {
+
+def _r(v: float) -> int:
+    return int(round(v * REF_SCALE))
+
+
+def _rf(v: float) -> float:
+    return round(v * REF_SCALE, 1)
+
+
+LABEL_FONT_PX = _rf(11.0)
+KNOB_H = _r(34 + 19 + 20)
+KNOB_GAP = _rf(14)
+TAB_H = _rf(28)
+DROPDOWN_H = _rf(52)
+DROPDOWN_H_COMPACT = _rf(36)
+FADER_H = _rf(96)
+FADER_W = _rf(54)
+MIN_W = _rf(42)
+PAD = _rf(18)
+ROW_GAP = _rf(14)
+TITLE_BAND = _rf(28)
+VISIBLE_ROW_GAP = _rf(14)
+CANVAS = (0, 0, _r(1536), _r(1024))
+
+_PANELS_REF = {
     "kPanelOsc": (250, 24, 552, 416),
     "kPanelFilter": (562, 24, 724, 416),
     "kPanelAmp": (728, 24, 928, 416),
     "kPanelLfo": (938, 24, 1240, 416),
     "kPanelMod": (1250, 24, 1500, 416),
     "kPanelArt": (258, 430, 808, 732),
-    "kPanelAmpMods": (734, 432, 868, 728),
-    "kPanelSample": (884, 426, 1256, 736),
+    "kPanelAmpMods": (734, 432, 980, 646),
+    "kPanelSample": (988, 426, 1256, 700),
     "kPanelPads": (1264, 426, 1500, 736),
-    "kPanelVintage": (256, 756, 730, 996),
-    "kPanelGlobal": (744, 756, 1066, 996),
-    "kPanelFx": (1080, 756, 1500, 996),
+    "kPanelVintage": (256, 724, 730, 996),
+    "kPanelGlobal": (744, 724, 1066, 996),
+    "kPanelFx": (1080, 724, 1500, 1000),
     "kLeftRail": (0, 0, 246, 1024),
     "kWordmarkBox": (18, 28, 228, 118),
-    "kKeyboardBox": KEYBOARD,
+    "kKeyboardBox": (358.0, 1002.0, 1492.0, 1020.0),
 }
+
+PANELS = {name: tuple(_r(v) for v in box) for name, box in _PANELS_REF.items()}
+KEYBOARD = tuple(_rf(v) for v in _PANELS_REF["kKeyboardBox"])
+PANELS["kKeyboardBox"] = tuple(int(round(v)) for v in KEYBOARD)
 
 OVERLAYS: dict[str, tuple[float, float, float, float]] = {}
 
@@ -146,7 +159,7 @@ def place_knobs_grid(items, l, t, r, b, cols, knob_w=None):
         row, col = divmod(i, cols)
         x = l + col * col_step
         y = y0 + row * row_step
-        rects[param] = box(x, y, x + kw, y + KNOB_H_COMPACT)
+        rects[param] = box(x, y, x + kw, y + KNOB_H)
 
 
 def place_row(items, l, t, w, h, gap=ROW_GAP):
@@ -164,11 +177,11 @@ def place_overlay(oid: str, l, t, r, b):
 # OSC
 osc_l, osc_t, osc_r, osc_b = PANELS["kPanelOsc"]
 ix, iy = osc_l + PAD, content_top(osc_t)
-wave_h = 44
-place_overlay("osc1_waveform", osc_l + PAD, iy, osc_l + PAD + 112, iy + wave_h)
-place_overlay("osc2_waveform", osc_l + PAD + 118, iy, osc_l + PAD + 230, iy + wave_h)
+wave_h = _r(44)
+place_overlay("osc1_waveform", osc_l + PAD, iy, osc_l + PAD + _r(112), iy + wave_h)
+place_overlay("osc2_waveform", osc_l + PAD + _r(118), iy, osc_l + PAD + _r(230), iy + wave_h)
 iy += wave_h + ROW_GAP
-kw = max(64, (osc_r - osc_l - 2 * PAD - ROW_GAP) / 4)
+kw = max(_rf(64), (osc_r - osc_l - 2 * PAD - ROW_GAP) / 4)
 for col, params in enumerate([(14, 15, 16, 17), (18, 19, 20, 21)]):
     cx = ix + col * (kw * 2 + ROW_GAP)
     for row, pair in enumerate([(params[0], params[1]), (params[2], params[3])]):
@@ -179,12 +192,12 @@ mix_y = iy + 2 * (KNOB_H + ROW_GAP)
 mix_w = (osc_r - osc_l - 2 * PAD - 2 * ROW_GAP) / 3
 for i, p in enumerate([22, 23, 24]):
     rects[p] = box(ix + i * (mix_w + ROW_GAP), mix_y, ix + i * (mix_w + ROW_GAP) + mix_w, mix_y + KNOB_H)
-rects[43] = box(ix, osc_b - PAD - TAB_H, ix + 76, osc_b - PAD)
-rects[44] = box(ix + 84, osc_b - PAD - TAB_H, ix + 160, osc_b - PAD)
+rects[43] = box(ix, osc_b - PAD - TAB_H, ix + _rf(76), osc_b - PAD)
+rects[44] = box(ix + _rf(84), osc_b - PAD - TAB_H, ix + _rf(160), osc_b - PAD)
 
 # FILTER
 fl, ft, fr, fb = PANELS["kPanelFilter"]
-kw_filt = max(60, (fr - fl - 2 * PAD - ROW_GAP) / 2)
+kw_filt = max(_rf(60), (fr - fl - 2 * PAD - ROW_GAP) / 2)
 rects[25] = box(fl + PAD, content_top(ft), fr - PAD, content_top(ft) + TAB_H)
 y_filt = content_top(ft) + TAB_H + ROW_GAP
 for row_params in ([26, 27], [28, 45], [53, 54]):
@@ -213,19 +226,20 @@ for row, params in enumerate(([39, 40], [41, 42])):
 # AMP MODIFIERS — two columns; compact height fits the strip beside the hero.
 aml, amt, amr, amb = PANELS["kPanelAmpMods"]
 amp_mods = [101, 102, 103, 104, 105, 106, 107, 108]
-mod_w = MIN_W
+mod_cols = 4
+mod_w = max(MIN_W, (amr - aml - 2 * PAD - (mod_cols - 1) * ROW_GAP) / mod_cols)
 row_y0 = content_top(amt) + ROW_GAP
 for i, p in enumerate(amp_mods):
-    row = i // 2
-    col = i % 2
-    y = row_y0 + row * (KNOB_H_COMPACT + ROW_GAP)
+    row = i // mod_cols
+    col = i % mod_cols
+    y = row_y0 + row * (KNOB_H + ROW_GAP)
     x = aml + PAD + col * (mod_w + ROW_GAP)
-    rects[p] = box(x, y, x + mod_w, y + KNOB_H_COMPACT)
+    rects[p] = box(x, y, x + mod_w, y + KNOB_H)
 
 # LFO — one horizontal row per block (label, rate, depth, shape, dest).
 ll, lt, lr, lb = PANELS["kPanelLfo"]
-LFO_LABEL_H = 14
-LFO_DD_W = 52
+LFO_LABEL_H = _rf(14)
+LFO_DD_W = _rf(52)
 
 
 def lfo_block(y_top, rate, shape, dest, amount, label_id):
@@ -262,28 +276,32 @@ for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97)
     rects[dst] = box(ml + PAD + dw + ROW_GAP, y, ml + PAD + 2 * dw + ROW_GAP, y + DROPDOWN_H)
     rects[amt] = box(mr - PAD - MIN_W, y, mr - PAD, y + KNOB_H)
 
-# SAMPLE
+# SAMPLE — knobs anchor from the panel bottom so they never spill into the global row.
 sl, st, sr, sb = PANELS["kPanelSample"]
 inner_w = sr - sl - 2 * PAD
-y0 = content_top(st)
-place_overlay("sample_waveform", sl + PAD, y0, sr - PAD, y0 + 40)
-y_preset = y0 + 40 + ROW_GAP
-place_overlay("preset_menu", sl + PAD, y_preset, sr - PAD, y_preset + 44)
-y1 = y_preset + 44 + ROW_GAP
 kw4 = max(MIN_W, (inner_w - 3 * ROW_GAP) / 4)
+y2 = sb - PAD - KNOB_H
+y1 = y2 - ROW_GAP - KNOB_H
+preset_h = _rf(36)
+y0 = content_top(st)
+wave_h = max(_rf(20), y1 - y0 - ROW_GAP * 2 - preset_h)
+place_overlay("sample_waveform", sl + PAD, y0, sr - PAD, y0 + wave_h)
+y_preset = y0 + wave_h + ROW_GAP
+place_overlay("preset_menu", sl + PAD, y_preset, sr - PAD, y_preset + preset_h)
+y1 = max(y1, y_preset + preset_h + ROW_GAP)
+y2 = y1 + ROW_GAP + KNOB_H
 for i, p in enumerate([33, 34, 35, 36]):
     rects[p] = box(sl + PAD + i * (kw4 + ROW_GAP), y1, sl + PAD + i * (kw4 + ROW_GAP) + kw4, y1 + KNOB_H)
-y2 = y1 + KNOB_H + ROW_GAP
 for i, p in enumerate([37, 84]):
     rects[p] = box(sl + PAD + i * (kw4 + ROW_GAP), y2, sl + PAD + i * (kw4 + ROW_GAP) + kw4, y2 + KNOB_H)
 tab_y = y2 + (KNOB_H - TAB_H) / 2
-tab_w = min(72, kw4)
+tab_w = min(_rf(72), kw4)
 rects[82] = box(sl + PAD + 2 * (kw4 + ROW_GAP), tab_y, sl + PAD + 2 * (kw4 + ROW_GAP) + tab_w, tab_y + TAB_H)
 rects[83] = box(sl + PAD + 3 * (kw4 + ROW_GAP), tab_y, sl + PAD + 3 * (kw4 + ROW_GAP) + tab_w, tab_y + TAB_H)
 
 # PADS
 pl, pt, pr, pb = PANELS["kPanelPads"]
-grid_r = pr - PAD - 3 * 40 - 2 * ROW_GAP
+grid_r = pr - PAD - 3 * _rf(40) - 2 * ROW_GAP
 rects[75] = box(pl + PAD, content_top(pt), grid_r - ROW_GAP, pb - PAD)
 kw = MIN_W
 dy = content_top(pt) + ROW_GAP
@@ -294,8 +312,8 @@ for row, trio in enumerate([(76, 77, 78), (79, 80, 81)]):
 
 # VINTAGE
 vl, vt, vr, vb = PANELS["kPanelVintage"]
-rects[9] = box(vl + PAD, content_top(vt), vl + PAD + 220, content_top(vt) + TAB_H)
-knob_x = vl + 250
+rects[9] = box(vl + PAD, content_top(vt), vl + PAD + _r(220), content_top(vt) + TAB_H)
+knob_x = vl + _r(250)
 knob_w_v = max(MIN_W, (vr - knob_x - PAD - 2 * ROW_GAP) / 3)
 y_v = content_top(vt) + TAB_H + ROW_GAP
 for i, p in enumerate([2, 46, 1]):
@@ -306,7 +324,7 @@ gl, gt, gr, gb = PANELS["kPanelGlobal"]
 inner = gr - gl - 2 * PAD
 y1 = content_top(gt) + ROW_GAP
 right = gr - PAD
-mode_w = 56
+mode_w = _rf(56)
 mode_y = y1 + (KNOB_H - DROPDOWN_H) / 2
 rects[55] = box(right - mode_w, mode_y, right, mode_y + DROPDOWN_H)
 rects[10] = box(right - 2 * mode_w - ROW_GAP, mode_y, right - mode_w - ROW_GAP, mode_y + DROPDOWN_H)
@@ -318,7 +336,7 @@ for p in (0, 11, 12):
     rects[p] = box(x, y1, x + kw_g, y1 + KNOB_H)
     x += kw_g + ROW_GAP
 knob_y = gb - PAD - KNOB_H
-drop_w = 64
+drop_w = _rf(64)
 bottom = [13, 38, 52]
 bw = (inner - drop_w - ROW_GAP - (len(bottom) - 1) * ROW_GAP) / len(bottom)
 x = gl + PAD
@@ -330,37 +348,38 @@ rects[51] = box(x, knob_y, x + drop_w, knob_y + DROPDOWN_H)
 # Left rail
 lr_l, _lr_t, lr_r, _lr_b = PANELS["kLeftRail"]
 tape_items = [3, 4, 5, 6, 7, 74]
-y = 168
+y = _r(168)
 for p in tape_items:
     rects[p] = box(lr_l + PAD, y, lr_r - PAD, y + KNOB_H)
     y += KNOB_H + ROW_GAP
-place_overlay("bypass_label", lr_l + PAD, y, lr_r - PAD, y + 16)
-bypass_y = y + 18
+place_overlay("bypass_label", lr_l + PAD, y, lr_r - PAD, y + _rf(16))
+bypass_y = y + _rf(18)
 rects[8] = box(lr_l + PAD, bypass_y, lr_r - PAD, bypass_y + TAB_H)
 y = bypass_y + TAB_H + ROW_GAP
 rw = (lr_r - lr_l - 2 * PAD - ROW_GAP) / 2
 rects[109] = box(lr_l + PAD, y, lr_l + PAD + rw, y + KNOB_H)
 rects[110] = box(lr_l + PAD + rw + ROW_GAP, y, lr_r - PAD, y + KNOB_H)
-place_overlay("midi_hint1", lr_l + PAD, 944, lr_r - PAD, 962)
-place_overlay("midi_hint2", lr_l + PAD, 962, lr_r - PAD, 980)
+place_overlay("midi_hint1", lr_l + PAD, _r(944), lr_r - PAD, _r(962))
+place_overlay("midi_hint2", lr_l + PAD, _r(962), lr_r - PAD, _r(980))
 
 # FX
 fxl, fxt, fxr, fxb = PANELS["kPanelFx"]
 inner_fx = fxr - fxl - 2 * PAD
 menu_y = content_top(fxt) + ROW_GAP
 third = (inner_fx - 2 * ROW_GAP) / 3
-rects[56] = box(fxl + PAD, menu_y, fxl + PAD + third, menu_y + DROPDOWN_H)
-rects[62] = box(fxl + PAD + third + ROW_GAP, menu_y, fxl + PAD + 2 * third + ROW_GAP, menu_y + DROPDOWN_H)
-rects[68] = box(fxl + PAD + 2 * (third + ROW_GAP), menu_y, fxr - PAD, menu_y + DROPDOWN_H)
+fx_menu_h = DROPDOWN_H_COMPACT
+rects[56] = box(fxl + PAD, menu_y, fxl + PAD + third, menu_y + fx_menu_h)
+rects[62] = box(fxl + PAD + third + ROW_GAP, menu_y, fxl + PAD + 2 * third + ROW_GAP, menu_y + fx_menu_h)
+rects[68] = box(fxl + PAD + 2 * (third + ROW_GAP), menu_y, fxr - PAD, menu_y + fx_menu_h)
 all_fx_knobs = [57, 58, 59, 60, 63, 64, 65, 66, 69, 70, 71, 72]
-fx_row2_y = fxb - PAD - KNOB_H_COMPACT
-fx_row1_y = fx_row2_y - ROW_GAP - KNOB_H_COMPACT
+fx_row1_y = menu_y + fx_menu_h + ROW_GAP
+fx_row2_y = fx_row1_y + KNOB_H + ROW_GAP
 knob_w = max(MIN_W, (inner_fx - 5 * VISIBLE_ROW_GAP) / 6)
 for row_idx, knobs in enumerate((all_fx_knobs[:6], all_fx_knobs[6:])):
     y = fx_row1_y if row_idx == 0 else fx_row2_y
     kx = fxl + PAD
     for p in knobs:
-        rects[p] = box(kx, y, kx + knob_w, y + KNOB_H_COMPACT)
+        rects[p] = box(kx, y, kx + knob_w, y + KNOB_H)
         kx += knob_w + VISIBLE_ROW_GAP
 
 overlay_conflicts = []
@@ -458,7 +477,7 @@ def overlay_lines():
 
 def panel_lines():
     lines = [
-        f"constexpr float kPanelTitleBand = {TITLE_BAND}.0f;",
+        f"constexpr float kPanelTitleBand = {TITLE_BAND}f;",
         f"constexpr Box kKeyboardBox {{{KEYBOARD[0]:.1f}f, {KEYBOARD[1]:.1f}f, "
         f"{KEYBOARD[2]:.1f}f, {KEYBOARD[3]:.1f}f}};",
         "inline Box PanelTitleBand(Box panel) { return {panel.l, panel.t, panel.r, panel.t + kPanelTitleBand}; }",
@@ -550,9 +569,28 @@ def apply_to_repo():
             overlay_block.rstrip() + "\nstruct ControlRect { int parameter; Box rect; const char* label; float labelFontPx; int labelUnits; ControlKind kind; };",
             1,
         )
+    cw, ch = float(CANVAS[2]), float(CANVAS[3])
+    lrw = float(PANELS["kLeftRail"][2])
     geom = re.sub(
         r"constexpr float kCanvasW = [\d.]+f;\nconstexpr float kCanvasH = [\d.]+f;\nconstexpr float kLeftRailW = [\d.]+f;",
-        "constexpr float kCanvasW = 1536.0f;\nconstexpr float kCanvasH = 1024.0f;\nconstexpr float kLeftRailW = 246.0f;",
+        f"constexpr float kCanvasW = {cw:.1f}f;\nconstexpr float kCanvasH = {ch:.1f}f;\nconstexpr float kLeftRailW = {lrw:.1f}f;",
+        geom,
+        count=1,
+    )
+    geom = re.sub(
+        r"constexpr float kPanelPadding = [\d.]+f;\nconstexpr float kControlGap = [\d.]+f;",
+        f"constexpr float kPanelPadding = {PAD:.1f}f;\nconstexpr float kControlGap = {ROW_GAP:.1f}f;",
+        geom,
+        count=1,
+    )
+    knob_label = _rf(19)
+    knob_value = _rf(20)
+    knob_body = _rf(34)
+    geom = re.sub(
+        r"constexpr float kKnobLabelHeight = [\d.]+f;\nconstexpr float kKnobValueHeight = [\d.]+f;\nconstexpr float kKnobBodyMin = [\d.]+f;",
+        f"constexpr float kKnobLabelHeight = {knob_label:.1f}f;\n"
+        f"constexpr float kKnobValueHeight = {knob_value:.1f}f;\n"
+        f"constexpr float kKnobBodyMin = {knob_body:.1f}f;",
         geom,
         count=1,
     )

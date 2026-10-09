@@ -32,12 +32,12 @@
 // clipping or reflowing it. The ceiling is 3x the design size, which is also the
 // render scale of every baked face, so a raster face is never upscaled (see
 // tools/verify_face_scale.py).
-#define PLUG_WIDTH 1536
-#define PLUG_HEIGHT 1024
-#define PLUG_MIN_WIDTH 1024
-#define PLUG_MIN_HEIGHT 700
-#define PLUG_MAX_WIDTH 3072
-#define PLUG_MAX_HEIGHT 2048
+#define PLUG_WIDTH 1152
+#define PLUG_HEIGHT 768
+#define PLUG_MIN_WIDTH 768
+#define PLUG_MIN_HEIGHT 525
+#define PLUG_MAX_WIDTH 2304
+#define PLUG_MAX_HEIGHT 1536
 #define PLUG_FPS 60
 #define PLUG_SHARED_RESOURCES 0
 #define PLUG_HOST_RESIZE 0
