@@ -315,32 +315,32 @@ for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97)
     rects[dst] = box(ml + PAD + dw + ROW_GAP, y, ml + PAD + 2 * dw + ROW_GAP, y + DROPDOWN_H)
     rects[amt] = box(mr - PAD - MIN_W, y, mr - PAD, y + KNOB_H)
 
-# SAMPLE — knobs anchor from the panel bottom so they never spill into the global row.
+# SAMPLE — 3×2 knobs (value-sized width); MUT/SOL tabs share the preset row on the right.
 sl, st, sr, sb = PANELS["kPanelSample"]
 inner_w = sr - sl - 2 * PAD
 sample_knobs = [33, 34, 35, 36, 37, 84]
 kw3 = shared_knob_width(sample_knobs, inner_w - 2 * ROW_GAP, 3)
-knob_rows = 2
-tab_row_h = TAB_H + ROW_GAP
-y2 = sb - PAD - KNOB_H
-y1 = y2 - ROW_GAP - KNOB_H
+tab_w82 = min_control_width(82)
+tab_w83 = min_control_width(83)
+tabs_total = tab_w82 + ROW_GAP + tab_w83
 preset_h = _rf(36)
+y_knob_row2 = sb - PAD - KNOB_H
+y_knob_row1 = y_knob_row2 - ROW_GAP - KNOB_H
+y_preset = y_knob_row1 - ROW_GAP - preset_h
 y0 = content_top(st)
-wave_h = max(_rf(20), y1 - y0 - ROW_GAP * 2 - preset_h - tab_row_h)
+wave_h = max(0.0, y_preset - y0 - ROW_GAP)
 place_overlay("sample_waveform", sl + PAD, y0, sr - PAD, y0 + wave_h)
-y_preset = y0 + wave_h + ROW_GAP
-place_overlay("preset_menu", sl + PAD, y_preset, sr - PAD, y_preset + preset_h)
-y1 = max(y1, y_preset + preset_h + ROW_GAP)
-y2 = y1 + KNOB_H + ROW_GAP
+preset_w = max(MIN_W, inner_w - tabs_total - ROW_GAP)
+place_overlay("preset_menu", sl + PAD, y_preset, sl + PAD + preset_w, y_preset + preset_h)
+tab_y = y_preset + (preset_h - TAB_H) / 2
+tab_x = sr - PAD - tabs_total
+rects[82] = box(tab_x, tab_y, tab_x + tab_w82, tab_y + TAB_H)
+rects[83] = box(tab_x + tab_w82 + ROW_GAP, tab_y, tab_x + tabs_total, tab_y + TAB_H)
 for i, param in enumerate(sample_knobs):
     row, col = divmod(i, 3)
-    y = y1 + row * (KNOB_H + ROW_GAP)
+    y = y_knob_row1 if row == 0 else y_knob_row2
     x = sl + PAD + col * (kw3 + ROW_GAP)
     rects[param] = box(x, y, x + kw3, y + KNOB_H)
-tab_y = y1 + knob_rows * (KNOB_H + ROW_GAP)
-tab_w = min(_rf(72), kw3)
-rects[82] = box(sl + PAD, tab_y, sl + PAD + tab_w, tab_y + TAB_H)
-rects[83] = box(sl + PAD + tab_w + ROW_GAP, tab_y, sl + PAD + 2 * tab_w + ROW_GAP, tab_y + TAB_H)
 
 # PADS
 pl, pt, pr, pb = PANELS["kPanelPads"]
