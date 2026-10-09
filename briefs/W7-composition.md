@@ -15,18 +15,17 @@ The reference's own panel rectangles are too small for our control count. Measur
   controls where the reference shows three. EFFECTS carries twelve where the reference shows four.
 
 So the composition cannot match the reference exactly **and** keep all 111 controls visible at the
-reference's control size. Three ways out, and it is a product call rather than a technical one.
+reference's control size.
 
-1. Let the busy panels be larger than the reference's rectangles, keeping every control visible. The
-   panel grid then stops matching the reference in those places, while materials, colours, the hero and
-   the overall proportions still do.
-2. Keep the reference's grid and put the extra controls behind per-section tabs, LFO 1 and LFO 2 for
-   instance, or insert A, B and master. Some controls then stop being visible at once, which cuts
-   against the owner's instruction that everything be presented at once.
-3. Keep the grid and shrink those panels' controls below the label-plus-value minimum. That is the
-   defect this whole line of work started from, so it is not a real option.
+**Settled, by the owner.** The reference is a style guide, not a final design. Match the aesthetics as
+closely as possible, then lay out whatever obviously has to differ differently. In practice:
 
-Do not start this round until that is settled.
+- Take from the reference: the near-black canvas, wood only as the left column and the thin frame, the
+  cityscape as a hero, the hardware graphic, the panel fill colours, the type scale and the pink accent.
+- The panel rectangles are a guide, not a contract. Where our control count does not fit, the panel
+  grows or changes shape. Keeping every one of the 111 controls visible wins over matching a rectangle.
+- Nothing gets hidden behind a tab to preserve a rectangle, and no control shrinks below the
+  label-plus-value minimum.
 
 
 Work in `/Users/solace/YoteMachine-build`, branch `mags-rebuild-and-levels`.
