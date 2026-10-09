@@ -67,19 +67,19 @@ def osc_cell(d, x, y, w, h):
     text(d, (x + 8, y + 8), "OSCILLATORS", 11, DIM)
     gut = 12
     colw = (w - 20 - 2 * gut) / 3
-    r = max(12, min(15, colw * 0.15))
+    r = max(12, min(14, colw * 0.14))
     for i, (name, shape, cycles, knobs, sw, on) in enumerate(COLUMNS):
         cx = x + 10 + i * (colw + gut)
         text(d, (cx, y + 28), name, 12, INK)
         if shape:
-            wave(d, cx, y + 46, colw, 70, cycles)
-            text(d, (cx + colw / 2, y + 81), shape, 11, INK, "mm")
+            wave(d, cx, y + 46, colw, 60, cycles)
+            text(d, (cx + colw / 2, y + 76), shape, 11, INK, "mm")
         else:
-            d.rectangle([cx, y + 46, cx + colw, y + 116], fill=CELL, outline=BODY_HI)
-            text(d, (cx + colw / 2, y + 81), "SUB /", 10, DIM, "mm")
-            text(d, (cx + colw / 2, y + 93), "NOISE / FM", 10, DIM, "mm")
+            d.rectangle([cx, y + 46, cx + colw, y + 106], fill=CELL, outline=BODY_HI)
+            text(d, (cx + colw / 2, y + 71), "SUB /", 10, DIM, "mm")
+            text(d, (cx + colw / 2, y + 83), "NOISE / FM", 10, DIM, "mm")
         for row_i, row in enumerate([knobs[i:i + 2] for i in range(0, len(knobs), 2)]):
-            cy = y + 142 + row_i * 58
+            cy = y + 130 + row_i * 74
             for j, (lab, val) in enumerate(row):
                 kx = cx + colw / 4 + j * (colw / 2)
                 knob(d, kx, cy, r)
@@ -87,9 +87,9 @@ def osc_cell(d, x, y, w, h):
                 d.rounded_rectangle([kx - 23, cy + r + 20, kx + 23, cy + r + 36], radius=3,
                                     fill=CELL, outline=(40, 44, 52))
                 text(d, (kx, cy + r + 28), val, 10, INK, "mm")
-        d.rounded_rectangle([cx, y + 250, cx + 24, y + 270], radius=3,
+        d.rounded_rectangle([cx, y + 262, cx + 24, y + 282], radius=3,
                             fill=SW_ON if on else SW_OFF)
-        text(d, (cx + 32, y + 260), sw, 11, INK, "lm")
+        text(d, (cx + 32, y + 272), sw, 11, INK, "lm")
 
 
 def band(d, x, y, w, title, names):
