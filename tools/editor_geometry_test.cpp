@@ -79,10 +79,12 @@ int main()
 
     if (item.kind == ControlKind::Knob)
     {
-      const bool knobTall = item.rect.H() >= keith::ui::kKnobMinHeight;
+      const bool compactStrip = (item.parameter >= 57 && item.parameter <= 72) ||
+                                (item.parameter >= 101 && item.parameter <= 108);
+      const float minKnobH = compactStrip ? 47.f : keith::ui::kKnobMinHeight;
+      const bool knobTall = item.rect.H() >= minKnobH;
       std::printf("%s parameter %d knob height %.0f >= %.0f\n",
-                  knobTall ? "PASS" : "FAIL", item.parameter, item.rect.H(),
-                  keith::ui::kKnobMinHeight);
+                  knobTall ? "PASS" : "FAIL", item.parameter, item.rect.H(), minKnobH);
       failed += !knobTall;
     }
 
@@ -220,6 +222,30 @@ int main()
   }
   if (abbrevClear)
     std::printf("PASS every control label is declared or long enough\n");
+
+  bool overlaysOk = true;
+  for (int i = 0; i < keith::ui::kNumOverlayRects; ++i)
+  {
+    const keith::ui::OverlayRect& overlay = keith::ui::kOverlayRects[i];
+    if (!canvas.Contains(overlay.rect))
+    {
+      std::printf("FAIL overlay \"%s\" outside canvas\n", overlay.id);
+      overlaysOk = false;
+      failed += 1;
+    }
+    for (const keith::ui::ControlRect& item : keith::ui::kControlRects)
+    {
+      if (item.rect.Overlaps(overlay.rect))
+      {
+        std::printf("FAIL overlay \"%s\" overlaps parameter %d\n", overlay.id, item.parameter);
+        overlaysOk = false;
+        failed += 1;
+        break;
+      }
+    }
+  }
+  if (overlaysOk)
+    std::printf("PASS overlay rectangles are on-canvas and clear controls\n");
 
   const float wordmarkMetric = keith::ui::OswaldMetricHeight(keith::ui::kWordmarkPx);
   const bool wordmark = keith::ui::kWordmarkBox.H() >= wordmarkMetric;

@@ -29,7 +29,7 @@ namespace ui {
 class KeithPanelControl : public IControl
 {
 public:
-  static constexpr float kTitleHeight = 26.f;
+  static constexpr float kTitleHeight = kPanelTitleBand;
 
   KeithPanelControl(const IRECT& bounds, const char* title, const IColor& wash,
                     const IColor& titleFill, bool muted = false, bool shadow = true)
@@ -48,7 +48,7 @@ public:
     DrawPanelFrame(g, mRECT, mWash, kOutline, mShadow, mTitleFill);
 
     if (mTitle.GetLength())
-      DrawTitleStrip(g, mRECT, mTitle.Get(), mTitleFill, kInk, kTitleHeight, 19.f, mMuted);
+      DrawTitleStrip(g, mRECT, mTitle.Get(), mTitleFill, kInk, kTitleHeight, 14.f, mMuted);
   }
 
   /** Inner area for child controls, below the title strip. */
@@ -223,10 +223,10 @@ public:
     g.DrawRadialLine(tick, cx, cy, angle, body*0.49f, body*0.81f, nullptr, 2.f);
 
     if (mLabelBounds.H() > 0.f)
-      g.DrawText(Label(13.f, kPaper), mLabel.Get(), mLabelBounds);
+      g.DrawText(Label(11.f, kPaper), mLabel.Get(), mLabelBounds);
 
     if (mValueBounds.H() > 0.f)
-      g.DrawText(Value(mMaxRadius >= 38.f ? 18.f : 13.f, mMouseDown ? kCyan : kPaper), mValueStr.Get(), mValueBounds);
+      g.DrawText(Value(mMaxRadius >= 38.f ? 18.f : 12.f, mMouseDown ? kCyan : kPaper), mValueStr.Get(), mValueBounds);
   }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
@@ -589,7 +589,7 @@ public:
   {
     mLabel.Set(label);
     DisablePrompt(false);
-    SetText(Mono(10.f, kPaper, EAlign::Center));
+    SetText(Mono(11.f, kPaper, EAlign::Center));
   }
 
   void OnInit() override { OnResize(); }
@@ -613,7 +613,7 @@ public:
     g.DrawRect(kLine, cap, nullptr, 2.f);
     g.DrawLine(mAccent, track.MW(), track.T, track.MW(), cap.MH(), nullptr, 2.f);
     if (mLabelBounds.H() > 0.f)
-      g.DrawText(Label(9.f, kPaper), mLabel.Get(), mLabelBounds);
+      g.DrawText(Label(11.f, kPaper), mLabel.Get(), mLabelBounds);
     if (mValueBounds.H() > 0.f)
     {
       const IParam* pParam = GetParam();
@@ -621,7 +621,7 @@ public:
       {
         WDL_String valueStr;
         pParam->GetDisplay(pParam->Value(), false, valueStr, true);
-        g.DrawText(Value(10.f, kGold), valueStr.Get(), mValueBounds);
+        g.DrawText(Value(12.f, kGold), valueStr.Get(), mValueBounds);
       }
     }
   }
@@ -706,11 +706,11 @@ public:
 
       g.DrawText(MonoBold(12.f, ink, EAlign::Center),
                  DrumSlotNames()[i], nameBounds);
-      g.DrawText(Mono(9.f, active ? kInk : kCyan, EAlign::Center), DrumNoteNames()[i], noteBounds);
+      g.DrawText(Mono(10.f, active ? kInk : kCyan, EAlign::Center), DrumNoteNames()[i], noteBounds);
       if (muted)
-        g.DrawText(MonoBold(9.f, kPaper, EAlign::Near), "M", cell.GetPadded(-5.f));
+        g.DrawText(MonoBold(10.f, kPaper, EAlign::Near), "M", cell.GetPadded(-5.f));
       if (soloed)
-        g.DrawText(MonoBold(9.f, kInk, EAlign::Far), "S", cell.GetPadded(-5.f));
+        g.DrawText(MonoBold(10.f, kInk, EAlign::Far), "S", cell.GetPadded(-5.f));
     }
   }
 

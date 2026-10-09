@@ -1,6 +1,7 @@
 #pragma once
 #include "EditorialControls.h"
 #include "ControlLayout.h"
+#include <cassert>
 
 namespace keith { namespace ui {
 
@@ -8,6 +9,13 @@ inline IRECT CRect(int param)
 {
   const auto& c = ControlFor(param);
   return IRECT(c.rect.l, c.rect.t, c.rect.r, c.rect.b);
+}
+
+inline IRECT OverlayIRECT(const char* id)
+{
+  const OverlayRect* overlay = OverlayFor(id);
+  assert(overlay);
+  return IRECT(overlay->rect.l, overlay->rect.t, overlay->rect.r, overlay->rect.b);
 }
 
 inline void BuildEditorial(Keith& plugin, IGraphics* g)
@@ -35,7 +43,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   };
 
   auto tabs = [&](int param, std::initializer_list<const char*> choices) {
-    auto style = HardButton(kPaper, kInk, 10).WithValueText(MonoBold(10, kInk));
+    auto style = HardButton(kPaper, kInk, 11).WithValueText(MonoBold(10, kInk));
     style.colorSpec.mColors[kPR] = kHotPink;
     g->AttachControl(new IVTabSwitchControl(CRect(param), param, choices, "", style,
                                              EVShape::Rectangle));
@@ -64,9 +72,9 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   };
 
   // OSCILLATORS — two oscillators plus a mixer column (not a third osc).
-  g->AttachControl(new KeithWaveform(IRECT(226, 40, 282, 80), kParamOsc1Shape, kParamOsc1PW,
+  g->AttachControl(new KeithWaveform(OverlayIRECT("osc1_waveform"), kParamOsc1Shape, kParamOsc1PW,
                                      kGreen));
-  g->AttachControl(new KeithWaveform(IRECT(282, 40, 338, 80), kParamOsc2Shape, kParamOsc2PW,
+  g->AttachControl(new KeithWaveform(OverlayIRECT("osc2_waveform"), kParamOsc2Shape, kParamOsc2PW,
                                      kMagenta));
   freeKnob(kParamOsc1Shape, "SHAPE", kGreen);
   freeKnob(kParamOsc1Pitch, "TUNE", kGreen, true);
@@ -100,9 +108,9 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     freeKnob(p, ControlFor(p).label, kGreen, true);
 
   // LFO 1 + LFO 2 stacked.
-  g->AttachControl(new KeithTextControl(IRECT(776, 24, 868, 38), "LFO 1", MonoBold(9, kHotPink)));
-  g->AttachControl(new KeithTextControl(IRECT(776, 134, 868, 148), "LFO 2",
-                                        MonoBold(9, kHotPink)));
+  g->AttachControl(new KeithTextControl(OverlayIRECT("lfo1_label"), "LFO 1", MonoBold(11, kHotPink)));
+  g->AttachControl(new KeithTextControl(OverlayIRECT("lfo2_label"), "LFO 2",
+                                        MonoBold(11, kHotPink)));
   freeKnob(kParamLfoRate, "RATE");
   freeKnob(kParamLfoAmount, "DEPTH", kGreen, true);
   menu(kParamLfoShape, "SHAPE", {"SINE", "TRI", "SAW", "SQUARE", "S&H"});
@@ -129,8 +137,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   }
 
   // Middle row: artwork plate (painted in chassis), sampler + drums.
-  g->AttachControl(new KeithPresetMenu(IRECT(kPanelSample.l + 8, kPanelSample.t + 108,
-                                               kPanelSample.r - 8, kPanelSample.t + 152)));
+  g->AttachControl(new KeithPresetMenu(OverlayIRECT("preset_menu")));
   constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
                                  kParamPitchRelease, kParamPitchAmount};
   for (int p : pitchParams)
@@ -170,7 +177,7 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamTapeHiss, "HISS", kMagenta);
   freeKnob(kParamTapePrint, "PRINT", kMagenta);
   freeKnob(kParamTapeMix, "MIX", kPaper);
-  g->AttachControl(new KeithTextControl(IRECT(8, 572, 202, 590), "BYPASS", MonoBold(10, kPaper)));
+  g->AttachControl(new KeithTextControl(OverlayIRECT("bypass_label"), "BYPASS", MonoBold(11, kPaper)));
   tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
   freeKnob(kParamOutLevel, "OUT", kMagenta, true);
   freeKnob(kParamDirectLevel, ControlFor(kParamDirectLevel).label, kGreen, true);
@@ -193,8 +200,8 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   fxKnob(kParamMstC, kParamMstAlgo, 2, true, kPaper);
   fxMix(kParamMstMix, kParamMstAlgo, "MMIX", kGreen);
 
-  g->AttachControl(new KeithTextControl(IRECT(24, 724, 210, 738), "MIDI / A-L PLAY", Mono(9, kPaper)));
-  g->AttachControl(new KeithTextControl(IRECT(24, 738, 210, 750), "Z/X OCTAVE", Mono(9, kPaper)));
+  g->AttachControl(new KeithTextControl(OverlayIRECT("midi_hint1"), "MIDI / A-L PLAY", Mono(10, kPaper)));
+  g->AttachControl(new KeithTextControl(OverlayIRECT("midi_hint2"), "Z/X OCTAVE", Mono(10, kPaper)));
   g->AttachControl(new IVKeyboardControl(IRECT(kKeyboardBox.l, kKeyboardBox.t, kKeyboardBox.r, kKeyboardBox.b), 36, 84, false, kPaper, kInk,
                                          kHotPink, kPanelAlt, kGreen),
                    kCtrlTagKeyboard);
