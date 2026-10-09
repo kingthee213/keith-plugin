@@ -1,49 +1,93 @@
 #pragma once
+#include "IControl.h"
+#include "EditorGeometry.h"
 #include <cassert>
 
 namespace keith { namespace ui {
-// Shared by the native controls and tools/render_materials.py. Pixel units.
-struct KnobPlacement
-{
-  int parameter;
-  const char* page;
-  float left, top, right, bottom, radius;
-  IRECT Bounds() const { return IRECT(left, top, right, bottom); }
-};
+struct KnobPlacement { int parameter; const char* page; float left, top, right, bottom, radius; IRECT Bounds() const { return IRECT(left, top, right, bottom); } };
 inline const KnobPlacement kKnobPlacements[] = {
-  {kParamGain, "shared", 1100.000000f, 28.000000f, 1240.000000f, 125.000000f, 24.000000f},
-  {kParamOsc1Shape, "source", 56.000000f, 270.000000f, 222.000000f, 430.000000f, 51.000000f},
-  {kParamOsc1Pitch, "source", 250.000000f, 343.000000f, 393.333333f, 435.000000f, 24.000000f},
-  {kParamOsc1Level, "source", 413.333333f, 343.000000f, 556.666667f, 435.000000f, 24.000000f},
-  {kParamOsc1PW, "source", 576.666667f, 343.000000f, 720.000000f, 435.000000f, 24.000000f},
-  {kParamOsc2Shape, "source", 56.000000f, 506.000000f, 222.000000f, 666.000000f, 51.000000f},
-  {kParamOsc2Pitch, "source", 250.000000f, 579.000000f, 393.333333f, 671.000000f, 24.000000f},
-  {kParamOsc2Level, "source", 413.333333f, 579.000000f, 556.666667f, 671.000000f, 24.000000f},
-  {kParamOsc2PW, "source", 576.666667f, 579.000000f, 720.000000f, 671.000000f, 24.000000f},
-  {kParamSubLevel, "source", 784.000000f, 292.000000f, 876.000000f, 414.000000f, 24.000000f},
-  {kParamNoiseLevel, "source", 888.000000f, 292.000000f, 980.000000f, 414.000000f, 24.000000f},
-  {kParamFmAmount, "source", 784.000000f, 505.000000f, 876.000000f, 627.000000f, 24.000000f},
-  {kParamSynthMasterLevel, "source", 888.000000f, 505.000000f, 980.000000f, 627.000000f, 24.000000f},
-  {kParamPitchAmount, "pitch", 824.000000f, 350.000000f, 976.000000f, 528.000000f, 45.000000f},
-  {kParamTapeSat, "tape", 58.000000f, 318.000000f, 228.000000f, 531.000000f, 61.000000f},
-  {kParamTapeMix, "tape", 794.000000f, 318.000000f, 972.000000f, 531.000000f, 61.000000f},
-  {kParamTapeBump, "tape", 280.000000f, 310.000000f, 421.333333f, 432.000000f, 24.000000f},
-  {kParamTapeWow, "tape", 445.333333f, 310.000000f, 586.666667f, 432.000000f, 24.000000f},
-  {kParamTapeFlutter, "tape", 610.666667f, 310.000000f, 752.000000f, 432.000000f, 24.000000f},
-  {kParamTapeHiss, "tape", 308.000000f, 490.000000f, 470.000000f, 612.000000f, 24.000000f},
-  {kParamTapePrint, "tape", 550.000000f, 490.000000f, 712.000000f, 612.000000f, 24.000000f},
-  {kParamFilterCutoff, "shared", 1056.000000f, 312.000000f, 1230.000000f, 439.000000f, 38.000000f},
-  {kParamFilterReso, "shared", 1043.000000f, 453.000000f, 1140.000000f, 548.000000f, 24.000000f},
-  {kParamFilterEnv, "shared", 1148.000000f, 453.000000f, 1245.000000f, 548.000000f, 24.000000f},
-  {kParamPorta, "shared", 1038.000000f, 648.000000f, 1104.000000f, 713.000000f, 24.000000f},
-  {kParamUnisonVoices, "shared", 1110.000000f, 648.000000f, 1176.000000f, 713.000000f, 24.000000f},
-  {kParamUnisonDetune, "shared", 1182.000000f, 648.000000f, 1248.000000f, 713.000000f, 24.000000f},
+  {0, "single", 382.0f, 574.0f, 433.3f, 647.0f, 21.6f},
+  {1, "single", 330.0f, 636.0f, 374.0f, 709.0f, 18.5f},
+  {2, "single", 226.0f, 636.0f, 270.0f, 709.0f, 18.5f},
+  {3, "single", 8.0f, 130.0f, 202.0f, 203.0f, 30.7f},
+  {4, "single", 8.0f, 207.0f, 202.0f, 280.0f, 30.7f},
+  {5, "single", 8.0f, 284.0f, 202.0f, 357.0f, 30.7f},
+  {6, "single", 8.0f, 361.0f, 202.0f, 434.0f, 30.7f},
+  {7, "single", 8.0f, 438.0f, 202.0f, 511.0f, 30.7f},
+  {11, "single", 439.3f, 574.0f, 490.7f, 647.0f, 21.6f},
+  {12, "single", 496.7f, 574.0f, 548.0f, 647.0f, 21.6f},
+  {13, "single", 382.0f, 662.0f, 443.3f, 735.0f, 25.8f},
+  {14, "single", 226.0f, 40.0f, 280.0f, 113.0f, 22.7f},
+  {15, "single", 284.0f, 40.0f, 338.0f, 113.0f, 22.7f},
+  {16, "single", 226.0f, 117.0f, 280.0f, 190.0f, 22.7f},
+  {17, "single", 284.0f, 117.0f, 338.0f, 190.0f, 22.7f},
+  {18, "single", 342.0f, 40.0f, 396.0f, 113.0f, 22.7f},
+  {19, "single", 400.0f, 40.0f, 454.0f, 113.0f, 22.7f},
+  {20, "single", 342.0f, 117.0f, 396.0f, 190.0f, 22.7f},
+  {21, "single", 400.0f, 117.0f, 454.0f, 190.0f, 22.7f},
+  {22, "single", 226.0f, 198.0f, 296.0f, 271.0f, 29.4f},
+  {23, "single", 302.0f, 198.0f, 372.0f, 271.0f, 29.4f},
+  {24, "single", 378.0f, 198.0f, 448.0f, 271.0f, 29.4f},
+  {26, "single", 466.0f, 74.0f, 543.0f, 147.0f, 30.7f},
+  {27, "single", 549.0f, 74.0f, 626.0f, 147.0f, 30.7f},
+  {28, "single", 466.0f, 153.0f, 543.0f, 226.0f, 30.7f},
+  {29, "single", 644.0f, 44.0f, 698.0f, 117.0f, 22.7f},
+  {30, "single", 704.0f, 44.0f, 758.0f, 117.0f, 22.7f},
+  {31, "single", 764.0f, 44.0f, 818.0f, 117.0f, 22.7f},
+  {32, "single", 824.0f, 44.0f, 878.0f, 117.0f, 22.7f},
+  {33, "single", 592.0f, 382.0f, 649.5f, 455.0f, 24.1f},
+  {34, "single", 655.5f, 382.0f, 713.0f, 455.0f, 24.1f},
+  {35, "single", 719.0f, 382.0f, 776.5f, 455.0f, 24.1f},
+  {36, "single", 782.5f, 382.0f, 840.0f, 455.0f, 24.1f},
+  {37, "single", 592.0f, 461.0f, 649.5f, 534.0f, 24.1f},
+  {38, "single", 449.3f, 662.0f, 510.7f, 735.0f, 25.8f},
+  {39, "single", 644.0f, 125.0f, 698.0f, 198.0f, 22.7f},
+  {40, "single", 704.0f, 125.0f, 758.0f, 198.0f, 22.7f},
+  {41, "single", 764.0f, 125.0f, 818.0f, 198.0f, 22.7f},
+  {42, "single", 824.0f, 125.0f, 878.0f, 198.0f, 22.7f},
+  {45, "single", 549.0f, 153.0f, 626.0f, 226.0f, 30.7f},
+  {46, "single", 278.0f, 636.0f, 322.0f, 709.0f, 18.5f},
+  {47, "single", 886.0f, 40.0f, 963.0f, 113.0f, 30.7f},
+  {50, "single", 969.0f, 40.0f, 1046.0f, 113.0f, 30.7f},
+  {52, "single", 516.7f, 662.0f, 578.0f, 735.0f, 25.8f},
+  {53, "single", 466.0f, 232.0f, 543.0f, 305.0f, 30.7f},
+  {54, "single", 549.0f, 232.0f, 626.0f, 305.0f, 30.7f},
+  {57, "single", 678.0f, 662.0f, 723.2f, 735.0f, 19.0f},
+  {58, "single", 727.2f, 662.0f, 772.3f, 735.0f, 19.0f},
+  {59, "single", 776.3f, 662.0f, 821.5f, 735.0f, 19.0f},
+  {60, "single", 825.5f, 662.0f, 870.7f, 735.0f, 19.0f},
+  {63, "single", 874.7f, 662.0f, 919.8f, 735.0f, 19.0f},
+  {64, "single", 923.8f, 662.0f, 969.0f, 735.0f, 19.0f},
+  {65, "single", 973.0f, 662.0f, 1018.2f, 735.0f, 19.0f},
+  {66, "single", 1022.2f, 662.0f, 1067.3f, 735.0f, 19.0f},
+  {69, "single", 1071.3f, 662.0f, 1116.5f, 735.0f, 19.0f},
+  {70, "single", 1120.5f, 662.0f, 1165.7f, 735.0f, 19.0f},
+  {71, "single", 1169.7f, 662.0f, 1214.8f, 735.0f, 19.0f},
+  {72, "single", 1218.8f, 662.0f, 1264.0f, 735.0f, 19.0f},
+  {74, "single", 8.0f, 515.0f, 202.0f, 588.0f, 30.7f},
+  {76, "single", 1090.0f, 386.0f, 1144.0f, 459.0f, 22.7f},
+  {77, "single", 1150.0f, 386.0f, 1204.0f, 459.0f, 22.7f},
+  {78, "single", 1210.0f, 386.0f, 1264.0f, 459.0f, 22.7f},
+  {79, "single", 1090.0f, 463.0f, 1144.0f, 536.0f, 22.7f},
+  {80, "single", 1150.0f, 463.0f, 1204.0f, 536.0f, 22.7f},
+  {81, "single", 1210.0f, 463.0f, 1264.0f, 536.0f, 22.7f},
+  {84, "single", 655.5f, 461.0f, 713.0f, 534.0f, 24.1f},
+  {85, "single", 886.0f, 179.0f, 963.0f, 252.0f, 30.7f},
+  {88, "single", 969.0f, 179.0f, 1046.0f, 252.0f, 30.7f},
+  {91, "single", 1210.0f, 40.0f, 1264.0f, 113.0f, 22.7f},
+  {94, "single", 1210.0f, 117.0f, 1264.0f, 190.0f, 22.7f},
+  {97, "single", 1210.0f, 194.0f, 1264.0f, 267.0f, 22.7f},
+  {100, "single", 1210.0f, 271.0f, 1264.0f, 344.0f, 22.7f},
+  {101, "single", 312.0f, 386.0f, 372.0f, 459.0f, 25.2f},
+  {102, "single", 378.0f, 386.0f, 438.0f, 459.0f, 25.2f},
+  {103, "single", 444.0f, 386.0f, 504.0f, 459.0f, 25.2f},
+  {104, "single", 510.0f, 386.0f, 570.0f, 459.0f, 25.2f},
+  {105, "single", 312.0f, 465.0f, 372.0f, 538.0f, 25.2f},
+  {106, "single", 378.0f, 465.0f, 438.0f, 538.0f, 25.2f},
+  {107, "single", 444.0f, 465.0f, 504.0f, 538.0f, 25.2f},
+  {108, "single", 510.0f, 465.0f, 570.0f, 538.0f, 25.2f},
+  {109, "single", 8.0f, 632.0f, 102.0f, 705.0f, 30.7f},
+  {110, "single", 108.0f, 632.0f, 202.0f, 705.0f, 30.7f},
 };
-inline const KnobPlacement& PlacementFor(int parameter)
-{
-  for (const auto& item : kKnobPlacements)
-    if (item.parameter == parameter) return item;
-  assert(false && "Knob must have a physical placement");
-  return kKnobPlacements[0];
-}
+inline const KnobPlacement& PlacementFor(int parameter){for(const auto& item:kKnobPlacements)if(item.parameter==parameter)return item;assert(false&&"Knob must have a physical placement");return kKnobPlacements[0];}
 } }

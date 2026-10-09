@@ -1,186 +1,296 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace keith { namespace ui {
-// Fixed time lanes keep one handle's drag from moving every other handle.
-inline float EnvelopeTimeX(int segment, double value)
-{
-  const float v = static_cast<float>(std::clamp(value, 0., 1.));
-  if (segment == 0) return 0.04f + 0.22f * v;
-  if (segment == 1) return 0.30f + 0.22f * v;
-  return 0.70f + 0.27f * v;
+
+struct Box { float l,t,r,b; constexpr float W() const { return r-l; } constexpr float H() const { return b-t; } constexpr bool Contains(Box o) const { return o.l>=l&&o.t>=t&&o.r<=r&&o.b<=b; } constexpr bool Overlaps(Box o) const { return l<o.r&&o.l<r&&t<o.b&&o.t<b; } };
+
+constexpr float kCanvasW = 1280.0f;
+constexpr float kCanvasH = 800.0f;
+constexpr float kLeftRailW = 210.0f;
+constexpr bool kSingleWindowEditor = true;
+constexpr Box kCanvas {0.f, 0.f, kCanvasW, kCanvasH};
+
+// Knob vertical budget from KeithKnobControl::kLabelHeight / kValueHeight.
+constexpr float kKnobLabelHeight = 19.f;
+constexpr float kKnobValueHeight = 20.f;
+constexpr float kKnobBodyMin = 34.f;
+constexpr float kKnobMinHeight = kKnobBodyMin + kKnobLabelHeight + kKnobValueHeight;
+
+enum class ControlKind { Knob, Tab, Dropdown, Fader, Pad };
+
+struct PanelSpec { const char* title; Box bounds; const char* tint; };
+constexpr float kPanelTitleBand = 26.0f;
+constexpr Box kKeyboardBox {380.0f, 744.0f, 1248.0f, 789.0f};
+inline Box PanelTitleBand(Box panel) { return {panel.l, panel.t, panel.r, panel.t + kPanelTitleBand}; }
+constexpr Box kPanelOsc {218.0f, 14.0f, 456.0f, 350.0f};
+constexpr Box kPanelFilter {458.0f, 14.0f, 634.0f, 350.0f};
+constexpr Box kPanelAmp {636.0f, 14.0f, 876.0f, 350.0f};
+constexpr Box kPanelLfo {878.0f, 14.0f, 1054.0f, 350.0f};
+constexpr Box kPanelMod {1056.0f, 14.0f, 1272.0f, 350.0f};
+constexpr Box kPanelArt {218.0f, 356.0f, 298.0f, 542.0f};
+constexpr Box kPanelAmpMods {304.0f, 356.0f, 578.0f, 542.0f};
+constexpr Box kPanelSample {584.0f, 356.0f, 848.0f, 542.0f};
+constexpr Box kPanelPads {854.0f, 356.0f, 1272.0f, 542.0f};
+constexpr Box kPanelVintage {218.0f, 548.0f, 368.0f, 743.0f};
+constexpr Box kPanelGlobal {374.0f, 548.0f, 664.0f, 743.0f};
+constexpr Box kPanelFx {670.0f, 548.0f, 1272.0f, 743.0f};
+constexpr Box kLeftRail {0.0f, 0.0f, 210.0f, 800.0f};
+constexpr Box kWordmarkBox {18.0f, 28.0f, 192.0f, 118.0f};
+constexpr const char* kLabelAbbreviations[] = {
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "ABND",
+  "AKEY",
+  "ATT",
+  "B1",
+  "B2",
+  "BYP",
+  "C1",
+  "C2",
+  "CBND",
+  "COMP",
+  "CUT",
+  "D1",
+  "D2",
+  "D3",
+  "D4",
+  "DBND",
+  "DEC",
+  "DEP",
+  "DET",
+  "DIR",
+  "DIST",
+  "DKEY",
+  "DRV",
+  "DST",
+  "ENV",
+  "FATT",
+  "FDEC",
+  "FILT",
+  "FLT",
+  "FLUT",
+  "FM",
+  "FREL",
+  "FSUS",
+  "GLIDE",
+  "HISS",
+  "I1",
+  "I2",
+  "KEY",
+  "KIT",
+  "LEG",
+  "LVL",
+  "M1",
+  "M2",
+  "MA",
+  "MB",
+  "MC",
+  "MIX",
+  "MS",
+  "MUT",
+  "MWA",
+  "MWD",
+  "MX",
+  "NKEY",
+  "NOISE",
+  "OUT",
+  "PAD",
+  "PAMT",
+  "PAN",
+  "PATK",
+  "PDEC",
+  "POLY",
+  "PREL",
+  "PRINT",
+  "PSUS",
+  "PW",
+  "RATE",
+  "REL",
+  "RES",
+  "RING",
+  "RT",
+  "S1",
+  "S2",
+  "S3",
+  "S4",
+  "SDLY",
+  "SHP",
+  "SOL",
+  "STRK",
+  "SUB",
+  "SUS",
+  "SWID",
+  "SYN",
+  "SYNC",
+  "TONE",
+  "TUN",
+  "TUNE",
+  "TYPE",
+  "UNI",
+  "VEL",
+  "VOL",
+  "WOW",
+};
+constexpr int kNumLabelAbbreviations = static_cast<int>(sizeof(kLabelAbbreviations) / sizeof(const char*));
+inline bool LabelIsDeclaredAbbrev(const char* label) {
+  for (int i = 0; i < kNumLabelAbbreviations; ++i)
+    if (std::strcmp(label, kLabelAbbreviations[i]) == 0) return true;
+  return false;
 }
-inline double EnvelopeTimeValue(int segment, float x)
-{
-  if (segment == 0) return std::clamp((x - 0.04) / 0.22, 0., 1.);
-  if (segment == 1) return std::clamp((x - 0.30) / 0.22, 0., 1.);
-  return std::clamp((x - 0.70) / 0.27, 0., 1.);
-}
-inline float ScrollOffset(float offset, float delta, float content, float viewport)
-{
-  return std::clamp(offset - delta * 32.f, 0.f, std::max(0.f, content - viewport));
+inline bool LabelPassesAbbrevGate(const char* label) {
+  const std::size_t n = std::strlen(label);
+  if (n == 0) return false;
+  if (n == 1) return LabelIsDeclaredAbbrev(label);
+  if (n >= 4) return true;
+  return LabelIsDeclaredAbbrev(label);
 }
 
-struct Box
-{
-  float l, t, r, b;
-  constexpr float W() const { return r - l; }
-  constexpr float H() const { return b - t; }
-  constexpr bool Contains(Box o) const
-  {
-    return o.l >= l && o.t >= t && o.r <= r && o.b <= b;
-  }
-  constexpr bool Overlaps(Box o) const
-  {
-    return l < o.r && o.l < r && t < o.b && o.t < b;
-  }
+constexpr PanelSpec kPanels[] = {
+  {"OSCILLATORS", kPanelOsc, "panel"},
+  {"FILTER", kPanelFilter, "panel"},
+  {"AMP", kPanelAmp, "panel"},
+  {"LFO", kPanelLfo, "panel"},
+  {"MOD MATRIX", kPanelMod, "panel"},
+  {"ART", kPanelArt, "panel"},
+  {"AMP MODIFIERS", kPanelAmpMods, "panel"},
+  {"LOADED SOUNDS", kPanelSample, "panel"},
+  {"DRUM PADS", kPanelPads, "panel"},
+  {"VINTAGE ANALOG MODELING", kPanelVintage, "panel"},
+  {"GLOBAL", kPanelGlobal, "panel"},
+  {"EFFECTS", kPanelFx, "panel"},
+};
+struct ControlRect { int parameter; Box rect; const char* label; float labelFontPx; int labelUnits; ControlKind kind; };
+inline constexpr ControlRect kControlRects[] = {
+  {0, {382.0f, 574.0f, 433.3f, 647.0f}, "VOL", 10.0f, 1836, ControlKind::Knob},
+  {1, {330.0f, 636.0f, 374.0f, 709.0f}, "DIST", 10.0f, 2448, ControlKind::Knob},
+  {2, {226.0f, 636.0f, 270.0f, 709.0f}, "TONE", 10.0f, 2448, ControlKind::Knob},
+  {3, {8.0f, 130.0f, 202.0f, 203.0f}, "WOW", 10.0f, 1836, ControlKind::Knob},
+  {4, {8.0f, 207.0f, 202.0f, 280.0f}, "FLUT", 10.0f, 2448, ControlKind::Knob},
+  {5, {8.0f, 284.0f, 202.0f, 357.0f}, "HISS", 10.0f, 2448, ControlKind::Knob},
+  {6, {8.0f, 361.0f, 202.0f, 434.0f}, "PRINT", 10.0f, 3060, ControlKind::Knob},
+  {7, {8.0f, 438.0f, 202.0f, 511.0f}, "MIX", 10.0f, 1836, ControlKind::Knob},
+  {8, {8.0f, 594.0f, 202.0f, 622.0f}, "BYP", 10.0f, 1836, ControlKind::Tab},
+  {9, {226.0f, 574.0f, 360.0f, 602.0f}, "TYPE", 10.0f, 2448, ControlKind::Tab},
+  {10, {554.0f, 584.5f, 602.0f, 636.5f}, "POLY", 10.0f, 2448, ControlKind::Dropdown},
+  {11, {439.3f, 574.0f, 490.7f, 647.0f}, "GLIDE", 10.0f, 3060, ControlKind::Knob},
+  {12, {496.7f, 574.0f, 548.0f, 647.0f}, "UNI", 10.0f, 1836, ControlKind::Knob},
+  {13, {382.0f, 662.0f, 443.3f, 735.0f}, "DET", 10.0f, 1836, ControlKind::Knob},
+  {14, {226.0f, 40.0f, 280.0f, 113.0f}, "SHP", 10.0f, 1836, ControlKind::Knob},
+  {15, {284.0f, 40.0f, 338.0f, 113.0f}, "TUNE", 10.0f, 2448, ControlKind::Knob},
+  {16, {226.0f, 117.0f, 280.0f, 190.0f}, "LVL", 10.0f, 1836, ControlKind::Knob},
+  {17, {284.0f, 117.0f, 338.0f, 190.0f}, "PW", 10.0f, 1224, ControlKind::Knob},
+  {18, {342.0f, 40.0f, 396.0f, 113.0f}, "SHP", 10.0f, 1836, ControlKind::Knob},
+  {19, {400.0f, 40.0f, 454.0f, 113.0f}, "TUNE", 10.0f, 2448, ControlKind::Knob},
+  {20, {342.0f, 117.0f, 396.0f, 190.0f}, "LVL", 10.0f, 1836, ControlKind::Knob},
+  {21, {400.0f, 117.0f, 454.0f, 190.0f}, "PW", 10.0f, 1224, ControlKind::Knob},
+  {22, {226.0f, 198.0f, 296.0f, 271.0f}, "SUB", 10.0f, 1836, ControlKind::Knob},
+  {23, {302.0f, 198.0f, 372.0f, 271.0f}, "NOISE", 10.0f, 3060, ControlKind::Knob},
+  {24, {378.0f, 198.0f, 448.0f, 271.0f}, "FM", 10.0f, 1224, ControlKind::Knob},
+  {25, {466.0f, 40.0f, 626.0f, 68.0f}, "TYPE", 10.0f, 2448, ControlKind::Tab},
+  {26, {466.0f, 74.0f, 543.0f, 147.0f}, "CUT", 10.0f, 1836, ControlKind::Knob},
+  {27, {549.0f, 74.0f, 626.0f, 147.0f}, "RES", 10.0f, 1836, ControlKind::Knob},
+  {28, {466.0f, 153.0f, 543.0f, 226.0f}, "ENV", 10.0f, 1836, ControlKind::Knob},
+  {29, {644.0f, 44.0f, 698.0f, 117.0f}, "ATT", 10.0f, 1836, ControlKind::Knob},
+  {30, {704.0f, 44.0f, 758.0f, 117.0f}, "DEC", 10.0f, 1836, ControlKind::Knob},
+  {31, {764.0f, 44.0f, 818.0f, 117.0f}, "SUS", 10.0f, 1836, ControlKind::Knob},
+  {32, {824.0f, 44.0f, 878.0f, 117.0f}, "REL", 10.0f, 1836, ControlKind::Knob},
+  {33, {592.0f, 382.0f, 649.5f, 455.0f}, "PATK", 10.0f, 1836, ControlKind::Knob},
+  {34, {655.5f, 382.0f, 713.0f, 455.0f}, "PDEC", 10.0f, 1836, ControlKind::Knob},
+  {35, {719.0f, 382.0f, 776.5f, 455.0f}, "PSUS", 10.0f, 1836, ControlKind::Knob},
+  {36, {782.5f, 382.0f, 840.0f, 455.0f}, "PREL", 10.0f, 1836, ControlKind::Knob},
+  {37, {592.0f, 461.0f, 649.5f, 534.0f}, "PAMT", 10.0f, 1836, ControlKind::Knob},
+  {38, {449.3f, 662.0f, 510.7f, 735.0f}, "SYN", 10.0f, 1836, ControlKind::Knob},
+  {39, {644.0f, 125.0f, 698.0f, 198.0f}, "FATT", 10.0f, 1836, ControlKind::Knob},
+  {40, {704.0f, 125.0f, 758.0f, 198.0f}, "FDEC", 10.0f, 1836, ControlKind::Knob},
+  {41, {764.0f, 125.0f, 818.0f, 198.0f}, "FSUS", 10.0f, 1836, ControlKind::Knob},
+  {42, {824.0f, 125.0f, 878.0f, 198.0f}, "FREL", 10.0f, 1836, ControlKind::Knob},
+  {43, {226.0f, 314.0f, 294.0f, 342.0f}, "SYNC", 10.0f, 2448, ControlKind::Tab},
+  {44, {302.0f, 314.0f, 370.0f, 342.0f}, "RING", 10.0f, 2448, ControlKind::Tab},
+  {45, {549.0f, 153.0f, 626.0f, 226.0f}, "KEY", 10.0f, 1836, ControlKind::Knob},
+  {46, {278.0f, 636.0f, 322.0f, 709.0f}, "COMP", 10.0f, 2448, ControlKind::Knob},
+  {47, {886.0f, 40.0f, 963.0f, 113.0f}, "RATE", 10.0f, 2448, ControlKind::Knob},
+  {48, {886.0f, 119.0f, 963.0f, 171.0f}, "SHP", 10.0f, 1836, ControlKind::Dropdown},
+  {49, {969.0f, 119.0f, 1046.0f, 171.0f}, "DST", 10.0f, 1836, ControlKind::Dropdown},
+  {50, {969.0f, 40.0f, 1046.0f, 113.0f}, "DEP", 10.0f, 1836, ControlKind::Knob},
+  {51, {584.0f, 662.0f, 656.0f, 714.0f}, "MWD", 10.0f, 1836, ControlKind::Dropdown},
+  {52, {516.7f, 662.0f, 578.0f, 735.0f}, "MWA", 10.0f, 1836, ControlKind::Knob},
+  {53, {466.0f, 232.0f, 543.0f, 305.0f}, "VEL", 10.0f, 1836, ControlKind::Knob},
+  {54, {549.0f, 232.0f, 626.0f, 305.0f}, "FILT", 10.0f, 1836, ControlKind::Knob},
+  {55, {608.0f, 584.5f, 656.0f, 636.5f}, "LEG", 10.0f, 1836, ControlKind::Dropdown},
+  {56, {678.0f, 574.0f, 868.0f, 626.0f}, "I1", 10.0f, 1224, ControlKind::Dropdown},
+  {57, {678.0f, 662.0f, 723.2f, 735.0f}, "A1", 10.0f, 1224, ControlKind::Knob},
+  {58, {727.2f, 662.0f, 772.3f, 735.0f}, "B1", 10.0f, 1224, ControlKind::Knob},
+  {59, {776.3f, 662.0f, 821.5f, 735.0f}, "C1", 10.0f, 1224, ControlKind::Knob},
+  {60, {825.5f, 662.0f, 870.7f, 735.0f}, "M1", 10.0f, 1224, ControlKind::Knob},
+  {62, {876.0f, 574.0f, 1066.0f, 626.0f}, "I2", 10.0f, 1224, ControlKind::Dropdown},
+  {63, {874.7f, 662.0f, 919.8f, 735.0f}, "A2", 10.0f, 1224, ControlKind::Knob},
+  {64, {923.8f, 662.0f, 969.0f, 735.0f}, "B2", 10.0f, 1224, ControlKind::Knob},
+  {65, {973.0f, 662.0f, 1018.2f, 735.0f}, "C2", 10.0f, 1224, ControlKind::Knob},
+  {66, {1022.2f, 662.0f, 1067.3f, 735.0f}, "M2", 10.0f, 1224, ControlKind::Knob},
+  {68, {1074.0f, 574.0f, 1264.0f, 626.0f}, "MS", 10.0f, 1224, ControlKind::Dropdown},
+  {69, {1071.3f, 662.0f, 1116.5f, 735.0f}, "MA", 10.0f, 1224, ControlKind::Knob},
+  {70, {1120.5f, 662.0f, 1165.7f, 735.0f}, "MB", 10.0f, 1224, ControlKind::Knob},
+  {71, {1169.7f, 662.0f, 1214.8f, 735.0f}, "MC", 10.0f, 1224, ControlKind::Knob},
+  {72, {1218.8f, 662.0f, 1264.0f, 735.0f}, "MX", 10.0f, 1224, ControlKind::Knob},
+  {74, {8.0f, 515.0f, 202.0f, 588.0f}, "OUT", 10.0f, 1836, ControlKind::Knob},
+  {75, {862.0f, 382.0f, 1082.0f, 534.0f}, "PAD", 10.0f, 1836, ControlKind::Pad},
+  {76, {1090.0f, 386.0f, 1144.0f, 459.0f}, "LVL", 10.0f, 1836, ControlKind::Knob},
+  {77, {1150.0f, 386.0f, 1204.0f, 459.0f}, "PAN", 10.0f, 1836, ControlKind::Knob},
+  {78, {1210.0f, 386.0f, 1264.0f, 459.0f}, "TUN", 10.0f, 1836, ControlKind::Knob},
+  {79, {1090.0f, 463.0f, 1144.0f, 536.0f}, "DEC", 10.0f, 1836, ControlKind::Knob},
+  {80, {1150.0f, 463.0f, 1204.0f, 536.0f}, "FLT", 10.0f, 1836, ControlKind::Knob},
+  {81, {1210.0f, 463.0f, 1264.0f, 536.0f}, "DRV", 10.0f, 1836, ControlKind::Knob},
+  {82, {719.0f, 483.5f, 772.5f, 511.5f}, "MUT", 10.0f, 1836, ControlKind::Tab},
+  {83, {782.5f, 483.5f, 836.0f, 511.5f}, "SOL", 10.0f, 1836, ControlKind::Tab},
+  {84, {655.5f, 461.0f, 713.0f, 534.0f}, "KIT", 10.0f, 1836, ControlKind::Knob},
+  {85, {886.0f, 179.0f, 963.0f, 252.0f}, "RT", 10.0f, 1224, ControlKind::Knob},
+  {86, {886.0f, 258.0f, 963.0f, 310.0f}, "SHP", 10.0f, 1836, ControlKind::Dropdown},
+  {87, {969.0f, 258.0f, 1046.0f, 310.0f}, "DST", 10.0f, 1836, ControlKind::Dropdown},
+  {88, {969.0f, 179.0f, 1046.0f, 252.0f}, "DEP", 10.0f, 1836, ControlKind::Knob},
+  {89, {1064.0f, 40.0f, 1135.0f, 92.0f}, "S1", 10.0f, 1224, ControlKind::Dropdown},
+  {90, {1139.0f, 40.0f, 1210.0f, 92.0f}, "D1", 10.0f, 1224, ControlKind::Dropdown},
+  {91, {1210.0f, 40.0f, 1264.0f, 113.0f}, "A1", 10.0f, 1224, ControlKind::Knob},
+  {92, {1064.0f, 117.0f, 1135.0f, 169.0f}, "S2", 10.0f, 1224, ControlKind::Dropdown},
+  {93, {1139.0f, 117.0f, 1210.0f, 169.0f}, "D2", 10.0f, 1224, ControlKind::Dropdown},
+  {94, {1210.0f, 117.0f, 1264.0f, 190.0f}, "A2", 10.0f, 1224, ControlKind::Knob},
+  {95, {1064.0f, 194.0f, 1135.0f, 246.0f}, "S3", 10.0f, 1224, ControlKind::Dropdown},
+  {96, {1139.0f, 194.0f, 1210.0f, 246.0f}, "D3", 10.0f, 1224, ControlKind::Dropdown},
+  {97, {1210.0f, 194.0f, 1264.0f, 267.0f}, "A3", 10.0f, 1224, ControlKind::Knob},
+  {98, {1064.0f, 271.0f, 1135.0f, 323.0f}, "S4", 10.0f, 1224, ControlKind::Dropdown},
+  {99, {1139.0f, 271.0f, 1210.0f, 323.0f}, "D4", 10.0f, 1224, ControlKind::Dropdown},
+  {100, {1210.0f, 271.0f, 1264.0f, 344.0f}, "A4", 10.0f, 1224, ControlKind::Knob},
+  {101, {312.0f, 386.0f, 372.0f, 459.0f}, "NKEY", 10.0f, 1836, ControlKind::Knob},
+  {102, {378.0f, 386.0f, 438.0f, 459.0f}, "AKEY", 10.0f, 1836, ControlKind::Knob},
+  {103, {444.0f, 386.0f, 504.0f, 459.0f}, "ABND", 10.0f, 1836, ControlKind::Knob},
+  {104, {510.0f, 386.0f, 570.0f, 459.0f}, "DKEY", 10.0f, 1836, ControlKind::Knob},
+  {105, {312.0f, 465.0f, 372.0f, 538.0f}, "DBND", 10.0f, 1836, ControlKind::Knob},
+  {106, {378.0f, 465.0f, 438.0f, 538.0f}, "SDLY", 10.0f, 1836, ControlKind::Knob},
+  {107, {444.0f, 465.0f, 504.0f, 538.0f}, "STRK", 10.0f, 1836, ControlKind::Knob},
+  {108, {510.0f, 465.0f, 570.0f, 538.0f}, "SWID", 10.0f, 1836, ControlKind::Knob},
+  {109, {8.0f, 632.0f, 102.0f, 705.0f}, "DIR", 10.0f, 1836, ControlKind::Knob},
+  {110, {108.0f, 632.0f, 202.0f, 705.0f}, "CBND", 10.0f, 1836, ControlKind::Knob},
 };
 
-// Page well and the seven-button nav. Space Mono Bold's advance is 612/1000 em
-// (resources/fonts/SpaceMono-Bold.ttf), so a 15px glyph is 9.18px wide.
-constexpr Box kPageWell {34.f, 204.f, 1004.f, 718.f};
-constexpr Box kNavBar {34.f, 144.f, 1022.f, 185.f};
-constexpr int kNavCount = 7;
-constexpr float kNavGap = 4.f;
-constexpr float kNavTextPad = 4.f;
-constexpr float kNavFontPx = 15.f;
-constexpr float kSpaceMonoBoldEm = 0.612f;
-constexpr int kNavLabelChars[] = {10, 14, 10, 13, 8, 11, 6}; // "01  SOURCE" .. "07  FX"
-
-inline Box NavCell(int index)
+constexpr int kNumControlRects = static_cast<int>(sizeof(kControlRects) / sizeof(ControlRect));
+constexpr int kBypassViaAlgoMenu[] = {61, 67, 73};
+constexpr int kNumBypassViaAlgoMenu = static_cast<int>(sizeof(kBypassViaAlgoMenu) / sizeof(int));
+inline bool BypassViaAlgoMenu(int parameter)
 {
-  const float span = kNavBar.W() - kNavGap * static_cast<float>(kNavCount - 1);
-  const float w = span / static_cast<float>(kNavCount);
-  const float l = kNavBar.l + static_cast<float>(index) * (w + kNavGap);
-  return {l, kNavBar.t, l + w, kNavBar.b};
+  for (int id : kBypassViaAlgoMenu)
+    if (id == parameter)
+      return true;
+  return false;
 }
-
-// Modulation page. Knobs carry a flat body because this page has no baked material.
-constexpr Box kModLfoHeader {58.f, 218.f, 250.f, 264.f};
-constexpr Box kModRate {58.f, 268.f, 210.f, 430.f};
-constexpr Box kModLfoAmount {220.f, 268.f, 372.f, 430.f};
-constexpr Box kModShapeLabel {58.f, 444.f, 148.f, 484.f};
-constexpr Box kModShapeTabs {150.f, 440.f, 500.f, 484.f};
-constexpr Box kModLfoDestLabel {58.f, 500.f, 148.f, 540.f};
-constexpr Box kModLfoDestTabs {150.f, 496.f, 500.f, 540.f};
-constexpr Box ModMatrixSourceBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {88.f, top + 6.f, 214.f, top + 60.f};
-}
-constexpr Box ModMatrixDestinationBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {220.f, top + 6.f, 346.f, top + 60.f};
-}
-constexpr Box ModMatrixAmountBox(int slot)
-{
-  const float top = 268.f + static_cast<float>(slot) * 68.f;
-  return {354.f, top, 500.f, top + 68.f};
-}
-constexpr Box kModWheelHeader {530.f, 218.f, 820.f, 264.f};
-constexpr Box kModWheelCc {830.f, 218.f, 980.f, 264.f};
-constexpr Box kModWheelAmount {530.f, 268.f, 682.f, 430.f};
-constexpr Box kModWheelDestLabel {700.f, 300.f, 980.f, 324.f};
-constexpr Box kModWheelDestTabs {700.f, 328.f, 980.f, 372.f};
-constexpr Box kVelHeader {530.f, 460.f, 780.f, 506.f};
-constexpr Box kVelAmp {530.f, 508.f, 680.f, 680.f};
-constexpr Box kVelFilter {690.f, 508.f, 840.f, 680.f};
-constexpr Box kLegatoLabel {850.f, 520.f, 980.f, 544.f};
-constexpr Box kLegatoTabs {850.f, 548.f, 980.f, 592.f};
-
-// Filter page. Cutoff, resonance and type stay on the permanent channel.
-constexpr Box kFilterHeader {58.f, 218.f, 360.f, 264.f};
-constexpr Box kFilterPlot {58.f, 268.f, 700.f, 680.f};
-constexpr Box kKeyTrack {740.f, 280.f, 960.f, 460.f};
-constexpr Box kFilterDrive {740.f, 490.f, 960.f, 680.f};
-
-// FX page. Every knob has a flat native body; this page has no baked material.
-constexpr Box kFxIns1Region {50.f, 218.f, 354.f, 700.f};
-constexpr Box kFxIns1Algo {50.f, 265.f, 354.f, 305.f};
-constexpr Box kFxIns1A {50.f, 318.f, 146.f, 472.f};
-constexpr Box kFxIns1B {154.f, 318.f, 250.f, 472.f};
-constexpr Box kFxIns1C {258.f, 318.f, 354.f, 472.f};
-constexpr Box kFxIns1Mix {104.f, 490.f, 300.f, 622.f};
-constexpr Box kFxIns1Bypass {50.f, 650.f, 354.f, 690.f};
-
-constexpr Box kFxIns2Region {374.f, 218.f, 678.f, 700.f};
-constexpr Box kFxIns2Algo {374.f, 265.f, 678.f, 305.f};
-constexpr Box kFxIns2A {374.f, 318.f, 470.f, 472.f};
-constexpr Box kFxIns2B {478.f, 318.f, 574.f, 472.f};
-constexpr Box kFxIns2C {582.f, 318.f, 678.f, 472.f};
-constexpr Box kFxIns2Mix {428.f, 490.f, 624.f, 622.f};
-constexpr Box kFxIns2Bypass {374.f, 650.f, 678.f, 690.f};
-
-constexpr Box kFxMasterRegion {698.f, 218.f, 992.f, 700.f};
-constexpr Box kFxMasterAlgo {698.f, 265.f, 992.f, 305.f};
-constexpr Box kFxMasterA {698.f, 318.f, 790.f, 472.f};
-constexpr Box kFxMasterB {799.f, 318.f, 891.f, 472.f};
-constexpr Box kFxMasterC {900.f, 318.f, 992.f, 472.f};
-constexpr Box kFxMasterMix {698.f, 490.f, 838.f, 622.f};
-constexpr Box kFxOutLevel {852.f, 490.f, 992.f, 622.f};
-constexpr Box kFxMasterBypass {698.f, 650.f, 992.f, 690.f};
-
-// Source-page switches in the open band between the two mixer rows.
-// Mixer knob rects are the baked placements; these switches must not cover them.
-constexpr Box kSyncLabel {786.f, 418.f, 980.f, 434.f};
-constexpr Box kSyncTabs {786.f, 434.f, 980.f, 466.f};
-constexpr Box kRingLabel {786.f, 468.f, 980.f, 484.f};
-constexpr Box kRingTabs {786.f, 484.f, 980.f, 502.f};
-constexpr Box kMixerSub {784.f, 292.f, 876.f, 414.f};
-constexpr Box kMixerNoise {888.f, 292.f, 980.f, 414.f};
-constexpr Box kMixerFm {784.f, 505.f, 876.f, 627.f};
-constexpr Box kMixerLevel {888.f, 505.f, 980.f, 627.f};
-
-// Static Oswald Bold hhea metrics (resources/fonts/Oswald-Bold.ttf, no fvar table).
-// NanoVG middle-aligns
-// on this box, and each control is clipped to its rect, so the metric box has to
-// fit. Advances are hmtx sums for the live heading strings.
-constexpr float kOswaldUnits = 1000.f;
-constexpr float kOswaldAscender = 1193.f;
-constexpr float kOswaldDescender = -289.f;
-constexpr int kOswaldKeithUnits = 2370;
-constexpr int kOswaldLfoUnits = 1463;
-constexpr int kOswaldModWheelUnits = 4776;
-constexpr int kOswaldVelocityUnits = 3804;
-constexpr int kOswaldResponseUnits = 4240;
-constexpr float kHeadingPx = 28.f;
-constexpr float kWordmarkPx = 48.f;
-constexpr Box kWordmarkBox {49.f, 39.f, 299.f, 112.f};
-
-inline float OswaldMetricHeight(float px)
-{
-  return px * (kOswaldAscender - kOswaldDescender) / kOswaldUnits;
-}
-inline float OswaldAdvance(int units, float px)
-{
-  return static_cast<float>(units) * px / kOswaldUnits;
-}
-
-inline constexpr Box kModulationBoxes[] = {
-  kModLfoHeader, kModRate, kModLfoAmount, kModShapeLabel, kModShapeTabs,
-  kModLfoDestLabel, kModLfoDestTabs, kModWheelHeader, kModWheelCc, kModWheelAmount,
-  kModWheelDestLabel, kModWheelDestTabs, kVelHeader, kVelAmp, kVelFilter,
-  kLegatoLabel, kLegatoTabs
-};
-inline constexpr Box kModMatrixBoxes[] = {
-  ModMatrixSourceBox(0), ModMatrixDestinationBox(0), ModMatrixAmountBox(0),
-  ModMatrixSourceBox(1), ModMatrixDestinationBox(1), ModMatrixAmountBox(1),
-  ModMatrixSourceBox(2), ModMatrixDestinationBox(2), ModMatrixAmountBox(2),
-  ModMatrixSourceBox(3), ModMatrixDestinationBox(3), ModMatrixAmountBox(3)
-};
-inline constexpr Box kFilterBoxes[] = {kFilterHeader, kFilterPlot, kKeyTrack, kFilterDrive};
-inline constexpr Box kFxInsert1Boxes[] = {
-  kFxIns1Algo, kFxIns1A, kFxIns1B, kFxIns1C, kFxIns1Mix, kFxIns1Bypass
-};
-inline constexpr Box kFxInsert2Boxes[] = {
-  kFxIns2Algo, kFxIns2A, kFxIns2B, kFxIns2C, kFxIns2Mix, kFxIns2Bypass
-};
-inline constexpr Box kFxMasterBoxes[] = {
-  kFxMasterAlgo, kFxMasterA, kFxMasterB, kFxMasterC, kFxMasterMix, kFxOutLevel,
-  kFxMasterBypass
-};
-inline constexpr Box kSourceSwitchBoxes[] = {kSyncLabel, kSyncTabs, kRingLabel, kRingTabs};
-inline constexpr Box kMixerKnobBoxes[] = {kMixerSub, kMixerNoise, kMixerFm, kMixerLevel};
+inline const ControlRect& ControlFor(int parameter) { for (const auto& item : kControlRects) if (item.parameter == parameter) return item; return kControlRects[0]; }
+inline float EnvelopeTimeX(int segment, double value){const float v=static_cast<float>(std::clamp(value,0.,1.));if(segment==0)return 0.04f+0.22f*v;if(segment==1)return 0.30f+0.22f*v;return 0.70f+0.27f*v;}
+inline double EnvelopeTimeValue(int segment,float x){if(segment==0)return std::clamp((x-0.04)/0.22,0.,1.);if(segment==1)return std::clamp((x-0.30)/0.22,0.,1.);return std::clamp((x-0.70)/0.27,0.,1.);}
+inline float ScrollOffset(float offset,float delta,float content,float viewport){return std::clamp(offset-delta*32.f,0.f,std::max(0.f,content-viewport));}
+constexpr float kSpaceMonoEm=0.612f; constexpr float kWordmarkPx=42.f;
+inline float MonoAdvance(int units,float px){return static_cast<float>(units)*px/1000.f;}
+inline float OswaldMetricHeight(float px){return px*1.482f;}
 } }

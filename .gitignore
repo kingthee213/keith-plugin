@@ -26,3 +26,5 @@ reference-audio/
 
 # ephemeral worker dispatch prompts
 .prompt-*.txt
+third_party/iPlug2
+third_party/Airwindows

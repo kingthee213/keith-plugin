@@ -10,10 +10,10 @@
         <customObject id="-3" userLabel="Application" customClass="SWELLApplication"/>
         <menu title="AMainMenu" systemMenu="main" id="29" userLabel="MainMenu">
             <items>
-                <menuItem title="Keith" id="56">
-                    <menu key="submenu" title="Keith" systemMenu="apple" id="57">
+                <menuItem title="Mags Synth" id="56">
+                    <menu key="submenu" title="Mags Synth" systemMenu="apple" id="57">
                         <items>
-                            <menuItem title="About Keith" tag="40005" id="58">
+                            <menuItem title="About Mags Synth" tag="40005" id="58">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="onSysMenuCommand:" target="450" id="451"/>
@@ -32,7 +32,7 @@
                             <menuItem isSeparatorItem="YES" id="144">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Hide Keith" keyEquivalent="h" id="134">
+                            <menuItem title="Hide Mags Synth" keyEquivalent="h" id="134">
                                 <connections>
                                     <action selector="hide:" target="-1" id="367"/>
                                 </connections>
@@ -51,7 +51,7 @@
                             <menuItem isSeparatorItem="YES" id="149">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Quit Keith" tag="40007" keyEquivalent="q" id="136">
+                            <menuItem title="Quit Mags Synth" tag="40007" keyEquivalent="q" id="136">
                                 <connections>
                                     <action selector="terminate:" target="-3" id="449"/>
                                 </connections>

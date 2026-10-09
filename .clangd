@@ -1,0 +1,12 @@
+# Editors must read the C++17 the build uses. clangd otherwise defaults, reports std::clamp in
+# EditorGeometry.h as unknown, and the noise hides real errors.
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -I.
+    - -Isrc
+    - -Itools
+    - -Ithird_party/iPlug2/IGraphics
+    - -Ithird_party/iPlug2/IGraphics/Controls
+    - -Ithird_party/iPlug2/IPlug
+    - -Ithird_party/iPlug2/IPlug/Extras

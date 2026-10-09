@@ -139,7 +139,7 @@ Column meanings:
 | `synth_vel_to_amp` | Vel To Amp | knob | 0-100 % | 0 % | synth | Synth Vel To Amp | proposed | live - added U9 |
 | `synth_vel_to_filter` | Vel To Filter | knob | 0-100 % | 0 % | synth | Synth Vel To Filter | proposed | live - added U9 |
 | `synth_mono_legato` | Mono Legato | switch | Retrig / Legato | Retrig | synth | Synth Mono Legato | proposed | live - added U9 |
-| `synth_master_level` | Level | knob | -60-+6 dB | 0 dB | synth | Synth Master Level | proposed | live - added U7 |
+| `synth_master_level` | Level | knob | -60-+18 dB | 0 dB | synth | Synth Master Level | proposed | live - added U7 |
 | `fx_tape_sat` | Saturation | knob | 0-100 % | 25 % | fx | FX Tape Saturation | proposed | live - added U4 |
 | `fx_tape_bump` | Head Bump | knob | 0-100 % | 20 % | fx | FX Tape Head Bump | proposed | live - added U4 |
 | `fx_tape_wow` | Wow | knob | 0-100 % | 10 % | fx | FX Tape Wow | proposed | live - added U4 |

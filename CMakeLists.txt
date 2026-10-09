@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.14)
 # configure picks up the BRIEF §11 floor (macOS 11.7.10) in the toolchain.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.7.10" CACHE STRING "Minimum macOS version")
 
-project(Keith VERSION 0.1.0)
+project(MagsSynth VERSION 0.1.0)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(KeithPlatform)
@@ -25,6 +25,18 @@ find_package(iPlug2 REQUIRED)
 
 include_directories(src)
 enable_testing()
+
+# The python gates need numpy, which the macOS system python does not ship. Point the tests
+# at the shared tools venv when it exists, and let a builder override it.
+# Setup: bash tools/setup-tools-venv.sh
+if(NOT DEFINED KEITH_PYTHON)
+  if(EXISTS "$ENV{HOME}/.venvs/keith-measure/bin/python")
+    set(KEITH_PYTHON "$ENV{HOME}/.venvs/keith-measure/bin/python" CACHE FILEPATH "Python for the verification gates")
+  else()
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(KEITH_PYTHON ${Python3_EXECUTABLE} CACHE FILEPATH "Python for the verification gates")
+  endif()
+endif()
 add_executable(keith-synth-tests tools/synth_offline_test.cpp)
 target_compile_features(keith-synth-tests PRIVATE cxx_std_17)
 add_test(NAME synth-offline COMMAND keith-synth-tests)
@@ -56,9 +68,6 @@ iplug_add_plugin(${PROJECT_NAME}
     resources/resource.h
   RESOURCES
     resources/images/chassis.png
-    resources/images/workspace-source.png
-    resources/images/workspace-pitch.png
-    resources/images/workspace-tape.png
     resources/fonts/Bangers-Regular.ttf
     resources/fonts/Oswald-Bold.ttf
     resources/fonts/SpaceMono-Regular.ttf
@@ -79,13 +88,10 @@ set(KEITH_FONT_RESOURCES
   fonts/SpaceMono-Regular.ttf
   fonts/SpaceMono-Bold.ttf)
 set(KEITH_IMAGE_RESOURCES
-  images/chassis.png
-  images/workspace-source.png
-  images/workspace-pitch.png
-  images/workspace-tape.png)
+  images/chassis.png)
 
 if(APPLE)
-  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+  foreach(_target IN ITEMS MagsSynth-vst3 MagsSynth-au MagsSynth-app)
     if(TARGET ${_target})
       set_target_properties(${_target} PROPERTIES
         MACOSX_DEPLOYMENT_TARGET "11.7.10"
@@ -97,8 +103,8 @@ endif()
 
 # resources/main.rc is a Windows resource script. iPlug2 already adds it to the
 # APP target. The VST3 target does not get it, so attach it here on Windows only.
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc" AND TARGET Keith-vst3)
-  target_sources(Keith-vst3 PRIVATE resources/main.rc)
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/main.rc" AND TARGET MagsSynth-vst3)
+  target_sources(MagsSynth-vst3 PRIVATE resources/main.rc)
   set_source_files_properties(resources/main.rc PROPERTIES
     COMPILE_FLAGS "/I\"${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts\" /I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
 endif()
@@ -123,8 +129,8 @@ endfunction()
 
 # iPlug2's CMake does not copy the RESOURCES list next to the Windows binaries.
 # The .rc embeds the faces. These copies keep them on disk as well.
-if(WIN32 AND TARGET Keith-vst3)
-  keith_stage_files(Keith-vst3 "${CMAKE_BINARY_DIR}/out/Keith.vst3/Contents/Resources"
+if(WIN32 AND TARGET MagsSynth-vst3)
+  keith_stage_files(MagsSynth-vst3 "${CMAKE_BINARY_DIR}/out/MagsSynth.vst3/Contents/Resources"
     ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
 endif()
 
@@ -253,12 +259,12 @@ if(APPLE)
     "-framework CoreFoundation" "-framework Cocoa")
 endif()
 add_test(NAME recreation-gate
-  COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tools/recreation_gate.py" $<TARGET_FILE:keith-recreation-render>)
+  COMMAND "${KEITH_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/recreation_gate.py" $<TARGET_FILE:keith-recreation-render>)
 set_tests_properties(recreation-gate PROPERTIES TIMEOUT 1800)
 add_dependencies(keith-synth-tests keith-recreation-render)
 
-if(WIN32 AND TARGET Keith-app)
-  keith_stage_files(Keith-app "${CMAKE_BINARY_DIR}/out"
+if(WIN32 AND TARGET MagsSynth-app)
+  keith_stage_files(MagsSynth-app "${CMAKE_BINARY_DIR}/out"
     ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
 endif()
 
@@ -266,14 +272,14 @@ endif()
 # faces there for each bundle. The APP also gets them beside the .app, matching
 # the standalone layout used on Windows.
 if(APPLE)
-  foreach(_target IN ITEMS Keith-vst3 Keith-au Keith-app)
+  foreach(_target IN ITEMS MagsSynth-vst3 MagsSynth-au MagsSynth-app)
     if(TARGET ${_target})
       keith_stage_files(${_target} "$<TARGET_BUNDLE_DIR:${_target}>/Contents/Resources"
         ${KEITH_FONT_RESOURCES} ${KEITH_IMAGE_RESOURCES} fonts/OFL.txt)
     endif()
   endforeach()
-  if(TARGET Keith-app)
-    keith_stage_files(Keith-app "$<TARGET_BUNDLE_DIR:Keith-app>/.."
+  if(TARGET MagsSynth-app)
+    keith_stage_files(MagsSynth-app "$<TARGET_BUNDLE_DIR:MagsSynth-app>/.."
       ${KEITH_FONT_RESOURCES} fonts/OFL.txt)
   endif()
 endif()

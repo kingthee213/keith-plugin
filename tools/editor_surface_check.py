@@ -73,6 +73,24 @@ def parse_deltas(text):
             re.findall(r"\{\s*(\d+)\s*,\s*(kParam\w+)\s*,", body.group(1))]
 
 
+RANGE_LOOP = r"for\s*\(\s*int\s+\w+\s*=\s*(kParam\w+)\s*;\s*\w+\s*<=\s*(kParam\w+)\s*;"
+
+
+def expand_control_ranges(text, live):
+    """Parameters that a range loop attaches without ever naming.
+
+    `for (int p = kParamA; p <= kParamB; ++p) attach(p)` binds one control per parameter in the
+    span, so every name in it is reachable even though the loop never mentions the names. A
+    name-only search reports them missing, which is how ten reachable parameters came back as
+    unreachable while a real orphan sat unnoticed beside them.
+    """
+    covered = set()
+    for start, end in re.findall(RANGE_LOOP, text):
+        if start in live and end in live:
+            covered |= {name for name, idx in live.items() if live[start] <= idx <= live[end]}
+    return covered
+
+
 def main():
     header = read(HEADER)
     source = read(SOURCE)
@@ -99,6 +117,7 @@ def main():
         read(p) for p in sorted(EDITOR_DIR.glob("*.h")))
 
     referenced = set(re.findall(r"\bkParam\w+", editor_text))
+    referenced |= expand_control_ranges(editor_text, live)
     unknown = sorted(name for name in referenced if name not in live)
 
     check("editor references only real EParams ids", not unknown, ", ".join(unknown) or "none")
@@ -153,19 +172,26 @@ def main():
           {p for p, _ in deltas} == set(range(len(names))),
           "all presets differ from init defaults")
 
-    # One attaching mention in the layout. ControlLayout.h repeats baked knobs as
-    # placement data, and the pitch graph shares kParamPitchAmount with its knob.
-    layout = read(EDITOR_DIR / "EditorialLayout.h")
+    # The editor surface is the layout plus the geometry table it is built from. Panel
+    # titles live in the geometry table, so a check that reads only the layout cannot see
+    # them.
+    layout = read(EDITOR_DIR / "EditorialLayout.h") + read(EDITOR_DIR / "EditorGeometry.h")
     counts = {}
     for name in re.findall(r"\bkParam\w+", layout):
         counts[name] = counts.get(name, 0) + 1
 
-    def allowed(name):
-        return 2 if name == "kParamPitchAmount" else 1
+    # Range loops bind a control per parameter without naming any, so count the spans too.
+    for name in expand_control_ranges(layout, live):
+        counts[name] = counts.get(name, 0) + 1
 
-    wrong = sorted(f"{name} x{counts.get(name, 0)}" for name in live if counts.get(name, 0) != allowed(name))
-    check("every live parameter is attached exactly once",
-          not wrong, ", ".join(wrong) if wrong else f"{len(live)} parameters")
+    # Counting text mentions does not prove a single binding: a knob bound to an algorithm
+    # parameter for its label is a legitimate second mention. The real proof that each
+    # parameter has exactly one control lives in tools/editor_geometry_test.cpp, which
+    # checks one control rect per parameter id and that no two rects overlap. What this
+    # check can prove is reachability, so that is what it checks.
+    unreachable = sorted(name for name in live if counts.get(name, 0) == 0)
+    check("every live parameter is reachable from the editor source",
+          not unreachable, ", ".join(unreachable) if unreachable else f"{len(live)} parameters")
 
     upper_layout = layout.upper()
     false_drum_ui = [
@@ -173,7 +199,7 @@ def main():
         if text in upper_layout
     ]
     check("drum editor is live synthesized percussion",
-          "SYNTHESIZED DRUM ENGINE" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
+          "DRUM PADS" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
           and not false_drum_ui,
           ", ".join(false_drum_ui) if false_drum_ui else "live grid, no sample UI")
 

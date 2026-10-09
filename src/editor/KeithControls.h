@@ -576,6 +576,92 @@ private:
   int mDrag = kNone;
 };
 
+
+// ---------------------------------------------------------------------------
+// Vertical ADSR fader with a painted cap (AMP panel).
+// ---------------------------------------------------------------------------
+class KeithFaderControl : public ISliderControlBase
+{
+public:
+  KeithFaderControl(const IRECT& bounds, int paramIdx, const char* label, const IColor& accent = kMagenta)
+  : ISliderControlBase(bounds, paramIdx, EDirection::Vertical, 4.0, 12.f)
+  , mAccent(accent)
+  {
+    mLabel.Set(label);
+    DisablePrompt(false);
+    SetText(Mono(10.f, kPaper, EAlign::Center));
+  }
+
+  void OnInit() override { OnResize(); }
+
+  void OnResize() override
+  {
+    mValueBounds = mRECT.GetFromBottom(16.f);
+    mLabelBounds = mRECT.GetFromTop(14.f);
+    SetTargetRECT(mRECT);
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    const IRECT track = TrackBounds();
+    g.FillRect(kPanelAlt, track);
+    g.DrawRect(kLine, track, nullptr, kInnerOutline);
+    const float value = static_cast<float>(std::clamp(GetValue(), 0., 1.));
+    const float y = track.B - value * track.H();
+    const IRECT cap(track.L - 2.f, y - 6.f, track.R + 2.f, y + 6.f);
+    g.FillRect(kMuteRed, cap);
+    g.DrawRect(kLine, cap, nullptr, 2.f);
+    g.DrawLine(mAccent, track.MW(), track.T, track.MW(), cap.MH(), nullptr, 2.f);
+    if (mLabelBounds.H() > 0.f)
+      g.DrawText(Label(9.f, kPaper), mLabel.Get(), mLabelBounds);
+    if (mValueBounds.H() > 0.f)
+    {
+      const IParam* pParam = GetParam();
+      if (pParam)
+      {
+        WDL_String valueStr;
+        pParam->GetDisplay(pParam->Value(), false, valueStr, true);
+        g.DrawText(Value(10.f, kGold), valueStr.Get(), mValueBounds);
+      }
+    }
+  }
+
+private:
+  IRECT TrackBounds() const
+  {
+    IRECT r = mRECT;
+    r.ReduceFromTop(16.f);
+    r.ReduceFromBottom(20.f);
+    r.ReduceFromLeft(r.W() * 0.35f);
+    r.ReduceFromRight(r.W() * 0.35f);
+    return r;
+  }
+
+  IColor mAccent;
+  WDL_String mLabel;
+  IRECT mLabelBounds;
+  IRECT mValueBounds;
+};
+
+class KeithMeterControl : public IControl
+{
+public:
+  KeithMeterControl(const IRECT& bounds, int gainParam) : IControl(bounds, gainParam) { mIgnoreMouse = true; }
+  void Draw(IGraphics& g) override
+  {
+    g.FillRect(kInk, mRECT);
+    g.DrawRect(kLine, mRECT, nullptr, kInnerOutline);
+    const IParam* p = GetParam();
+    const float level = p ? static_cast<float>(p->Value() / 100.) : 0.5f;
+    for (int bar = 0; bar < 2; ++bar)
+    {
+      const IRECT col = ColCell(mRECT, bar, 2, 4.f).GetPadded(-4.f);
+      const float h = col.H() * std::clamp(level * 1.1f, 0.05f, 1.f);
+      g.FillRect(kGreen, IRECT(col.L, col.B - h, col.R, col.B));
+    }
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Live synthesized-drum pad grid. A pad click selects its slot. MIDI notes 36-51
 // trigger sound, so selecting a pad never pretends to audition it.

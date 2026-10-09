@@ -97,10 +97,12 @@ Freakshow binaries in the tree.
 - **4.3 Both in one plugin:** selectable engine/voice architecture per part.
 
 **[L2 — LOCKED]** Surge (`surge-synthesizer/surge`) and OB-Xf (`surge-synthesizer/OB-Xf`) are
-GPL-3.0, and this plugin is handed to another person, which is distribution. Therefore:
-**clean-room behaviour mimic only.** Both are study references — manuals, listening, matching by
-ear. Ingest none of their source: no forks, no vendored files, no line-by-line porting. Same rule
-for any other GPL or non-commercial synth used as a reference.
+GPL-3.0. The owner has approved reusing their source under that licence (`docs/DECISIONS.md` D3).
+This plugin is therefore **GPL-3.0** and **ships its complete source** to whoever it is handed to,
+with licence and attribution recorded in the repo. Reuse is allowed; silent copying is not — every
+ingested file keeps provenance. JUCE remains out (§5). Freakshow code and Splice content remain
+forbidden (§3, §9, `banks/SOURCES.md`). Other non-GPL synths used only as listening references stay
+clean-room unless the owner directs otherwise.
 
 ---
 
@@ -198,17 +200,20 @@ instruction.
 
 ## 10. INTERFACE
 
-Editorial, avant-garde punk art direction with physically realistic high-resolution materials,
-chipped paint, machined controls and light bounce. The owner explicitly replaced the earlier
-cartoon-panel treatment and requested a complete UI/UX rethink. `docs/UI-DESIGN.md` describes the
-current implementation and its verification limits. **Original art only.**
+Comic, painted instrument UI: one resizable window with **every control visible**, no page tabs.
+The look is hand-painted panels, bold outlines, and saturated colour — not photoreal metal or
+editorial materials. An earlier comic attempt was rejected because it looked cheap, not because of
+the style; the replacement must read as deliberate craft, not clip art. `docs/UI-DESIGN.md` records
+the outgoing seven-page editorial build as history and tracks the new single-window layout work
+(`docs/DECISIONS.md` D4). **Original art only.**
 
-**[L5]** The Gorillaz and Green Lantern references describe attitude, not assets to reproduce.
-No borrowed characters, rings, lantern icons, corps symbols, logos or costume marks.
+**[L5]** Gorillaz and Green Lantern name **attitude and palette** (punk irreverence, green/red
+contrast). They do not license any asset. No borrowed characters, rings, lantern icons, corps
+symbols, logos or costume marks. Every image in the plugin is drawn for Keith.
 
 - Resizable single window with real parameter bindings and stable host automation IDs.
-- Internal tabs separate coherent sound-design tasks. The filter/voice channel stays reachable.
-- Preset dropdowns and nested scrollbar-free windows support browsing.
+- All 111 parameters reachable without changing page; group by panel position, not hidden tabs.
+- Preset browsing stays in the same window (dropdown or compact browser, not a separate mode).
 - The owner approves the rendered design. Build and test success alone do not approve appearance.
 
 ---
@@ -251,9 +256,9 @@ No borrowed characters, rings, lantern icons, corps symbols, logos or costume ma
   a few seconds with content streamed rather than fully preloaded.
 - The Neptunes preset bank (Section 8) exists and covers the listed palette.
 - `banks/SOURCES.md` covers every bank and every patch. License audit signs off that the tree
-  contains no Korg ROM content, no Splice samples, no Freakshow code, no GPL synth source, and no
-  Gorillaz or Green Lantern assets. Neutral labels confirmed: no Korg names anywhere in UI, preset
-  names, file names or plugin metadata.
+  contains no Splice samples, no Freakshow code, no undisclosed GPL imports, and no Gorillaz or
+  Green Lantern assets; any Surge/OB-Xf reuse is attributed per D3. Neutral labels confirmed: no
+  Korg names anywhere in UI, preset names, file names or plugin metadata.
 - README, install steps for both OSes, and a preset/control manual including the drum map.
 
 ---

@@ -65,7 +65,7 @@ END
 
 IDD_DIALOG_MAIN DIALOG 0, 0, 300, 300
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Keith"
+CAPTION "MAGS SYNTH"
 MENU IDR_MENU1
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -188,10 +188,10 @@ BEGIN
         BEGIN
             VALUE "FileVersion", "0.1.0"
             VALUE "ProductVersion", "0.1.0"
-            VALUE "FileDescription", "Keith"
-            VALUE "InternalName", "Keith"
-            VALUE "ProductName", "Keith"
-            VALUE "CompanyName", "Private Audio"
+            VALUE "FileDescription", "MAGS SYNTH"
+            VALUE "InternalName", "MAGS SYNTH"
+            VALUE "ProductName", "MAGS SYNTH"
+            VALUE "CompanyName", "Mags"
             VALUE "LegalCopyright", "Private handover instrument"
             VALUE "LegalTrademarks", "VST is a trademark of Steinberg Media Technologies GmbH, Audio Unit is a trademark of Apple, Inc."
         END
