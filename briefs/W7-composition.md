@@ -1,5 +1,33 @@
 # W7 — rebuild the composition to match the owner's reference
 
+## Blocker found part way through, read this first
+
+The reference's own panel rectangles are too small for our control count. Measured on its coordinates:
+
+- **Amp modifiers.** Eight controls need two columns of the 42 px minimum plus padding and a gap, which
+  is 134 px of width. The reference grid leaves 72 px there. It has been widened to 134, taking 68 px
+  from the sampled-sounds panel, and that conflict is resolved.
+- **LFO.** The reference panel is 124 by 392 and holds four controls. Ours needs eight, plus a label row
+  per block. A full-size knob needs 73 px of height, which is 34 px of body plus 19 px of label plus
+  20 px of value. Two LFO blocks need 418 px of content in the 346 px available. It does not fit, and no
+  amount of re-spacing makes it fit.
+- The same shape of problem sits wherever we show more than the reference does. GLOBAL carries nine
+  controls where the reference shows three. EFFECTS carries twelve where the reference shows four.
+
+So the composition cannot match the reference exactly **and** keep all 111 controls visible at the
+reference's control size.
+
+**Settled, by the owner.** The reference is a style guide, not a final design. Match the aesthetics as
+closely as possible, then lay out whatever obviously has to differ differently. In practice:
+
+- Take from the reference: the near-black canvas, wood only as the left column and the thin frame, the
+  cityscape as a hero, the hardware graphic, the panel fill colours, the type scale and the pink accent.
+- The panel rectangles are a guide, not a contract. Where our control count does not fit, the panel
+  grows or changes shape. Keeping every one of the 111 controls visible wins over matching a rectangle.
+- Nothing gets hidden behind a tab to preserve a rectangle, and no control shrinks below the
+  label-plus-value minimum.
+
+
 Work in `/Users/solace/YoteMachine-build`, branch `mags-rebuild-and-levels`.
 
 The owner's feedback on the current build, in his words: the preset selector is entirely covered and it is
