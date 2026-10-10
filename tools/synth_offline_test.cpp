@@ -2199,7 +2199,7 @@ int main()
 
     // A note-on arms it.
     feed.NoteOn();
-    feed.Snapshot(2);
+    feed.Snapshot(2, 1.0/30.0);
     Expect(feed.Armed(), "analyzer_note_on_arms");
 
     // Push a full-scale 1 kHz tone and confirm the transform finds it in the right band.
@@ -2210,7 +2210,7 @@ int main()
       feed.PushFrame(v, v);
     }
     feed.NoteOn();
-    feed.Snapshot(2);
+    feed.Snapshot(2, 1.0/30.0);
 
     const float* bins = feed.Smoothed();
     const int n = feed.Bins();
@@ -2241,7 +2241,7 @@ int main()
     for (int i = 0; i < 4096; ++i)
       quiet.PushFrame(0.f, 0.f);
     quiet.NoteOn();
-    quiet.Snapshot(2);
+    quiet.Snapshot(2, 1.0/30.0);
     Expect(quiet.PeakDb() < -60.f, "analyzer_silence_reads_the_floor");
 
     // Waterfall history advances without reading uninitialised rows.
@@ -2254,7 +2254,7 @@ int main()
     }
     wf.NoteOn();
     for (int f = 0; f < 40; ++f)
-      wf.Snapshot(1);
+      wf.Snapshot(1, 1.0/30.0);
     bool rowsFinite = true;
     for (int r = 0; r < wf.WaterfallRows(); ++r)
       for (int i = 0; i < wf.Bins(); ++i)
@@ -2263,11 +2263,123 @@ int main()
 
     // The transform must be usable repeatedly without drift or a stale buffer.
     for (int f = 0; f < 200; ++f)
-      feed.Snapshot(2);
+      feed.Snapshot(2, 1.0 / 30.0);
     bool steady = std::isfinite(feed.PeakDb());
     for (int i = 0; i < n; ++i)
       steady = steady && std::isfinite(bins[i]);
     Expect(steady, "analyzer_repeated_snapshots_stay_finite");
+  }
+
+  // ------------------------------------------------- analyzer bands carry real data
+  // Every band above the first populated one must come from measurement, not from copying
+  // a neighbour. The first cut filled 43 of 96 bands by nearest-neighbour copy, which drew
+  // flat plateaus across the bottom of the display.
+  {
+    keith::ui::AnalyzerFeed feed;
+    feed.Reset(sr);
+    // Pink-ish noise: energy at every frequency, so a band with no data shows up as a gap.
+    uint32_t seed = 12345u;
+    float lp = 0.f;
+    for (int i = 0; i < 8192; ++i)
+    {
+      seed = seed * 1664525u + 1013904223u;
+      const float white = (static_cast<float>((seed >> 9) & 0x7FFF) / 16384.f) - 1.f;
+      lp = lp * 0.85f + white * 0.15f;
+      feed.PushFrame(lp, lp);
+    }
+    feed.NoteOn();
+    feed.Snapshot(2, 1.0 / 30.0);
+    const float* bands = feed.Smoothed();
+
+    // No long flat runs: a copied-neighbour fill shows up as many exactly-equal neighbours.
+    int longestFlat = 1;
+    int run = 1;
+    for (int i = 1; i < n; ++i)
+    {
+      if (std::fabs(bands[i] - bands[i - 1]) < 1e-6f)
+      {
+        ++run;
+        longestFlat = std::max(longestFlat, run);
+      }
+      else
+      {
+        run = 1;
+      }
+    }
+    Expect(longestFlat <= 4, "analyzer_bands_are_not_flat_plateaus");
+    std::printf("  longest run of identical bands: %d\n", longestFlat);
+
+    // Broadband noise must produce energy across the whole display, not just the top.
+    int populated = 0;
+    for (int i = 0; i < n; ++i)
+      if (bands[i] > -90.f)
+        ++populated;
+    Expect(populated > n * 3 / 4, "analyzer_broadband_fills_the_display");
+    std::printf("  bands above -90 dB: %d of %d\n", populated, n);
+  }
+
+  // ------------------------------------------------------- level accuracy
+  // A full-scale sine has to read near 0 dBFS. The first cut divided by n/2 instead of the
+  // window's coherent gain, which read 6 dB high and squashed the display against the top.
+  {
+    keith::ui::AnalyzerFeed feed;
+    feed.Reset(sr);
+    for (int i = 0; i < 8192; ++i)
+    {
+      const float v = static_cast<float>(0.5 * std::sin(2.0 * 3.14159265358979 * 1000.0 * i / sr));
+      feed.PushFrame(v, v);
+    }
+    feed.NoteOn();
+    feed.Snapshot(2, 1.0 / 30.0);
+    const float peak = feed.PeakDb();
+    // 0.5 amplitude is -6 dBFS. Allow a band or two of leakage either way.
+    Expect(peak > -12.f && peak < -1.f, "analyzer_half_scale_sine_reads_near_minus_6db");
+    std::printf("  half-scale 1 kHz sine peak: %.1f dB (want about -6)\n",
+                static_cast<double>(peak));
+  }
+
+  // ------------------------------------------------------- trigger hold is wall-clock
+  // A short note must stay armed for about the same wall time whatever the redraw rate.
+  {
+    keith::ui::AnalyzerFeed fast;
+    keith::ui::AnalyzerFeed slow;
+    fast.Reset(sr);
+    slow.Reset(sr);
+    for (int i = 0; i < 8192; ++i)
+    {
+      fast.PushFrame(0.3f, 0.3f);
+      slow.PushFrame(0.3f, 0.3f);
+    }
+
+    // 60 fps for 1.0 s of wall time.
+    fast.NoteOn();
+    for (int f = 0; f < 60; ++f)
+      fast.Snapshot(2, 1.0 / 60.0);
+    // 15 fps for the same 1.0 s of wall time.
+    slow.NoteOn();
+    for (int f = 0; f < 15; ++f)
+      slow.Snapshot(2, 1.0 / 15.0);
+
+    // Same elapsed time, so both must agree on whether they are still armed.
+    Expect(fast.Armed() == slow.Armed(), "analyzer_trigger_hold_is_frame_rate_independent");
+
+    // And after 2.5 s both must have released.
+    keith::ui::AnalyzerFeed a;
+    keith::ui::AnalyzerFeed b;
+    a.Reset(sr);
+    b.Reset(sr);
+    for (int i = 0; i < 8192; ++i)
+    {
+      a.PushFrame(0.3f, 0.3f);
+      b.PushFrame(0.3f, 0.3f);
+    }
+    a.NoteOn();
+    for (int f = 0; f < 150; ++f)
+      a.Snapshot(2, 1.0 / 60.0);
+    b.NoteOn();
+    for (int f = 0; f < 38; ++f)
+      b.Snapshot(2, 1.0 / 15.0);
+    Expect(!a.Armed() && !b.Armed(), "analyzer_trigger_releases_after_the_hold");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);

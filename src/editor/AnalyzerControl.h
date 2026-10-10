@@ -20,6 +20,8 @@
 #include "EditorGeometry.h"
 #include "KeithTheme.h"
 
+#include <chrono>
+
 namespace keith {
 namespace ui {
 
@@ -34,7 +36,15 @@ public:
 
   void Draw(IGraphics& g) override
   {
-    mFeed.Snapshot(mView);
+    // Real elapsed time since the previous draw. The feed uses it so the trigger hold and
+    // the waterfall cadence are wall-clock, not one unit per repaint -- otherwise the panel
+    // behaves differently on a 15 fps machine than on a 60 fps one.
+    const double now = std::chrono::duration<double>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    const double dt = mLastDraw > 0.0 ? now - mLastDraw : (1.0 / 30.0);
+    mLastDraw = now;
+
+    mFeed.Snapshot(mView, dt);
     const bool armed = mFeed.Armed();
 
     const float pad = 7.f;
@@ -273,6 +283,7 @@ private:
 
   AnalyzerFeed& mFeed;
   int mView = 2;  // CURVE by default: it fills the well and reads at a glance.
+  double mLastDraw = 0.0;
   IRECT mPager, mPlot;
 };
 
