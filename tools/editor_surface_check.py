@@ -199,7 +199,7 @@ def main():
         if text in upper_layout
     ]
     check("drum editor is live synthesized percussion",
-          "DRUM PADS" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
+          "DRUMS" in upper_layout and "KEITHPADGRIDCONTROL" in upper_layout
           and not false_drum_ui,
           ", ".join(false_drum_ui) if false_drum_ui else "live grid, no sample UI")
 

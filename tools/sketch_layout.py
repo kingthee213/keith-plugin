@@ -28,7 +28,7 @@ PANEL_TITLES = {
     "kPanelMod": "MOD MATRIX",
     "kPanelAmpMods": "AMP MODS",
     "kPanelSample": "SAMPLED",
-    "kPanelPads": "DRUM PADS",
+    "kPanelPads": "DRUMS",
     "kPanelVintage": "VINTAGE",
     "kPanelGlobal": "GLOBAL",
     "kPanelFx": "EFFECTS",

@@ -48,7 +48,7 @@ PANELS = {
     "kPanelMod": ("MOD MATRIX", (11, 29, 36)),
     "kPanelAmpMods": ("AMP MODIFIERS", (9, 24, 30)),
     "kPanelSample": ("LOADED SOUNDS", (9, 24, 30)),
-    "kPanelPads": ("DRUM PADS", (11, 22, 26)),
+    "kPanelPads": ("DRUMS", (11, 22, 26)),
     "kPanelVintage": ("VINTAGE ANALOG MODELING", (73, 77, 43)),
     "kPanelGlobal": ("GLOBAL", (19, 29, 26)),
     "kPanelFx": ("EFFECTS", (19, 29, 26)),
