@@ -47,7 +47,7 @@ public:
     g.DrawRect(kLine, mRECT, nullptr, 1.f);
 
     g.DrawText(MonoBold(11.f, kPaper), "SPECTRAL ANALYZER", title);
-    g.DrawText(Mono(9.f, kLine, EAlign::Far), ViewCounter(), title);
+    g.DrawText(Mono(9.f, kLine, EAlign::Far), ViewCounter().Get(), title);
 
     DrawPager(g);
     DrawPlot(g);
@@ -138,7 +138,7 @@ private:
     const float y = mPager.B - 6.f;
     for (int i = 0; i < kViews; ++i)
     {
-      g.FillEllipse(i == mView ? kHotPink : kPanelAlt, x, y - 3.f, x + 6.f, y + 3.f);
+      g.FillEllipse(i == mView ? kHotPink : kPanelAlt, IRECT(x, y - 3.f, x + 6.f, y + 3.f));
       x += 10.f;
     }
   }
@@ -187,9 +187,9 @@ private:
         continue;
       const float x0 = mPlot.L + i * bw + 1.f;
       const float x1 = mPlot.L + (i + 1) * bw - 1.f;
-      g.FillRect(Ramp(lv), x0, mPlot.B - h, x1, mPlot.B);
+      g.FillRect(Ramp(lv), IRECT(x0, mPlot.B - h, x1, mPlot.B));
       if (lv > 0.80f)
-        g.FillRect(kPaper, x0, mPlot.B - h - 2.f, x1, mPlot.B - h);
+        g.FillRect(kPaper, IRECT(x0, mPlot.B - h - 2.f, x1, mPlot.B - h));
     }
   }
 
@@ -211,7 +211,8 @@ private:
           continue;
         const float x0 = mPlot.L + i * (mPlot.W() / n);
         const float y0 = mPlot.T + r * rh;
-        g.FillRect(Ramp(lv), x0, y0, x0 + mPlot.W() / n - 0.5f, y0 + rh - 0.4f);
+        g.FillRect(Ramp(lv),
+                   IRECT(x0, y0, x0 + mPlot.W() / n - 0.5f, y0 + rh - 0.4f));
       }
     }
     g.DrawLine(kHotPink, mPlot.L, mPlot.B - rh - 1.f, mPlot.R, mPlot.B - rh - 1.f,
@@ -234,7 +235,7 @@ private:
       prevX = x;
       prevY = y;
       if ((i % 8) == 0)
-        g.FillEllipse(kPaper, x - 1.8f, y - 1.8f, x + 1.8f, y + 1.8f);
+        g.FillEllipse(kPaper, IRECT(x - 1.8f, y - 1.8f, x + 1.8f, y + 1.8f));
     }
   }
 
@@ -266,8 +267,8 @@ private:
     }
     g.DrawText(MonoBold(9.f, kHotPink), "TRIG ARMED", state);
     WDL_String peak;
-    peak.SetFormatted(24, "%.1f dB", mFeed.PeakDb());
-    g.DrawText(MonoBold(9.f, kPaper, EAlign::Far), peak, row);
+    peak.SetFormatted(24, "%.1f dB", static_cast<double>(mFeed.PeakDb()));
+    g.DrawText(MonoBold(9.f, kPaper, EAlign::Far), peak.Get(), row);
   }
 
   AnalyzerFeed& mFeed;

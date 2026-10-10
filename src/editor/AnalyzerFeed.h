@@ -44,15 +44,8 @@ public:
     while ((1 << levels) < mSize)
       ++levels;
     mLevels = levels;
-    for (int i = 0; i < mSize; ++i)
-    {
-      const int r = Reverse(i, levels);
-      if (r > i)
-      {
-        std::swap(mRe[i], mRe[r]);
-        std::swap(mIm[i], mIm[r]);
-      }
-    }
+    // Twiddle tables only. The bit-reversal permutation is applied to the caller's buffers
+    // in Forward(), because the Fft owns no signal storage of its own.
     for (int half = 1; half < mSize; half <<= 1)
     {
       const double step = -3.14159265358979323846 / half;
@@ -61,17 +54,24 @@ public:
         mCos[i] = static_cast<float>(std::cos(step * i));
         mSin[i] = static_cast<float>(std::sin(step * i));
       }
-      mHalf[half] = half;
     }
   }
 
   int Size() const { return mSize; }
 
-  /** Transforms mRe in place; mIm must already be zeroed by the caller. */
-  void Forward(float* re, float* im) const
+  /** Transforms re in place; im must already be zeroed by the caller. */
+  void Forward(float* re, float* im)
   {
+    // Bit-reversal permutation, in place on the caller's buffers.
     for (int i = 0; i < mSize; ++i)
-      mScratchRe[i] = re[i];
+    {
+      const int r = Reverse(i, mLevels);
+      if (r > i)
+      {
+        std::swap(re[i], re[r]);
+        std::swap(im[i], im[r]);
+      }
+    }
 
     for (int size = 2; size <= mSize; size <<= 1)
     {
@@ -80,18 +80,15 @@ public:
       {
         for (int j = i, k = 0; j < i + half; ++j, ++k)
         {
-          const float tr = mScratchRe[j + half] * mCos[k] - im[j + half] * mSin[k];
-          const float ti = mScratchRe[j + half] * mSin[k] + im[j + half] * mCos[k];
-          mScratchRe[j + half] = mScratchRe[j] - tr;
+          const float tr = re[j + half] * mCos[k] - im[j + half] * mSin[k];
+          const float ti = re[j + half] * mSin[k] + im[j + half] * mCos[k];
+          re[j + half] = re[j] - tr;
           im[j + half] = im[j] - ti;
-          mScratchRe[j] += tr;
+          re[j] += tr;
           im[j] += ti;
         }
       }
     }
-
-    for (int i = 0; i < mSize; ++i)
-      re[i] = mScratchRe[i];
   }
 
 private:
@@ -110,8 +107,6 @@ private:
   int mLevels = 9;
   float mCos[kMaxSize / 2] {};
   float mSin[kMaxSize / 2] {};
-  int mHalf[kMaxSize + 1] {};
-  float mScratchRe[kMaxSize] {};
 };
 
 /** Shared state between the audio thread and the analyzer control. */
