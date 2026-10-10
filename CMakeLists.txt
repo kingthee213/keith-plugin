@@ -60,6 +60,8 @@ iplug_add_plugin(${PROJECT_NAME}
     src/Keith.h
     src/Keith_DSP.h
     src/editor/KeithControls.h
+    src/editor/AnalyzerFeed.h
+    src/editor/AnalyzerControl.h
     src/editor/KeithTheme.h
     src/synth/CoreSynth.h
     src/drums/DrumSynth.h

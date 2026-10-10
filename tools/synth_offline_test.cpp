@@ -1,5 +1,6 @@
 // Offline core-synth verification — not linked into the plugin binary.
 #include "../src/drums/DrumSynth.h"
+#include "../src/editor/AnalyzerFeed.h"
 #include "../src/fx/PatchEffects.h"
 #include "../src/synth/CoreSynth.h"
 
@@ -2184,6 +2185,89 @@ int main()
     if (!(analogPeak < 1.0))
       std::printf("  analog_peak %g\n", analogPeak);
     Expect(analogPeak < 1.0, "analog_peak_under_0_dbfs");
+  }
+
+  // ---------------------------------------------------------------- analyzer feed
+  // The panel's display data. The contract that matters: the audio thread only pushes
+  // frames, the transform happens on the reader's thread, and no call allocates or blocks.
+  {
+    keith::ui::AnalyzerFeed feed;
+    feed.Reset(sr);
+
+    // Before any note, the display is idle: not armed, and nothing has been measured.
+    Expect(!feed.Armed(), "analyzer_starts_idle");
+
+    // A note-on arms it.
+    feed.NoteOn();
+    feed.Snapshot(2);
+    Expect(feed.Armed(), "analyzer_note_on_arms");
+
+    // Push a full-scale 1 kHz tone and confirm the transform finds it in the right band.
+    const double freq = 1000.0;
+    for (int i = 0; i < 4096; ++i)
+    {
+      const float v = static_cast<float>(0.9 * std::sin(2.0 * 3.14159265358979 * freq * i / sr));
+      feed.PushFrame(v, v);
+    }
+    feed.NoteOn();
+    feed.Snapshot(2);
+
+    const float* bins = feed.Smoothed();
+    const int n = feed.Bins();
+    bool allFinite = true;
+    for (int i = 0; i < n; ++i)
+      allFinite = allFinite && std::isfinite(bins[i]);
+    Expect(allFinite, "analyzer_spectrum_is_finite");
+
+    // Find the loudest bin and check it sits on 1 kHz. The tolerance is deliberately tight:
+    // a loose window would have passed the smearing bug that put a 1 kHz tone at 2.5 kHz.
+    // One log bin is a factor of 400^(1/96) = 6.4%, so two bins is the honest allowance.
+    int loudest = 0;
+    for (int i = 1; i < n; ++i)
+      if (bins[i] > bins[loudest])
+        loudest = i;
+    const double binHz = keith::ui::AnalyzerFeed::kLowHz *
+                         std::pow(keith::ui::AnalyzerFeed::kHighHz /
+                                  keith::ui::AnalyzerFeed::kLowHz,
+                                  (loudest + 0.5) / n);
+    Expect(binHz > 880.0 && binHz < 1140.0, "analyzer_peak_lands_on_1khz");
+    std::printf("  analyzer peak bin %d at about %.0f Hz, level %.1f dB\n",
+                loudest, binHz, static_cast<double>(bins[loudest]));
+    Expect(feed.PeakDb() > -40.f, "analyzer_peak_is_above_the_floor");
+
+    // Silence must fall to the floor rather than reading the previous frame.
+    keith::ui::AnalyzerFeed quiet;
+    quiet.Reset(sr);
+    for (int i = 0; i < 4096; ++i)
+      quiet.PushFrame(0.f, 0.f);
+    quiet.NoteOn();
+    quiet.Snapshot(2);
+    Expect(quiet.PeakDb() < -60.f, "analyzer_silence_reads_the_floor");
+
+    // Waterfall history advances without reading uninitialised rows.
+    keith::ui::AnalyzerFeed wf;
+    wf.Reset(sr);
+    for (int i = 0; i < 4096; ++i)
+    {
+      const float v = static_cast<float>(0.5 * std::sin(2.0 * 3.14159265358979 * 440.0 * i / sr));
+      wf.PushFrame(v, v);
+    }
+    wf.NoteOn();
+    for (int f = 0; f < 40; ++f)
+      wf.Snapshot(1);
+    bool rowsFinite = true;
+    for (int r = 0; r < wf.WaterfallRows(); ++r)
+      for (int i = 0; i < wf.Bins(); ++i)
+        rowsFinite = rowsFinite && std::isfinite(wf.WaterfallRow(r)[i]);
+    Expect(rowsFinite, "analyzer_waterfall_rows_are_finite");
+
+    // The transform must be usable repeatedly without drift or a stale buffer.
+    for (int f = 0; f < 200; ++f)
+      feed.Snapshot(2);
+    bool steady = std::isfinite(feed.PeakDb());
+    for (int i = 0; i < n; ++i)
+      steady = steady && std::isfinite(bins[i]);
+    Expect(steady, "analyzer_repeated_snapshots_stay_finite");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);

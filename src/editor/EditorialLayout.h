@@ -1,4 +1,5 @@
 #pragma once
+#include "AnalyzerControl.h"
 #include "EditorialControls.h"
 #include "ControlLayout.h"
 #include <cassert>
@@ -27,6 +28,12 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   g->LoadFont(kFontMono, SPACEMONO_FN);
   g->LoadFont(kFontMonoBold, SPACEMONO_BOLD_FN);
   g->AttachControl(new KeithArtwork(g->GetBounds()));
+  // The analyzer sits in the panel the city plate used to fill. It is attached after the
+  // artwork so it draws on top of the face, and before the controls so nothing native is
+  // hidden behind it.
+  g->AttachControl(new KeithAnalyzerControl(
+      IRECT(kPanelAnalyzer.l, kPanelAnalyzer.t, kPanelAnalyzer.r, kPanelAnalyzer.b),
+      plugin.Analyzer()));
 
   auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
                   bool native = true) {

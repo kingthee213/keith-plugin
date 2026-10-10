@@ -3,6 +3,7 @@
 #include "MidiSynth.h"
 #include "Smoothers.h"
 #include "drums/DrumSynth.h"
+#include "editor/AnalyzerFeed.h"
 #include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
@@ -207,6 +208,7 @@ public:
     mDrums.Reset(sampleRate);
     mDrums.SetParams(mDrumParams);
     mNumDrumEvents = 0;
+    mAnalyzer.Reset(sampleRate);
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
     mSynth.Reset();
     mModulationsData.Resize(blockSize * kNumKeithModulations);
@@ -316,6 +318,16 @@ public:
         outputs[1][s] *= gain;
     }
 
+    // Post-gain, post-everything: the analyzer shows what actually leaves the plugin.
+    // This is the only audio-thread cost -- two float writes per frame. The transform runs
+    // on the UI thread inside the control's Draw, never here.
+    for (int s = 0; s < nFrames; ++s)
+    {
+      mAnalyzer.PushFrame(static_cast<float>(outputs[0][s]),
+                          nOutputs > 1 ? static_cast<float>(outputs[1][s])
+                                       : static_cast<float>(outputs[0][s]));
+    }
+
     mPerf.batchOpen = false;
     mPerf.batchCount = 0;
   }
@@ -324,6 +336,13 @@ public:
   {
     const IMidiMsg::EStatusMsg status = msg.StatusMsg();
     const bool noteMessage = status == IMidiMsg::kNoteOn || status == IMidiMsg::kNoteOff;
+    const bool realNoteOn = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
+
+    // The analyzer's trigger tap. Every note-on arms the display, whether the note goes to
+    // a drum slot or a synth voice, so the panel responds to what is actually played.
+    if (realNoteOn)
+      mAnalyzer.NoteOn();
+
     // An audible kit owns MIDI 36-51. A kit at -inf does not, so those notes
     // reach the synth. Existing presets keep an audible kit, so this is a no-op for them.
     if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
@@ -474,6 +493,12 @@ private:
   KeithPerformance mPerf {};
   keith::drums::KitParams mDrumParams = keith::drums::DefaultKitParams();
   keith::drums::Engine mDrums;
+  keith::ui::AnalyzerFeed mAnalyzer;
+
+public:
+  keith::ui::AnalyzerFeed& Analyzer() { return mAnalyzer; }
+
+private:
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   int mNumDrumEvents = 0;
   keith::fx::InsertEffect<T> mInsert1;
