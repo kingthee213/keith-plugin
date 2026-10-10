@@ -203,6 +203,20 @@ public:
   void OnRestoreState() override;
 
   int SelectedDrumSlot() const { return mSelectedDrumSlot.load(); }
+
+  /**
+   * PAD MIDI: whether MIDI in the drum range plays the drum pads.
+   *
+   * ON  - notes 36-51 trigger the pads. Nothing else is affected.
+   * OFF - those notes do not reach the pads; they fall through to the synth like any
+   *       other note.
+   *
+   * Editor-only state, deliberately not a saved parameter: it is how you are playing right
+   * now, not part of the sound, so a patch or project does not recall it. Held as an atomic
+   * because the editor sets it and the audio thread reads it.
+   */
+  bool PadMidiEnabled() const { return mPadMidiEnabled.load(); }
+  void SetPadMidiEnabled(bool on) { mPadMidiEnabled.store(on); }
   bool DrumSlotMuted(int slot) const
   {
     return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
@@ -251,5 +265,7 @@ private:
 
   keith::drums::KitParams mDrumKit = keith::drums::DefaultKitParams();
   std::atomic<int> mSelectedDrumSlot {0};
+  /** PAD MIDI. Not serialised -- see PadMidiEnabled(). */
+  std::atomic<bool> mPadMidiEnabled {true};
   std::atomic<bool> mDrumUiDirty {false};
 };

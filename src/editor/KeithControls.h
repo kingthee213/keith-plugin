@@ -17,6 +17,8 @@
 #include "KeithTheme.h"
 #include "EditorGeometry.h"
 
+class Keith;
+
 using namespace iplug;
 using namespace igraphics;
 
@@ -82,6 +84,29 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// PAD MIDI — routes live MIDI in the drum range to the pads.
+//
+// Editor-only state: it is how you are playing right now, not part of the sound, so it is
+// not a saved parameter and a patch does not recall it. The flag lives on the plugin as an
+// atomic because the audio thread reads it while the editor writes it.
+//
+// Lit when on, so its state is readable at a glance: the plugin should always signal what it
+// is doing.
+// ---------------------------------------------------------------------------
+class KeithPadMidiButton : public IControl
+{
+public:
+  KeithPadMidiButton(const IRECT& bounds, Keith& plugin);
+
+  void Draw(IGraphics& g) override;
+  void OnMouseDown(float, float, const IMouseMod&) override;
+  void OnMouseOver(float, float, const IMouseMod&) override { SetDirty(false); }
+
+private:
+  Keith& mPlugin;
+};
+
 // Static text (wordmark, hints, status). Alignment comes from the IText.
 // ---------------------------------------------------------------------------
 class KeithTextControl : public IControl

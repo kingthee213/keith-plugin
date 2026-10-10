@@ -57,8 +57,15 @@ def min_control_width(param: int) -> float:
 
 
 def shared_knob_width(params: list[int], inner_w: float, cols: int, gap: float = ROW_GAP) -> float:
-    share = (inner_w - (cols - 1) * gap) / cols
-    return max(share, max(min_control_width(p) for p in params))
+    """Width for a row of equal-width knobs filling inner_w.
+
+    Always returns the exact equal share. It used to return max(share, min_control_width),
+    which meant a row whose labels needed more than their share came out wider than the
+    panel: the controls were then laid out from the left and the row ended short on the
+    right, or overran. Every asymmetric row in the editor came from that. The share wins,
+    and the label is made to fit its rectangle instead -- which is what the fit gate is for.
+    """
+    return (inner_w - (cols - 1) * gap) / cols
 
 TITLE_BAND = _rf(28)
 VISIBLE_ROW_GAP = _rf(14)
@@ -70,26 +77,30 @@ _PANELS_REF = {
     "kPanelAmp": (728, 24, 928, 416),
     "kPanelLfo": (938, 24, 1240, 416),
     "kPanelMod": (1250, 24, 1500, 416),
-    # The analyzer is gone, so the middle band starts where it did and the three panels that
-    # were to its right move left into the freed width. Sized by what each panel actually
-    # needs rather than by leftover space:
-    #   AMP MODIFIERS  8 knobs at the standard 55 px, 2 rows of 4 (4 rows will not fit the
-    #                  190 px of content height this band has)
-    #   LOADED SOUNDS  preset menu plus 3x2 knobs
-    #   DRUM PADS      4x4 grid at a comfortable cell size plus 3x2 slot knobs
-    # Vertically the band is 322..533 in design units: 312 is the top band's bottom edge and
-    # 543 the bottom band's top edge, with clearance on both sides.
+    # The middle band. Vertical extent 322..533 design units: 312 is the top band's bottom
+    # edge and 543 the bottom band's top edge, with clearance on both sides.
+    # Sized so the three panels stop short of the right-hand wood frame.
+    # The frame is 30 px of the 1152 canvas, so the usable right edge is 1122 -- the panels
+    # used to run to 1125 and overlapped it by 3 px.
+    #   AMP MODIFIERS  8 knobs, two rows of four
+    #   LOADED SOUNDS  preset menu plus its knobs; widened because the menu was cramped
+    #   DRUM PADS      4x4 grid plus three slot knobs; the rest of the width
     "kPanelAmpMods": (256, 430, 585, 711),
-    "kPanelSample": (593, 430, 845, 711),
-    "kPanelPads": (853, 430, 1500, 711),
+    "kPanelSample": (593, 430, 905, 711),
+    "kPanelPads": (912, 430, 1496, 711),
     "kPanelVintage": (256, 724, 730, 996),
     "kPanelGlobal": (744, 724, 1066, 996),
-    "kPanelFx": (1080, 724, 1500, 1000),
+    "kPanelFx": (1080, 724, 1496, 1000),
     "kLeftRail": (0, 0, 246, 1024),
-    "kWordmarkBox": (18, 28, 228, 118),
-    # The keyboard runs from the vintage panel's left edge to the right-hand frame, so it
-    # starts where the bottom band starts rather than leaving a gap under the rail.
-    "kKeyboardBox": (256.0, 1002.0, 1492.0, 1020.0),
+    # The wordmark sits on the plaque in the rail artwork, which runs x 33..183 in the 184 px
+    # rail asset. compose_face pastes that asset 1:1, so asset px are design px and the
+    # plaque's centre is 108. The box was centred on the rail itself (92), which left the
+    # wordmark 15 px left of centre. These are reference units; _r() scales by 0.75.
+    "kWordmarkBox": (71, 29, 217, 117),
+    # The keyboard runs from the vintage panel's left edge to the right-hand wood frame, so
+    # it starts where the bottom band starts and stops before the frame, which is 30 px of
+    # the canvas (usable right edge 1122 -> reference 1496).
+    "kKeyboardBox": (256.0, 1002.0, 1496.0, 1020.0),
 }
 
 PANELS = {name: tuple(_r(v) for v in box) for name, box in _PANELS_REF.items()}
@@ -225,62 +236,83 @@ def place_overlay(oid: str, l, t, r, b):
 
 # OSC
 #
-# Four columns, sized to the panel rather than to the widest label. The knobs used to be
-# sized from min_control_width, which for TUNE is 48.3 px -- four of those plus three gaps
-# is 224.6 px against 199 px of inner width, so the second pair overran the panel and spilled
-# 15 px into FILTER. The panel cannot hold knobs that wide, so TUNE is shortened to TUN and
-# the columns are sized from the space that actually exists.
+# Four equal columns with equal gaps, so the knob rows are symmetric inside the panel. The
+# columns used to be laid out as two groups of two, which left a 0 px gap between the middle
+# pair and a 10.5 px overhang on the right -- visibly unbalanced.
+#
+# Vertically: title band, a gap, the waveform, then two rows of knobs, then the tabs. The
+# waveform used to start flush against the title band with no gap at all, which read as
+# crowded. The slack below the title is given to the waveform so it is larger, not tighter.
 osc_l, osc_t, osc_r, osc_b = PANELS["kPanelOsc"]
-ix = osc_l + PAD
-iy = content_top(osc_t)
-inner_osc = osc_r - osc_l - 2 * PAD
+inner_l, inner_r = osc_l + PAD, osc_r - PAD
+inner_osc = inner_r - inner_l
 
-wave_h = _r(34)
-wave_w = (inner_osc - ROW_GAP) / 2
-place_overlay("osc1_waveform", ix, iy, ix + wave_w, iy + wave_h)
-place_overlay("osc2_waveform", ix + wave_w + ROW_GAP, iy, osc_r - PAD, iy + wave_h)
-iy += wave_h + ROW_GAP
-
-# Two groups of four: osc 1 on the left, osc 2 on the right. Each group is two columns of
-# two, so the four columns read as a pair of pairs.
-osc_knobs = [14, 15, 16, 17, 18, 19, 20, 21]
 osc_cols = 4
-kw = shared_knob_width(osc_knobs, inner_osc, osc_cols)
-# shared_knob_width applies min_control_width, which is what overflowed. Take the geometric
-# share instead: four equal columns and three gaps across the inner width.
-kw = min(kw, (inner_osc - (osc_cols - 1) * ROW_GAP) / osc_cols)
-for col, params in enumerate([(14, 15, 16, 17), (18, 19, 20, 21)]):
-    cx = ix + col * (kw * 2 + ROW_GAP)
-    for row, pair in enumerate([(params[0], params[1]), (params[2], params[3])]):
-        y = iy + row * (KNOB_H + ROW_GAP)
-        rects[pair[0]] = box(cx, y, cx + kw, y + KNOB_H)
-        rects[pair[1]] = box(cx + kw + ROW_GAP, y, cx + 2 * kw + ROW_GAP, y + KNOB_H)
+kw = (inner_osc - (osc_cols - 1) * ROW_GAP) / osc_cols
+col_x = [inner_l + i * (kw + ROW_GAP) for i in range(osc_cols)]
 
-mix_y = iy + 2 * (KNOB_H + ROW_GAP)
-mix_w = (inner_osc - (osc_cols - 1) * ROW_GAP) / osc_cols
+title_end = content_top(osc_t)
+slack = (osc_b - PAD) - title_end
+# Elements under the title: a gap, the waveform, then three knob rows and the tab row, each
+# separated by a gap. The three rows carry their own two internal gaps, so only the four
+# outer gaps are counted here -- counting five double-counted one and left the waveform 10 px
+# shorter than it needed to be.
+wave_h = slack - (4 * ROW_GAP) - (3 * KNOB_H + 2 * ROW_GAP) - TAB_H
+
+y = title_end + ROW_GAP
+half = (inner_osc - ROW_GAP) / 2
+place_overlay("osc1_waveform", inner_l, y, inner_l + half, y + wave_h)
+place_overlay("osc2_waveform", inner_l + half + ROW_GAP, y, inner_r, y + wave_h)
+y += wave_h + ROW_GAP
+
+# Osc 1 on the left two columns, osc 2 on the right two.
+osc_layout = [(14, 0, 0), (15, 1, 0), (18, 2, 0), (19, 3, 0),
+              (16, 0, 1), (17, 1, 1), (20, 2, 1), (21, 3, 1)]
+for p, col, row in osc_layout:
+    yy = y + row * (KNOB_H + ROW_GAP)
+    rects[p] = box(col_x[col], yy, col_x[col] + kw, yy + KNOB_H)
+y += 2 * (KNOB_H + ROW_GAP)
+
+# Mixer: the three controls share the full width, evenly.
+mix_w = (inner_osc - 2 * ROW_GAP) / 3
 for i, p in enumerate([22, 23, 24]):
-    x = ix + i * (mix_w + ROW_GAP)
-    rects[p] = box(x, mix_y, x + mix_w, mix_y + KNOB_H)
-tab_y = mix_y + KNOB_H + ROW_GAP
-rects[43] = box(ix, tab_y, ix + _rf(76), tab_y + TAB_H)
-rects[44] = box(ix + _rf(84), tab_y, ix + _rf(160), tab_y + TAB_H)
+    x = inner_l + i * (mix_w + ROW_GAP)
+    rects[p] = box(x, y, x + mix_w, y + KNOB_H)
+y += KNOB_H + ROW_GAP
 
-# FILTER
+# SYNC and RING share the width as a symmetric pair.
+half_t = (inner_osc - ROW_GAP) / 2
+rects[43] = box(inner_l, y, inner_l + half_t, y + TAB_H)
+rects[44] = box(inner_l + half_t + ROW_GAP, y, inner_r, y + TAB_H)
+
+# FILTER — the type tab, then three rows of two.
+#
+# The panel has ~60 px of unused height and the tab used to sit flush against the title band
+# with no gap, which read as crowded. The knobs move down and the slack is spread as even
+# gaps, with a little more under the title so the type menu has air. Nothing outside this
+# panel changes.
 fl, ft, fr, fb = PANELS["kPanelFilter"]
-kw_filt = shared_knob_width([26, 27, 28, 45, 53, 54], fr - fl - 2 * PAD - ROW_GAP, 2)
-rects[25] = box(fl + PAD, content_top(ft), fr - PAD, content_top(ft) + TAB_H)
-y_filt = content_top(ft) + TAB_H + ROW_GAP
+inner_filt = (fr - fl) - 2 * PAD
+kw_filt = (inner_filt - ROW_GAP) / 2
+filt_title_end = content_top(ft)
+filt_bottom = fb - PAD
+FILT_TOP_GAP = _r(21)
+filt_gap = (filt_bottom - filt_title_end - FILT_TOP_GAP - TAB_H - 3 * KNOB_H) / 4
+
+y_filt = filt_title_end + FILT_TOP_GAP
+rects[25] = box(fl + PAD, y_filt, fr - PAD, y_filt + TAB_H)
+y_filt += TAB_H + filt_gap
 for row_params in ([26, 27], [28, 45], [53, 54]):
     for i, p in enumerate(row_params):
         x = fl + PAD + i * (kw_filt + ROW_GAP)
         rects[p] = box(x, y_filt, x + kw_filt, y_filt + KNOB_H)
-    y_filt += KNOB_H + ROW_GAP
+    y_filt += KNOB_H + filt_gap
 
-# AMP — 2x2 amp ADSR and 2x2 filter ADSR so values fit at MIN_W.
+# AMP — two blocks of four: amp ADSR then filter ADSR. Two equal columns filling the panel.
 al, at, ar, ab = PANELS["kPanelAmp"]
+inner_amp = (ar - al) - 2 * PAD
+kw_amp = (inner_amp - ROW_GAP) / 2
 y_amp = content_top(at) + ROW_GAP
-inner_amp = ar - al - 2 * PAD
-kw_amp = shared_knob_width([29, 30, 31, 32, 39, 40, 41, 42], inner_amp - ROW_GAP, 2)
 for row, params in enumerate(([29, 30], [31, 32])):
     y = y_amp + row * (KNOB_H + ROW_GAP)
     for i, p in enumerate(params):
@@ -308,45 +340,65 @@ for i, p in enumerate(amp_mods):
     x = aml + PAD + col * (mod_w + ROW_GAP)
     rects[p] = box(x, y, x + mod_w, y + KNOB_H)
 
-# LFO — one horizontal row per block (label, rate, depth, shape, dest).
+# LFO — one row per block: two knobs and two compact dropdowns, all four sharing the width
+# evenly so the row fills the panel. It used to size the dropdowns by their label minimum and
+# the knobs from the remainder, which left 109 px of dead space on the right.
+#
+# Each block is label / gap / controls, with the same generous gap the FILTER panel uses under
+# its title. The label used to sit a single ROW_GAP above the controls, which made the thin
+# full-width label strip merge into the row beneath it.
 ll, lt, lr, lb = PANELS["kPanelLfo"]
 LFO_LABEL_H = _rf(14)
-LFO_DD_W = _rf(52)
+LFO_LABEL_GAP = 16.0
+
+# The vertical slack is split so the pair sits balanced, with a little more air under the
+# panel title than between the blocks. "LFO 1" sat directly beneath the "LFO" title with only
+# a normal row gap, which read as the two titles crowding each other.
+lfo_block_h = LFO_LABEL_H + LFO_LABEL_GAP + KNOB_H
+lfo_slack = (lb - PAD) - content_top(lt) - 2 * lfo_block_h
+lfo_title_gap = lfo_slack / 3 + _r(16)      # a bit more than the even share
+lfo_gap = (lfo_slack - lfo_title_gap) / 2
 
 
 def lfo_block(y_top, rate, shape, dest, amount, label_id):
     place_overlay(label_id, ll + PAD, y_top, lr - PAD, y_top + LFO_LABEL_H)
-    cy = y_top + LFO_LABEL_H + ROW_GAP
-    inner = lr - ll - 2 * PAD
-    dd_w = max(MIN_W, LFO_DD_W, min_control_width(48), min_control_width(49), min_control_width(86), min_control_width(87))
-    knob_w = shared_knob_width([47, 50, 85, 88], inner - 2 * dd_w - 3 * ROW_GAP, 2)
+    cy = y_top + LFO_LABEL_H + LFO_LABEL_GAP
+    inner = (lr - ll) - 2 * PAD
+    # Four equal columns: rate, amount, shape, dest. The dropdowns sit in their own column
+    # rather than taking space from the knobs.
+    col = (inner - 3 * ROW_GAP) / 4
     x = ll + PAD
-    rects[rate] = box(x, cy, x + knob_w, cy + KNOB_H)
-    x += knob_w + ROW_GAP
-    rects[amount] = box(x, cy, x + knob_w, cy + KNOB_H)
-    x += knob_w + ROW_GAP
+    rects[rate] = box(x, cy, x + col, cy + KNOB_H)
+    x += col + ROW_GAP
+    rects[amount] = box(x, cy, x + col, cy + KNOB_H)
+    x += col + ROW_GAP
     dd_y = cy + (KNOB_H - DROPDOWN_H_COMPACT) / 2
-    rects[shape] = box(x, dd_y, x + dd_w, dd_y + DROPDOWN_H_COMPACT)
-    x += dd_w + ROW_GAP
-    rects[dest] = box(x, dd_y, x + dd_w, dd_y + DROPDOWN_H_COMPACT)
+    rects[shape] = box(x, dd_y, x + col, dd_y + DROPDOWN_H_COMPACT)
+    x += col + ROW_GAP
+    rects[dest] = box(x, dd_y, x + col, dd_y + DROPDOWN_H_COMPACT)
 
 
-lfo_row_h = LFO_LABEL_H + ROW_GAP + KNOB_H
-y1 = content_top(lt)
+y1 = content_top(lt) + lfo_title_gap
 lfo_block(y1, 47, 48, 49, 50, "lfo1_label")
-y2 = y1 + lfo_row_h + ROW_GAP
-lfo_block(y2, 85, 86, 87, 88, "lfo2_label")
+lfo_block(y1 + lfo_block_h + lfo_gap, 85, 86, 87, 88, "lfo2_label")
 
-# MOD
+# MOD — four slots, each a source dropdown, a destination dropdown and an amount knob.
+# The three controls share the row evenly, so every slot fills the panel. The amount knob
+# used to be pinned to the right edge at the label minimum, which left a 0 px gap after the
+# destination dropdown and a mismatched right margin.
 ml, mt, mr, mb = PANELS["kPanelMod"]
-row_w = mr - ml - 2 * PAD
-slot_h = (mb - content_top(mt) - PAD) / 4
+inner_mod = (mr - ml) - 2 * PAD
+slot_rows = 4
+mod_col = (inner_mod - 2 * ROW_GAP) / 3
+slot_h = (mb - content_top(mt) - PAD - (slot_rows - 1) * ROW_GAP) / slot_rows
 for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97), (98, 99, 100)]):
-    y = content_top(mt) + slot * slot_h + PAD
-    dw = (row_w - MIN_W - ROW_GAP) / 2
-    rects[src] = box(ml + PAD, y, ml + PAD + dw, y + DROPDOWN_H)
-    rects[dst] = box(ml + PAD + dw + ROW_GAP, y, ml + PAD + 2 * dw + ROW_GAP, y + DROPDOWN_H)
-    rects[amt] = box(mr - PAD - MIN_W, y, mr - PAD, y + KNOB_H)
+    y = content_top(mt) + slot * (slot_h + ROW_GAP)
+    dd_y = y + (slot_h - DROPDOWN_H) / 2
+    rects[src] = box(ml + PAD, dd_y, ml + PAD + mod_col, dd_y + DROPDOWN_H)
+    rects[dst] = box(ml + PAD + mod_col + ROW_GAP, dd_y,
+                     ml + PAD + 2 * mod_col + ROW_GAP, dd_y + DROPDOWN_H)
+    ky = y + (slot_h - KNOB_H) / 2
+    rects[amt] = box(mr - PAD - mod_col, ky, mr - PAD, ky + KNOB_H)
 
 # SAMPLE — 3×2 knobs (value-sized width); MUT/SOL tabs share the preset row on the right.
 sl, st, sr, sb = PANELS["kPanelSample"]
@@ -389,7 +441,9 @@ inner_w = (pr - pl) - 2 * PAD
 # knobs from the remainder is what pushed the third knob past the panel edge -- twice.
 # Fix a usable minimum for each, then split the slack: most of it to the grid.
 slot_cols = 3
-GRID_MIN = _r(347)      # 260 design px
+# Minimums for the pads panel: a usable grid and three comfortably hittable slot knobs.
+# In reference units; the design-space minimums are 240 px for the grid and 46 px per knob.
+GRID_MIN = _r(320)      # 240 design px
 SLOT_MIN = _r(61)       # 46 design px
 slack = inner_w - (GRID_MIN + ROW_GAP + (slot_cols * SLOT_MIN + (slot_cols - 1) * ROW_GAP))
 if slack < 0:
@@ -415,6 +469,13 @@ for row, trio in enumerate([(76, 77, 78), (79, 80, 81)]):
                 f"pads: slot knob {p} would end at {x + slot_w:.1f}, past the panel edge "
                 f"{right_limit:.1f}")
         rects[p] = box(x, y, x + slot_w, y + KNOB_H)
+
+# PAD MIDI — the switch that routes live MIDI to the pads. It sits in the pocket under the
+# slot knobs, spanning the same width, so it reads as part of that column. Not a saved
+# parameter: it is editor state, held on Keith as an atomic and read by the audio thread.
+pad_sw_top = grid_t + 2 * (KNOB_H + ROW_GAP) + ROW_GAP
+pad_sw_bottom = pb - PAD
+place_overlay("pad_midi_switch", trio_x, pad_sw_top, right_limit, pad_sw_bottom)
 
 # VINTAGE — the analog voice block. ENGINE and BYP on one switch row, then nine knobs:
 # the three voice trims (TONE / COMP / DIST) and the six tape controls that used to live

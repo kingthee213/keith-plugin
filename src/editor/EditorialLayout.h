@@ -3,6 +3,37 @@
 #include "ControlLayout.h"
 #include <cassert>
 
+// KeithPadMidiButton is declared in KeithControls.h (inside keith::ui) with only a forward
+// declaration of Keith, so its body lives here where the full type is available. This header
+// is included by Keith.cpp, after Keith.h.
+namespace keith { namespace ui {
+
+inline KeithPadMidiButton::KeithPadMidiButton(const IRECT& bounds, Keith& plugin)
+: IControl(bounds)
+, mPlugin(plugin)
+{
+}
+
+inline void KeithPadMidiButton::Draw(IGraphics& g)
+{
+  const bool on = mPlugin.PadMidiEnabled();
+  // Lit reads as ON, dim reads as OFF, so the state is visible at a glance.
+  const IColor fill = on ? kGreen : kPanelAlt;
+  const IColor ink = on ? kInk : kPaper.WithOpacity(0.55f);
+  g.FillRect(fill, mRECT);
+  g.DrawRect(on ? kPaper : kLine, mRECT, nullptr, on ? 3.f : 2.f);
+  g.DrawText(MonoBold(11.f, ink, EAlign::Center, EVAlign::Middle),
+             on ? "PAD MIDI ON" : "PAD MIDI OFF", mRECT);
+}
+
+inline void KeithPadMidiButton::OnMouseDown(float, float, const IMouseMod&)
+{
+  mPlugin.SetPadMidiEnabled(!mPlugin.PadMidiEnabled());
+  SetDirty(false);
+}
+
+} } // namespace keith::ui
+
 namespace keith { namespace ui {
 
 inline IRECT CRect(int param)
@@ -146,6 +177,8 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
 
   // Middle row: artwork plate (painted in chassis), sampler + drums.
   g->AttachControl(new KeithPresetMenu(OverlayIRECT("preset_menu")));
+  // PAD MIDI sits under the drum pad slot knobs. Editor-only: see KeithPadMidiButton.
+  g->AttachControl(new KeithPadMidiButton(OverlayIRECT("pad_midi_switch"), plugin));
   constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
                                  kParamPitchRelease, kParamPitchAmount};
   for (int p : pitchParams)
