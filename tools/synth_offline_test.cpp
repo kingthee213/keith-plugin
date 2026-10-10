@@ -2195,7 +2195,7 @@ int main()
     feed.Reset(sr);
 
     // Before any note, the display is idle: not armed, and nothing has been measured.
-    Expect(!feed.Armed(), "analyzer_starts_idle");
+    Expect(!feed.Active(), "analyzer_starts_idle");
 
     // A note-on arms it.
     feed.NoteOn();
@@ -2338,48 +2338,47 @@ int main()
                 static_cast<double>(peak));
   }
 
-  // ------------------------------------------------------- trigger hold is wall-clock
-  // A short note must stay armed for about the same wall time whatever the redraw rate.
+  // ------------------------------------------------------- hold is wall-clock
+  // The display holds for a fixed wall time after the output falls silent, whatever the
+  // redraw rate. A frame-counted hold behaved differently at 15 fps than at 60.
   {
+    // Both feeds see the same loud signal, then silence.
     keith::ui::AnalyzerFeed fast;
     keith::ui::AnalyzerFeed slow;
     fast.Reset(sr);
     slow.Reset(sr);
     for (int i = 0; i < 8192; ++i)
     {
-      fast.PushFrame(0.3f, 0.3f);
-      slow.PushFrame(0.3f, 0.3f);
+      const float v = static_cast<float>(0.4 * std::sin(2.0 * 3.14159265358979 * 440.0 * i / sr));
+      fast.PushFrame(v, v);
+      slow.PushFrame(v, v);
     }
 
-    // 60 fps for 1.0 s of wall time.
-    fast.NoteOn();
-    for (int f = 0; f < 60; ++f)
-      fast.Snapshot(2, 1.0 / 60.0);
-    // 15 fps for the same 1.0 s of wall time.
-    slow.NoteOn();
-    for (int f = 0; f < 15; ++f)
-      slow.Snapshot(2, 1.0 / 15.0);
+    // One frame while the signal is present lights both.
+    fast.Snapshot(2, 1.0 / 60.0);
+    slow.Snapshot(2, 1.0 / 15.0);
+    Expect(fast.Active() && slow.Active(), "analyzer_output_lights_both_feeds");
 
-    // Same elapsed time, so both must agree on whether they are still armed.
-    Expect(fast.Armed() == slow.Armed(), "analyzer_trigger_hold_is_frame_rate_independent");
-
-    // And after 2.5 s both must have released.
-    keith::ui::AnalyzerFeed a;
-    keith::ui::AnalyzerFeed b;
-    a.Reset(sr);
-    b.Reset(sr);
+    // Now the output stops. Both keep the same wall-clock hold, so at the same elapsed time
+    // they must still agree.
     for (int i = 0; i < 8192; ++i)
     {
-      a.PushFrame(0.3f, 0.3f);
-      b.PushFrame(0.3f, 0.3f);
+      fast.PushFrame(0.f, 0.f);
+      slow.PushFrame(0.f, 0.f);
     }
-    a.NoteOn();
-    for (int f = 0; f < 150; ++f)
-      a.Snapshot(2, 1.0 / 60.0);
-    b.NoteOn();
-    for (int f = 0; f < 38; ++f)
-      b.Snapshot(2, 1.0 / 15.0);
-    Expect(!a.Armed() && !b.Armed(), "analyzer_trigger_releases_after_the_hold");
+    for (int f = 0; f < 12; ++f)   // 0.2 s at 60 fps
+      fast.Snapshot(2, 1.0 / 60.0);
+    for (int f = 0; f < 3; ++f)    // 0.2 s at 15 fps
+      slow.Snapshot(2, 1.0 / 15.0);
+    Expect(fast.Active() == slow.Active(), "analyzer_hold_is_frame_rate_independent");
+    Expect(fast.Active(), "analyzer_hold_covers_a_short_gap");
+
+    // After well past the hold, both must have gone idle.
+    for (int f = 0; f < 120; ++f)
+      fast.Snapshot(2, 1.0 / 60.0);
+    for (int f = 0; f < 30; ++f)
+      slow.Snapshot(2, 1.0 / 15.0);
+    Expect(!fast.Active() && !slow.Active(), "analyzer_hold_releases_when_the_output_stops");
   }
 
   std::printf("\nsynth_offline_test: %d passed, %d failed (total %d)\n", gPass, gFail, gPass + gFail);

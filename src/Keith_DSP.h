@@ -336,12 +336,6 @@ public:
   {
     const IMidiMsg::EStatusMsg status = msg.StatusMsg();
     const bool noteMessage = status == IMidiMsg::kNoteOn || status == IMidiMsg::kNoteOff;
-    const bool realNoteOn = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
-
-    // The analyzer's trigger tap. Every note-on arms the display, whether the note goes to
-    // a drum slot or a synth voice, so the panel responds to what is actually played.
-    if (realNoteOn)
-      mAnalyzer.NoteOn();
 
     // An audible kit owns MIDI 36-51. A kit at -inf does not, so those notes
     // reach the synth. Existing presets keep an audible kit, so this is a no-op for them.

@@ -7,9 +7,10 @@
  *   WATERFALL  - the last kWaterfallRows spectra, newest at the bottom
  *   CURVE      - one filled trace with peak-hold dots riding it
  *
- * It moves on note-on, not continuously: the footer reads TRIG IDLE / -inf dB until a note
- * arrives, then TRIG ARMED and the measured peak. The feed arms for a fixed number of
- * frames so a short percussive hit stays visible between frames.
+ * It follows the output level rather than note events, so anything that makes sound lights
+ * it -- host MIDI, the plugin's own on-screen keyboard, the QWERTY keys, a drum pad. The
+ * footer reads SILENT / -inf dB while the output is quiet, then LIVE and the measured peak.
+ * A short hit is held briefly so it does not vanish between two repaints.
  *
  * The view index is held on the control, not as a host parameter. It is a display
  * preference, not something a saved patch should carry, and a parameter would need a
@@ -45,7 +46,7 @@ public:
     mLastDraw = now;
 
     mFeed.Snapshot(mView, dt);
-    const bool armed = mFeed.Armed();
+    const bool active = mFeed.Active();
 
     const float pad = 7.f;
     const IRECT title(mRECT.L + pad, mRECT.T + 5.f, mRECT.R - pad, mRECT.T + 26.f);
@@ -62,7 +63,7 @@ public:
     DrawPager(g);
     DrawPlot(g);
     DrawAxis(g);
-    DrawFooter(g, armed, foot);
+    DrawFooter(g, active, foot);
   }
 
   void OnMouseDown(float x, float y, const IMouseMod& mod) override
@@ -162,7 +163,7 @@ private:
       g.DrawLine(kLine.WithOpacity(0.55f), mPlot.L, y, mPlot.R, y, nullptr, 1.f);
     }
 
-    if (!mFeed.Armed())
+    if (!mFeed.Active())
     {
       DrawIdle(g);
       return;
@@ -263,19 +264,19 @@ private:
     }
   }
 
-  void DrawFooter(IGraphics& g, bool armed, const IRECT& foot)
+  void DrawFooter(IGraphics& g, bool active, const IRECT& foot)
   {
     g.FillRect(kPanelAlt, foot);
     const IRECT row(foot.L + 10.f, foot.T, foot.R - 10.f, foot.B);
-    g.DrawText(Mono(9.f, kPaper), "NOTE-ON", row);
+    g.DrawText(Mono(9.f, kPaper), "OUTPUT", row);
     const IRECT state(row.L + 78.f, row.T, row.R - 62.f, row.B);
-    if (!armed)
+    if (!active)
     {
-      g.DrawText(Mono(9.f, kPaper), "TRIG IDLE", state);
+      g.DrawText(Mono(9.f, kPaper), "SILENT", state);
       g.DrawText(MonoBold(9.f, kPaper, EAlign::Far), "-inf dB", row);
       return;
     }
-    g.DrawText(MonoBold(9.f, kHotPink), "TRIG ARMED", state);
+    g.DrawText(MonoBold(9.f, kHotPink), "LIVE", state);
     WDL_String peak;
     peak.SetFormatted(24, "%.1f dB", static_cast<double>(mFeed.PeakDb()));
     g.DrawText(MonoBold(9.f, kPaper, EAlign::Far), peak.Get(), row);

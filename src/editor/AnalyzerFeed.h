@@ -120,9 +120,13 @@ public:
   static constexpr double kLowHz = 40.0;
   static constexpr double kHighHz = 16000.0;
   static constexpr float kFloorDisplayDb = -120.f;
-  /** How long the display stays armed after a note-on, in seconds. Wall-clock, not frames:
-   *  a frame count would make the hold depend on the editor's redraw rate. */
-  static constexpr double kArmSeconds = 1.6;
+  /** How long the display holds after the signal drops, in seconds. Wall-clock, not frames:
+   *  a frame count would make the hold depend on the editor's redraw rate. Without a hold a
+   *  short percussive hit would vanish between two repaints. */
+  static constexpr double kHoldSeconds = 0.6;
+  /** The level the output has to exceed to count as signal. -60 dBFS is well below anything
+   *  audible and well above the idle noise floor. */
+  static constexpr float kActivityDb = -60.f;
   /** Waterfall rows are advanced on this cadence so the history covers real time rather
    *  than one row per repaint. */
   static constexpr double kWaterfallRowSeconds = 0.045;
@@ -137,7 +141,7 @@ public:
     mWrite = 0;
     mFilled = 0;
     mTriggerCounter = 0;
-    mArmedUntil = 0.0;
+    mActiveUntil = 0.0;
     mPeakDb = -120.f;
     mStarted = false;
     mWaterfallDue = 0.0;
@@ -164,7 +168,8 @@ public:
       ++mFilled;
   }
 
-  /** MIDI thread / audio thread. Stamps the arm time so the UI can hold the display. */
+  /** MIDI thread / audio thread. Counts note-ons for diagnostics. The display itself
+   *  follows the output level, so this is not on the trigger path. */
   void NoteOn() noexcept
   {
     if (mTriggerCounter < 1000000)
@@ -303,12 +308,17 @@ public:
       std::memcpy(mWaterfall[0], mSmoothed, sizeof(mSmoothed));
     }
 
-    // Arm on a note-on for a fixed wall-clock hold.
-    if (mTriggerSeen != mTriggerCounter)
-    {
-      mTriggerSeen = mTriggerCounter;
-      mArmedUntil = mNow + kArmSeconds;
-    }
+    // Activity follows the output itself, not note events.
+    //
+    // This used to arm on NoteOn(). That only works when MIDI reaches the plugin, and the
+    // editor's own on-screen keyboard and QWERTY keys paint their state without ever
+    // sending MIDI to the delegate -- so playing them left the panel dark. Watching the
+    // output level needs no event path at all: whatever makes sound lights the panel,
+    // whether that came from the host, the plugin's keyboard, or a drum pad.
+    if (peak > kActivityDb)
+      mActiveUntil = mNow + kHoldSeconds;
+
+    mTriggerSeen = mTriggerCounter;
   }
 
   /** FFT magnitude-squared to dB, normalised by the window's coherent gain. */
@@ -321,7 +331,9 @@ public:
     return static_cast<float>(20.0 * std::log10(norm));
   }
 
-  bool Armed() const { return mNow < mArmedUntil; }
+  /** True while the output has been above kActivityDb recently. The panel draws its
+   *  spectrum while active and its idle MAGS face while not. */
+  bool Active() const { return mNow < mActiveUntil; }
   float PeakDb() const { return mPeakDb; }
   const float* Smoothed() const { return mSmoothed; }
   const float* WaterfallRow(int row) const { return mWaterfall[row]; }
@@ -350,7 +362,7 @@ private:
 
   unsigned mTriggerCounter = 0;
   unsigned mTriggerSeen = 0;
-  double mArmedUntil = 0.0;
+  double mActiveUntil = 0.0;
   double mNow = 0.0;
   double mWaterfallDue = 0.0;
 };
