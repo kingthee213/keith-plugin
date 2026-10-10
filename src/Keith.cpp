@@ -2144,6 +2144,14 @@ void Keith::OnIdle()
 #if IPLUG_DSP
 void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
+  // PAD MIDI is editor-only state rather than a parameter, so it is handed to the DSP each
+  // block instead of being read from the parameter list.
+  mDSP.SetPadMidi(mPadMidiEnabled.load());
+  // A pad clicked in the editor is played at the start of this block.
+  float padVelocity = 1.f;
+  const int padSlot = TakePendingDrumPad(padVelocity);
+  if (padSlot >= 0)
+    mDSP.TriggerPad(padSlot, padVelocity);
   mDSP.ProcessBlock(outputs, 2, nFrames);
 }
 

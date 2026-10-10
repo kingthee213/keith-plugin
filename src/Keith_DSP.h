@@ -252,6 +252,18 @@ public:
   void SetInsert2Params(const InsertParams& p) { mInsert2.SetParams(p); }
   void SetMasterFxParams(const MasterParams& p) { mMasterFx.SetParams(p); }
   void SetOutLevel(double linear) { mOutLevel.SetLinear(static_cast<T>(linear)); }
+  /** PAD MIDI. Pushed in by Keith before each block so the audio thread does not have to
+   *  reach back into the plugin. See Keith::PadMidiEnabled(). */
+  void SetPadMidi(bool on) { mPadMidi = on; }
+
+  /** Fire a pad now, from the editor. Played at the very start of the next block, so a
+   *  clicked pad sounds immediately rather than at whatever offset the host happens to be
+   *  at. Velocity is 0..1. */
+  void TriggerPad(int slot, float velocity)
+  {
+    QueueDrumEvent(0, slot, velocity);
+  }
+
   void SetDrumParams(const keith::drums::KitParams& p)
   {
     mDrumParams = p;
@@ -329,7 +341,7 @@ public:
     // kit is audible. PAD MIDI off means those notes fall through to the synth instead. A
     // kit at -inf also falls through, which is what existing presets rely on.
     if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber())
-        && mPadMidiEnabled.load() && mDrums.Audible())
+        && mPadMidi && mDrums.Audible())
     {
       if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
         QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
@@ -340,7 +352,7 @@ public:
     // PAD MIDI on: the pads own the drum range exclusively. Anything outside 36-51 does not
     // reach them, and a note in range that the pads did not take does not fall through to the
     // synth either -- "only plays what aligns with the drum pad".
-    if (noteMessage && mPadMidiEnabled.load() && keith::drums::IsDrumNote(msg.NoteNumber()))
+    if (noteMessage && mPadMidi && keith::drums::IsDrumNote(msg.NoteNumber()))
       return;
 
     if (status == IMidiMsg::kControlChange)
@@ -482,6 +494,8 @@ private:
   keith::synth::RuntimeMod mRuntime {};
   KeithPerformance mPerf {};
   keith::drums::KitParams mDrumParams = keith::drums::DefaultKitParams();
+  /** Set from Keith::ProcessBlock; see SetPadMidi. */
+  bool mPadMidi = true;
   keith::drums::Engine mDrums;
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   int mNumDrumEvents = 0;

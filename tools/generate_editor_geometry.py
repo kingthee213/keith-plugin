@@ -92,11 +92,11 @@ _PANELS_REF = {
     "kPanelGlobal": (744, 724, 1066, 996),
     "kPanelFx": (1080, 724, 1496, 1000),
     "kLeftRail": (0, 0, 246, 1024),
-    # The wordmark sits on the plaque in the rail artwork, which runs x 33..183 in the 184 px
-    # rail asset. compose_face pastes that asset 1:1, so asset px are design px and the
-    # plaque's centre is 108. The box was centred on the rail itself (92), which left the
-    # wordmark 15 px left of centre. These are reference units; _r() scales by 0.75.
-    "kWordmarkBox": (71, 29, 217, 117),
+    # The wordmark sits in the dark field to the right of the wood rail, vertically centred
+    # and nudged right of the field's middle per the owner's direction. The box is tall enough
+    # for the two words at the larger size set in compose_face.draw_wordmark, which draws them
+    # into the finished 2x face so the glyphs stay crisp.
+    "kWordmarkBox": (57, 23, 244, 223),
     # The keyboard runs from the vintage panel's left edge to the right-hand wood frame, so
     # it starts where the bottom band starts and stops before the frame, which is 30 px of
     # the canvas (usable right edge 1122 -> reference 1496).
@@ -130,7 +130,7 @@ LABELS = {
     27: ("RES", "knob", 1836), 28: ("ENV", "knob", 1836), 29: ("ATT", "knob", 1836),
     30: ("DEC", "knob", 1836), 31: ("SUS", "knob", 1836), 32: ("REL", "knob", 1836),
     33: ("PATK", "knob", 1836), 34: ("PDEC", "knob", 1836), 35: ("PSUS", "knob", 1836),
-    36: ("PREL", "knob", 1836), 37: ("PAMT", "knob", 1836), 38: ("SYN", "knob", 1836),
+    36: ("PREL", "knob", 1836), 37: ("PAMT", "knob", 1836), 38: ("MASTER", "knob", 1836),
     39: ("FATT", "knob", 1836), 40: ("FDEC", "knob", 1836), 41: ("FSUS", "knob", 1836),
     42: ("FREL", "knob", 1836), 43: ("SYNC", "tab", 2448), 44: ("RING", "tab", 2448),
     45: ("KEY", "knob", 1836), 46: ("COMP", "knob", 2448), 47: ("RATE", "knob", 2448),
@@ -524,7 +524,7 @@ for p in (0, 11, 12):
     x += kw_g + ROW_GAP
 knob_y = gb - PAD - KNOB_H
 drop_w = _rf(64)
-bottom = [13, 38, 52]
+bottom = [13, 52]
 bw = (inner - drop_w - ROW_GAP - (len(bottom) - 1) * ROW_GAP) / len(bottom)
 x = gl + PAD
 for p in bottom:
@@ -534,9 +534,16 @@ rects[51] = box(x, knob_y, x + drop_w, knob_y + DROPDOWN_H)
 
 # Left rail
 lr_l, _lr_t, lr_r, _lr_b = PANELS["kLeftRail"]
-# The wood rail carries the wordmark and the MIDI hints. Every control that used to live
-# here -- the tape trims, BYPASS, Direct Level and Filter Key Curve -- now sits in a panel,
-# so nothing on the rail is interactive.
+# The rail carries the master output level, the MIDI hints, and nothing else interactive.
+# MASTER is deliberately larger than a panel knob -- it is the one control on the rail and
+# the last thing in the signal path, so it should read as the biggest.
+MASTER_H = KNOB_H * 1.35
+MASTER_W = MASTER_H * 0.8
+master_cx = (lr_l + lr_r) / 2
+master_y = _r(330)
+rects[38] = box(master_cx - MASTER_W / 2, master_y,
+                master_cx + MASTER_W / 2, master_y + MASTER_H)
+
 place_overlay("midi_hint1", lr_l + PAD, _r(944), lr_r - PAD, _r(962))
 place_overlay("midi_hint2", lr_l + PAD, _r(962), lr_r - PAD, _r(980))
 

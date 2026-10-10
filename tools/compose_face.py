@@ -17,16 +17,16 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 GEOM = ROOT / "src" / "editor" / "EditorGeometry.h"
 ASSETS = ROOT / "resources" / "reference"
 OUT = ROOT / "resources" / "images" / "chassis.png"
 FONT_HEAD = ROOT / "resources" / "fonts" / "Oswald-Bold.ttf"
-# MAGS is set in blackletter (UnifrakturCook, OFL 1.1). SYNTH stays a bold grotesque:
-# blackletter for both words is too heavy to read at this size.
-FONT_OLDE = ROOT / "resources" / "fonts" / "UnifrakturCook-Bold.ttf"
+# MAGS is set in blackletter (Pirata One, OFL 1.1) -- chosen for legibility at this size,
+# where the more ornate faces tangle. SYNTH stays a bold grotesque beneath it.
+FONT_OLDE = ROOT / "resources" / "fonts" / "PirataOne-Regular.ttf"
 
 # The wordmark plaque in the rail asset. Measured from the artwork: the plaque's straight
 # edges run wider than the lettering, and the fill colour is sampled from its own corner.
@@ -55,6 +55,10 @@ PANELS = {
 }
 
 KEYBOARD_KEY = "kKeyboardBox"
+WORDMARK_KEY = "kWordmarkBox"
+# The plugin's accent, from KeithTheme.h:kHotPink. The wordmark uses the same value so the
+# painted face and the live controls agree on what the brand colour is.
+HOT_PINK = (255, 79, 163)
 BORDER = (6, 7, 9)
 
 
@@ -93,40 +97,61 @@ def clear_plaque(rail):
     return out
 
 
-def draw_wordmark(canvas, box):
+def draw_wordmark(canvas, box, scale=1):
     """Paint MAGS in pink blackletter and SYNTH in the white grotesque, centred in the box.
 
-    Both words are fitted to the box width independently, so neither can overflow the rail.
+    `box` is in the canvas's own pixel coordinates and `scale` is how many output pixels make
+    one design pixel, so the glyph sizes below are expressed in design units and multiplied
+    up. Both words are fitted to the box width independently, so neither can overflow it.
     """
     if not box:
         return
     x0, y0, x1, y1 = (int(v) for v in box)
     draw = ImageDraw.Draw(canvas)
-    max_w = (x1 - x0) - 4
+    max_w = (x1 - x0) - 4 * scale
 
-    mags_px = 44
+    # Start generous and shrink only until each word fits, so the words are as large as the
+    # box allows rather than pinned to a fixed ceiling.
+    mags_px = 64 * scale
     f_olde = ImageFont.truetype(str(FONT_OLDE), mags_px)
-    while mags_px > 12 and draw.textlength("MAGS", font=f_olde) > max_w:
+    while mags_px > 12 * scale and draw.textlength("MAGS", font=f_olde) > max_w:
         mags_px -= 1
         f_olde = ImageFont.truetype(str(FONT_OLDE), mags_px)
 
-    synth_px = 30
+    synth_px = 52 * scale
     f_synth = ImageFont.truetype(str(FONT_HEAD), synth_px)
-    while synth_px > 10 and draw.textlength("SYNTH", font=f_synth) > max_w:
+    while synth_px > 10 * scale and draw.textlength("SYNTH", font=f_synth) > max_w:
         synth_px -= 1
         f_synth = ImageFont.truetype(str(FONT_HEAD), synth_px)
 
-    def centred(text, font, top, colour):
+    def centred(text, font, top, colour, x_override=None):
         wpx = draw.textlength(text, font=font)
-        x = x0 + ((x1 - x0) - wpx) / 2
+        x = x_override if x_override is not None else x0 + ((x1 - x0) - wpx) / 2
         draw.text((x, top), text, font=font, fill=colour)
 
-    # MAGS occupies the upper share of the box, SYNTH the lower.
-    h = y1 - y0
-    mags_top = y0 + int(h * 0.04)
-    synth_top = y0 + int(h * 0.58)
-    centred("MAGS", f_olde, mags_top, (232, 79, 163))
-    centred("SYNTH", f_synth, synth_top, (236, 228, 208))
+    # Centre the two words as a block inside the box, using each word's INK bounds rather
+    # than the font's line box. A line box carries ascender and descender padding that
+    # differs between the blackletter face and the grotesque, so centring on it dropped the
+    # pair below the middle of the plaque.
+    def ink_box(font, text):
+        return draw.textbbox((0, 0), text, font=font)
+
+    gap = 4 * scale
+    mags_l, mags_t, mags_r, mags_b = ink_box(f_olde, "MAGS")
+    synth_l, synth_t, synth_r, synth_b = ink_box(f_synth, "SYNTH")
+    mags_h = mags_b - mags_t
+    synth_h = synth_b - synth_t
+    mags_w = mags_r - mags_l
+    synth_w = synth_r - synth_l
+    block_h = mags_h + gap + synth_h
+    top = y0 + ((y1 - y0) - block_h) // 2
+
+    mags_x = x0 + ((x1 - x0) - mags_w) / 2
+    synth_x = x0 + ((x1 - x0) - synth_w) / 2
+    # Flat lettering, matching the reference: MAGS in pink, SYNTH in paper white beneath it.
+    centred("MAGS", f_olde, top - mags_t, HOT_PINK, x_override=mags_x - mags_l)
+    centred("SYNTH", f_synth, top + mags_h + gap - synth_t, (235, 227, 207),
+            x_override=synth_x)
 
 
 def main():
@@ -152,7 +177,9 @@ def main():
     # in the white grotesque. Filling the plaque is what removes the old one.
     rail = clear_plaque(rail)
     canvas.paste(rail, (0, 0))
-    draw_wordmark(canvas, boxes.get("kWordmarkBox"))
+    # The wordmark is NOT drawn here. It is drawn after the upscale, so its glyphs are
+    # rendered at full output resolution instead of being painted at 1x and then interpolated
+    # up -- that interpolation is what made the letters look soft and pixelated.
 
     top = Image.open(ASSETS / "wood-frame-top.png").convert("RGB")
     canvas.paste(top, (0, 0))
@@ -172,6 +199,11 @@ def main():
     if canvas.size != DESIGN:
         raise SystemExit(f"composition is {canvas.size}, expected {DESIGN}")
     face = canvas.resize((DESIGN[0] * SCALE, DESIGN[1] * SCALE), Image.LANCZOS)
+    # Wordmark last, at output resolution. Text drawn into the 1x canvas and then scaled up
+    # comes out soft; drawing it here keeps the glyph edges crisp.
+    wm_box = boxes.get(WORDMARK_KEY)
+    if wm_box:
+        draw_wordmark(face, tuple(v * SCALE for v in wm_box), scale=SCALE)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     face.save(OUT, optimize=True)
     print(f"wrote {OUT} {face.size[0]}x{face.size[1]} {OUT.stat().st_size / 1e6:.1f} MB")

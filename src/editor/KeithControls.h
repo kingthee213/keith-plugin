@@ -750,6 +750,10 @@ public:
       if (cell.Contains(x, y))
       {
         SetValueFromUserInput(static_cast<double>(i) / 15., 0);
+        // Play it. The editor cannot touch the DSP's drum queue directly, so the slot goes
+        // through the plugin and is fired at the start of the next block.
+        if (auto* plugin = dynamic_cast<Keith*>(GetDelegate()))
+          plugin->TriggerDrumPad(i, 1.f);
         return;
       }
     }

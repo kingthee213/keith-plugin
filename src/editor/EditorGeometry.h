@@ -39,7 +39,7 @@ constexpr Box kPanelVintage {192.0f, 543.0f, 548.0f, 747.0f};
 constexpr Box kPanelGlobal {558.0f, 543.0f, 800.0f, 747.0f};
 constexpr Box kPanelFx {810.0f, 543.0f, 1122.0f, 750.0f};
 constexpr Box kLeftRail {0.0f, 0.0f, 184.0f, 768.0f};
-constexpr Box kWordmarkBox {53.0f, 22.0f, 163.0f, 88.0f};
+constexpr Box kWordmarkBox {43.0f, 17.0f, 183.0f, 167.0f};
 constexpr const char* kLabelAbbreviations[] = {
   "A1",
   "A2",
@@ -89,6 +89,7 @@ constexpr const char* kLabelAbbreviations[] = {
   "M1",
   "M2",
   "MA",
+  "MASTER",
   "MB",
   "MC",
   "MIX",
@@ -126,7 +127,6 @@ constexpr const char* kLabelAbbreviations[] = {
   "SUB",
   "SUS",
   "SWID",
-  "SYN",
   "SYNC",
   "TONE",
   "TUN",
@@ -196,7 +196,7 @@ inline constexpr ControlRect kControlRects[] = {
   {10, {692.0f, 582.5f, 734.0f, 621.5f}, "POLY", 8.2f, 2448, ControlKind::Dropdown},
   {11, {611.7f, 574.5f, 641.3f, 629.5f}, "GLIDE", 8.2f, 3060, ControlKind::Knob},
   {12, {651.8f, 574.5f, 681.5f, 629.5f}, "UNI", 8.2f, 1836, ControlKind::Knob},
-  {13, {571.5f, 678.5f, 616.7f, 733.5f}, "DET", 8.2f, 1836, ControlKind::Knob},
+  {13, {571.5f, 678.5f, 644.5f, 733.5f}, "DET", 8.2f, 1836, ControlKind::Knob},
   {14, {201.5f, 70.5f, 243.4f, 125.5f}, "SHP", 8.2f, 1836, ControlKind::Knob},
   {15, {253.9f, 70.5f, 295.8f, 125.5f}, "TUN", 8.2f, 2448, ControlKind::Knob},
   {16, {201.5f, 136.0f, 243.4f, 191.0f}, "LVL", 8.2f, 1836, ControlKind::Knob},
@@ -221,7 +221,7 @@ inline constexpr ControlRect kControlRects[] = {
   {35, {589.5f, 399.0f, 644.5f, 454.0f}, "PSUS", 8.2f, 1836, ControlKind::Knob},
   {36, {458.5f, 464.5f, 513.5f, 519.5f}, "PREL", 8.2f, 1836, ControlKind::Knob},
   {37, {524.0f, 464.5f, 579.0f, 519.5f}, "PAMT", 8.2f, 1836, ControlKind::Knob},
-  {38, {627.2f, 678.5f, 672.3f, 733.5f}, "SYN", 8.2f, 1836, ControlKind::Knob},
+  {38, {62.3f, 248.0f, 121.7f, 322.2f}, "MASTER", 8.2f, 1836, ControlKind::Knob},
   {39, {559.5f, 191.0f, 615.8f, 246.0f}, "FATT", 8.2f, 1836, ControlKind::Knob},
   {40, {626.2f, 191.0f, 682.5f, 246.0f}, "FDEC", 8.2f, 1836, ControlKind::Knob},
   {41, {559.5f, 256.5f, 615.8f, 311.5f}, "FSUS", 8.2f, 1836, ControlKind::Knob},
@@ -235,7 +235,7 @@ inline constexpr ControlRect kControlRects[] = {
   {49, {874.6f, 123.7f, 916.5f, 150.7f}, "DST", 8.2f, 1836, ControlKind::Dropdown},
   {50, {769.9f, 109.7f, 811.8f, 164.7f}, "DEP", 8.2f, 1836, ControlKind::Knob},
   {51, {738.5f, 678.5f, 786.5f, 717.5f}, "MWD", 8.2f, 1836, ControlKind::Dropdown},
-  {52, {682.8f, 678.5f, 728.0f, 733.5f}, "MWA", 8.2f, 1836, ControlKind::Knob},
+  {52, {655.0f, 678.5f, 728.0f, 733.5f}, "MWA", 8.2f, 1836, ControlKind::Knob},
   {53, {435.5f, 229.1f, 477.2f, 284.1f}, "VEL", 8.2f, 1836, ControlKind::Knob},
   {54, {487.8f, 229.1f, 529.5f, 284.1f}, "FILT", 8.2f, 1836, ControlKind::Knob},
   {55, {744.5f, 582.5f, 786.5f, 621.5f}, "LEG", 8.2f, 1836, ControlKind::Dropdown},

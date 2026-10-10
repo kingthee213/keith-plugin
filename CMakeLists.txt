@@ -70,7 +70,7 @@ iplug_add_plugin(${PROJECT_NAME}
     resources/images/chassis.png
     resources/fonts/Bangers-Regular.ttf
     resources/fonts/Oswald-Bold.ttf
-    resources/fonts/UnifrakturCook-Bold.ttf
+    resources/fonts/PirataOne-Regular.ttf
     resources/fonts/SpaceMono-Regular.ttf
     resources/fonts/SpaceMono-Bold.ttf
   UI IGRAPHICS
@@ -86,7 +86,7 @@ iplug_add_plugin(${PROJECT_NAME}
 set(KEITH_FONT_RESOURCES
   fonts/Bangers-Regular.ttf
   fonts/Oswald-Bold.ttf
-  fonts/UnifrakturCook-Bold.ttf
+  fonts/PirataOne-Regular.ttf
   fonts/SpaceMono-Regular.ttf
   fonts/SpaceMono-Bold.ttf)
 set(KEITH_IMAGE_RESOURCES

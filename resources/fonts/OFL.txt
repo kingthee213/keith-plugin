@@ -5,8 +5,8 @@ This license is copied below, and is also available with a FAQ at:
 http://scripts.sil.org/OFL
 
 
-UnifrakturCook-Bold.ttf
-Copyright 2010 The Unifraktur Project (https://github.com/Unifraktur/unifrakturcook)
+PirataOne-Regular.ttf
+Copyright 2012 The Pirata One Project Authors (https://github.com/googlefonts/pirataone)
 SIL Open Font License, Version 1.1 (the licence text below applies).
 Used for the MAGS wordmark only.
 

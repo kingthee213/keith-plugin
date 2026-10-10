@@ -217,6 +217,27 @@ public:
    */
   bool PadMidiEnabled() const { return mPadMidiEnabled.load(); }
   void SetPadMidiEnabled(bool on) { mPadMidiEnabled.store(on); }
+
+  /**
+   * Fire a drum pad from the editor, and move the selected slot to it.
+   *
+   * The editor cannot reach the DSP's drum queue -- it lives on the audio thread -- so it
+   * records the slot and velocity here and Keith::ProcessBlock hands them over. A slot of -1
+   * means nothing is pending.
+   */
+  void TriggerDrumPad(int slot, float velocity)
+  {
+    mPendingPadVelocity.store(velocity);
+    mPendingPadSlot.store(slot);        // written last: the DSP reads this to decide
+  }
+
+  int TakePendingDrumPad(float& velocity)
+  {
+    const int slot = mPendingPadSlot.exchange(-1);
+    if (slot >= 0)
+      velocity = mPendingPadVelocity.load();
+    return slot;
+  }
   bool DrumSlotMuted(int slot) const
   {
     return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
@@ -267,5 +288,8 @@ private:
   std::atomic<int> mSelectedDrumSlot {0};
   /** PAD MIDI. Not serialised -- see PadMidiEnabled(). */
   std::atomic<bool> mPadMidiEnabled {true};
+  /** A pad fired from the editor, handed to the DSP on the next block. -1 = nothing. */
+  std::atomic<int> mPendingPadSlot {-1};
+  std::atomic<float> mPendingPadVelocity {1.f};
   std::atomic<bool> mDrumUiDirty {false};
 };

@@ -35,9 +35,9 @@ GEOM = ROOT / "src" / "editor" / "EditorGeometry.h"
 OUT = ROOT / "resources" / "images" / "chassis.png"
 FONT_HEAD = ROOT / "resources" / "fonts" / "Oswald-Bold.ttf"
 FONT_SPRAY = ROOT / "resources" / "fonts" / "Bangers-Regular.ttf"
-# The MAGS wordmark is set in blackletter (UnifrakturCook, OFL 1.1). SYNTH stays a bold
+# The MAGS wordmark is set in blackletter (Pirata One, OFL 1.1). SYNTH stays a bold
 # grotesque -- blackletter for the whole thing is too heavy to read at this size.
-FONT_OLDE = ROOT / "resources" / "fonts" / "UnifrakturCook-Bold.ttf"
+FONT_OLDE = ROOT / "resources" / "fonts" / "PirataOne-Regular.ttf"
 
 SCALE = 3
 W, H = 1280 * SCALE, 800 * SCALE
