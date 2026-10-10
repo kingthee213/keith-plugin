@@ -264,6 +264,18 @@ public:
     QueueDrumEvent(0, slot, velocity);
   }
 
+  /**
+   * How many times a pad has been hit since the plugin started.
+   *
+   * The editor polls this to light a pad for a moment after it sounds. Counting hits rather
+   * than exposing a "busy" flag means the editor can see EVERY hit -- a pad struck twice in
+   * quick succession flashes twice -- and it needs no lock or timer on the audio thread.
+   */
+  uint64_t PadHitCount(int slot) const
+  {
+    return (slot >= 0 && slot < keith::drums::kNumSlots) ? mPadHits[slot].load() : 0;
+  }
+
   void SetDrumParams(const keith::drums::KitParams& p)
   {
     mDrumParams = p;
@@ -298,7 +310,11 @@ public:
     {
       while (drumEvent < mNumDrumEvents && mDrumEvents[drumEvent].offset <= s)
       {
-        mDrums.Trigger(mDrumEvents[drumEvent].slot, mDrumEvents[drumEvent].velocity);
+        const int slot = mDrumEvents[drumEvent].slot;
+        mDrums.Trigger(slot, mDrumEvents[drumEvent].velocity);
+        // Record the hit so the editor can flash the pad. The pad lights for every trigger,
+        // whether it came from MIDI or from a click in the editor.
+        RecordPadHit(slot);
         ++drumEvent;
       }
 
@@ -404,6 +420,13 @@ private:
     ++mNumDrumEvents;
   }
 
+  /** Note that a pad sounded, so the editor can flash it. Called from the audio thread. */
+  void RecordPadHit(int slot)
+  {
+    if (slot >= 0 && slot < keith::drums::kNumSlots)
+      mPadHits[slot].fetch_add(1, std::memory_order_relaxed);
+  }
+
   void RetainFutureDrumEvents(int nFrames, int consumed)
   {
     int write = 0;
@@ -505,6 +528,8 @@ private:
   keith::drums::Engine mDrums;
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   int mNumDrumEvents = 0;
+  /** Hits per pad since load. The editor diffs this to flash a pad; see PadHitCount(). */
+  std::atomic<uint64_t> mPadHits[keith::drums::kNumSlots] {};
   keith::fx::InsertEffect<T> mInsert1;
   keith::fx::InsertEffect<T> mInsert2;
   keith::fx::TapeAnalog<T> mGlobalTape;

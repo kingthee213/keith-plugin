@@ -2138,6 +2138,25 @@ void Keith::OnIdle()
       pGraphics->SetAllControlsDirty();
     }
   }
+
+  // Drum pad flashes. A pad lights when it sounds -- from MIDI or from a click -- and the
+  // flash fades, so the pads are repainted while any of them is still lit. The hit counters
+  // live on the audio thread; comparing them here is what tells the editor a pad just fired.
+  // When nothing has fired for the length of the fade, the repaints stop and the UI idles.
+  for (int i = 0; i < keith::drums::kNumSlots; ++i)
+  {
+    const uint64_t hits = mDSP.PadHitCount(i);
+    if (hits != mLastPadHits[i])
+    {
+      mLastPadHits[i] = hits;
+      mPadFlashFrames = kPadFlashFrames;
+    }
+  }
+  if (mPadFlashFrames > 0)
+  {
+    pGraphics->SetAllControlsDirty();
+    --mPadFlashFrames;
+  }
 }
 #endif
 

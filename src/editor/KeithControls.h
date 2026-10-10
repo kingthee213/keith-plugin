@@ -697,6 +697,8 @@ public:
   KeithPadGridControl(const IRECT& bounds, int selectParam)
   : IControl(bounds, selectParam)
   {
+    for (int i = 0; i < 16; ++i)
+      mSeenHits[i] = 0;
   }
 
   void Draw(IGraphics& g) override
@@ -706,6 +708,23 @@ public:
     const int selected = std::clamp(static_cast<int>(std::lround(GetValue(0) * 15.)), 0, 15);
     const auto* plugin = dynamic_cast<const Keith*>(GetDelegate());
 
+    // Poll the hit counters. A pad whose count moved since the last frame starts (or
+    // restarts) its flash. A running total is used rather than a flag so a pad struck twice
+    // quickly flashes on both hits instead of appearing to stay lit.
+    float flash[16];
+    for (int i = 0; i < 16; ++i)
+    {
+      const uint64_t hits = plugin ? plugin->DrumPadHitCount(i) : 0;
+      if (hits != mSeenHits[i])
+      {
+        mSeenHits[i] = hits;
+        mFlash[i] = 1.f;
+      }
+      // Decay over roughly a fifth of a second at 60 fps.
+      mFlash[i] = std::max(0.f, mFlash[i] - 0.09f);
+      flash[i] = mFlash[i];
+    }
+
     for (int i = 0; i < 16; ++i)
     {
       const int col = i % 4;
@@ -714,6 +733,7 @@ public:
       const bool muted = plugin && plugin->DrumSlotMuted(i);
       const bool soloed = plugin && plugin->DrumSlotSoloed(i);
       const bool active = i == selected;
+      const bool hit = flash[i] > 0.f;
 
       IColor fill = kPanelAlt;
       if (muted)
@@ -722,16 +742,25 @@ public:
         fill = kGold;
       if (active)
         fill = kGreen;
+      // A hit lights the pad even when it is not the selected slot, so MIDI play is visible.
+      // The flash is a highlight layer drawn over the pad rather than a recomputed fill, so
+      // the pad's own state (muted, soloed, selected) still reads through it. This uses only
+      // IColor construction and opacity, the two colour operations the rest of the editor
+      // already relies on.
       g.FillRect(fill, cell);
-      g.DrawRect(active ? kPaper : kLine, cell, nullptr, active ? 4.f : 3.f);
+      if (hit)
+        g.FillRect(kInk.WithOpacity(0.55f * flash[i]), cell);
+      const bool outlined = active || hit;
+      g.DrawRect(outlined ? kPaper : kLine, cell, nullptr, outlined ? 4.f : 3.f);
 
       const IRECT nameBounds(cell.L, cell.T + 2.f, cell.R, cell.MH() + 2.f);
       const IRECT noteBounds(cell.L, cell.MH() + 2.f, cell.R, cell.B - 2.f);
-      const IColor ink = (active || soloed) ? kInk : kPaper;
+      const IColor ink = (active || soloed || hit) ? kInk : kPaper;
 
       g.DrawText(MonoBold(12.f, ink, EAlign::Center),
                  DrumSlotNames()[i], nameBounds);
-      g.DrawText(Mono(10.f, active ? kInk : kCyan, EAlign::Center), DrumNoteNames()[i], noteBounds);
+      g.DrawText(Mono(10.f, (active || hit) ? kInk : kCyan, EAlign::Center),
+                 DrumNoteNames()[i], noteBounds);
       if (muted)
         g.DrawText(MonoBold(10.f, kPaper, EAlign::Near), "M", cell.GetPadded(-5.f));
       if (soloed)
@@ -739,7 +768,13 @@ public:
     }
   }
 
-  void OnMouseDown(float x, float y, const IMouseMod&) override
+private:
+  /** Last hit count seen per pad, and the current flash brightness. */
+  uint64_t mSeenHits[16] {};
+  float mFlash[16] {};
+
+  /** Fire the pad under the cursor and make it the selected slot. */
+  bool ClickPad(float x, float y)
   {
     const float gap = 4.f;
     for (int i = 0; i < 16; ++i)
@@ -751,13 +786,29 @@ public:
       {
         SetValueFromUserInput(static_cast<double>(i) / 15., 0);
         // Play it. The editor cannot touch the DSP's drum queue directly, so the slot goes
-        // through the plugin and is fired at the start of the next block.
+        // through the plugin and is fired at the start of the next block. The flash comes
+        // from the hit counter rather than being set here, so a click and a MIDI note light
+        // the pad the same way.
         if (auto* plugin = dynamic_cast<Keith*>(GetDelegate()))
           plugin->TriggerDrumPad(i, 1.f);
-        return;
+        return true;
       }
     }
+    return false;
   }
+
+public:
+  void OnMouseDown(float x, float y, const IMouseMod&) override { ClickPad(x, y); }
+
+  /**
+   * A double click plays the pad, exactly like a single click.
+   *
+   * Without this, the base class treats the second click as "reset to default" -- the
+   * behaviour knobs have -- and since every pad shares one selection parameter, the highlight
+   * jumped back to the first pad. There is no default to restore here: a pad is a trigger,
+   * not a value.
+   */
+  void OnMouseDblClick(float x, float y, const IMouseMod&) override { ClickPad(x, y); }
 };
 
 } // namespace ui

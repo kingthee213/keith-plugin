@@ -238,6 +238,15 @@ public:
       velocity = mPendingPadVelocity.load();
     return slot;
   }
+
+  /**
+   * Hits on a drum pad since the plugin loaded, for the editor to flash the pad.
+   *
+   * A running count rather than a flag: the editor keeps the last value it saw and lights the
+   * pad when it changes, so a pad struck twice in quick succession flashes twice. Reading it
+   * needs no lock, and the pad does not have to be the selected slot to light up.
+   */
+  uint64_t DrumPadHitCount(int slot) const { return mDSP.PadHitCount(slot); }
   bool DrumSlotMuted(int slot) const
   {
     return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
@@ -291,5 +300,13 @@ private:
   /** A pad fired from the editor, handed to the DSP on the next block. -1 = nothing. */
   std::atomic<int> mPendingPadSlot {-1};
   std::atomic<float> mPendingPadVelocity {1.f};
+  /**
+   * Drum pad flash bookkeeping. The editor polls the DSP's hit counters and repaints for
+   * this many UI frames after a hit, so the lit pad fades instead of staying lit. At the
+   * usual 30 fps idle this is about a fifth of a second.
+   */
+  static constexpr int kPadFlashFrames = 7;
+  uint64_t mLastPadHits[keith::drums::kNumSlots] {};
+  int mPadFlashFrames = 0;
   std::atomic<bool> mDrumUiDirty {false};
 };
