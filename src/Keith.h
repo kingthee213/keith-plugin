@@ -235,12 +235,6 @@ public:
   void OnReset() override;
   void OnParamChange(int paramIdx) override;
 
-#if IPLUG_EDITOR
-  /** The analyzer control reads the spectrum through this. It lives in the DSP so the
-   *  audio thread is the only writer; see src/editor/AnalyzerFeed.h for the contract. */
-  keith::ui::AnalyzerFeed& Analyzer() { return mDSP.Analyzer(); }
-#endif
-
 private:
   void SyncTapeParams();
   void SyncSynthParams();

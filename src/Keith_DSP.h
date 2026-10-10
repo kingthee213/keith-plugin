@@ -3,7 +3,6 @@
 #include "MidiSynth.h"
 #include "Smoothers.h"
 #include "drums/DrumSynth.h"
-#include "editor/AnalyzerFeed.h"
 #include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
@@ -208,7 +207,6 @@ public:
     mDrums.Reset(sampleRate);
     mDrums.SetParams(mDrumParams);
     mNumDrumEvents = 0;
-    mAnalyzer.Reset(sampleRate);
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
     mSynth.Reset();
     mModulationsData.Resize(blockSize * kNumKeithModulations);
@@ -316,16 +314,6 @@ public:
       outputs[0][s] *= gain;
       if (nOutputs > 1)
         outputs[1][s] *= gain;
-    }
-
-    // Post-gain, post-everything: the analyzer shows what actually leaves the plugin.
-    // This is the only audio-thread cost -- two float writes per frame. The transform runs
-    // on the UI thread inside the control's Draw, never here.
-    for (int s = 0; s < nFrames; ++s)
-    {
-      mAnalyzer.PushFrame(static_cast<float>(outputs[0][s]),
-                          nOutputs > 1 ? static_cast<float>(outputs[1][s])
-                                       : static_cast<float>(outputs[0][s]));
     }
 
     mPerf.batchOpen = false;
@@ -487,12 +475,6 @@ private:
   KeithPerformance mPerf {};
   keith::drums::KitParams mDrumParams = keith::drums::DefaultKitParams();
   keith::drums::Engine mDrums;
-  keith::ui::AnalyzerFeed mAnalyzer;
-
-public:
-  keith::ui::AnalyzerFeed& Analyzer() { return mAnalyzer; }
-
-private:
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   int mNumDrumEvents = 0;
   keith::fx::InsertEffect<T> mInsert1;

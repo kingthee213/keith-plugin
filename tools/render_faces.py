@@ -35,6 +35,9 @@ GEOM = ROOT / "src" / "editor" / "EditorGeometry.h"
 OUT = ROOT / "resources" / "images" / "chassis.png"
 FONT_HEAD = ROOT / "resources" / "fonts" / "Oswald-Bold.ttf"
 FONT_SPRAY = ROOT / "resources" / "fonts" / "Bangers-Regular.ttf"
+# The MAGS wordmark is set in blackletter (UnifrakturCook, OFL 1.1). SYNTH stays a bold
+# grotesque -- blackletter for the whole thing is too heavy to read at this size.
+FONT_OLDE = ROOT / "resources" / "fonts" / "UnifrakturCook-Bold.ttf"
 
 SCALE = 3
 W, H = 1280 * SCALE, 800 * SCALE
@@ -51,8 +54,6 @@ PANEL_FILL = {
     "charcoal": (46, 54, 62),
     "teal": (52, 104, 108),
     "olive": (116, 112, 62),
-    # the analyzer's well: near black, so a spectrum trace reads against it
-    "well": (12, 16, 20),
 }
 JITTER = 0.6
 
@@ -461,7 +462,7 @@ def main() -> None:
     global WOOD, WOOD_LIGHT, WOOD_DARK, MAGENTA, INK
     rng = random.Random(20261008)
     boxes = parse_boxes(GEOM)
-    missing = [k for k in ("kPanelOsc", "kPanelAnalyzer", "kWordmarkBox", "kPanelFx") if k not in boxes]
+    missing = [k for k in ("kPanelOsc", "kPanelAmpMods", "kWordmarkBox", "kPanelFx") if k not in boxes]
     if missing:
         raise SystemExit(f"EditorGeometry.h is missing {missing}")
 
@@ -486,7 +487,7 @@ def main() -> None:
     styles = [
         ("kPanelOsc", "charcoal", "OSCILLATORS"), ("kPanelFilter", "teal", "FILTER"),
         ("kPanelAmp", "charcoal", "AMP"), ("kPanelLfo", "charcoal", "LFO"),
-        ("kPanelMod", "charcoal", "MOD MATRIX"), ("kPanelAnalyzer", "well", "SPECTRAL ANALYZER"),
+        ("kPanelMod", "charcoal", "MOD MATRIX"),
         ("kPanelAmpMods", "charcoal", "AMP MODIFIERS"),
         ("kPanelSample", "charcoal", "LOADED SOUNDS"), ("kPanelPads", "charcoal", "DRUM PADS"),
         ("kPanelVintage", "olive", "VINTAGE ANALOG"), ("kPanelGlobal", "charcoal", "GLOBAL"),

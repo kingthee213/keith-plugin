@@ -38,8 +38,7 @@ def param_id_to_name(header_text):
 
 def main():
     receipt = json.loads((IMAGES / 'physical-layout.json').read_text())
-    # 1152x768 design canvas x2 for hi-dpi. The analyzer replaced the city plate, so this
-    # is the composed panel grid and the wood furniture, no hero artwork.
+    # 1152x768 design canvas x2 for hi-dpi: the composed panel grid and the wood furniture.
     assert png_size(IMAGES / 'chassis.png') == (2304, 1536)
     # Read the placements from the geometry the generator emits, not from ControlLayout.h.
     # ControlLayout.h used to carry `{kParamX, "source", ...}` rows; the current generator

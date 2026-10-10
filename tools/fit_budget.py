@@ -98,7 +98,7 @@ def main():
 
     panel_boxes = {name: box for name, box in panels.items() if name.startswith("kPanel")}
     name_for = {f"kPanel{key}": key for key in
-                ("Osc", "Filter", "Amp", "Lfo", "Mod", "Analyzer", "AmpMods", "Sample", "Pads",
+                ("Osc", "Filter", "Amp", "Lfo", "Mod", "AmpMods", "Sample", "Pads",
                  "Vintage", "Global", "Fx")}
 
     grouped = {name: [] for name in panel_boxes}
@@ -106,9 +106,9 @@ def main():
     for item in items:
         cx = (item["rect"][0] + item["rect"][2]) / 2
         cy = (item["rect"][1] + item["rect"][3]) / 2
-        # Smallest containing panel wins. Some panels overlap by design (the analyzer and
-        # AMP MODIFIERS abut), so first-match would file a control under the wrong parent
-        # and report a density for a panel that does not own it.
+        # Smallest containing panel wins. Panels can abut, and first-match would file a
+        # control under the wrong parent and report a density for a panel that does not
+        # own it.
         home = None
         home_area = None
         for name, (l, t, r, b) in panel_boxes.items():

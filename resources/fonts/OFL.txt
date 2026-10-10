@@ -5,6 +5,12 @@ This license is copied below, and is also available with a FAQ at:
 http://scripts.sil.org/OFL
 
 
+UnifrakturCook-Bold.ttf
+Copyright 2010 The Unifraktur Project (https://github.com/Unifraktur/unifrakturcook)
+SIL Open Font License, Version 1.1 (the licence text below applies).
+Used for the MAGS wordmark only.
+
+
 -----------------------------------------------------------
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
 -----------------------------------------------------------

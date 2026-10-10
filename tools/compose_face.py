@@ -24,6 +24,13 @@ GEOM = ROOT / "src" / "editor" / "EditorGeometry.h"
 ASSETS = ROOT / "resources" / "reference"
 OUT = ROOT / "resources" / "images" / "chassis.png"
 FONT_HEAD = ROOT / "resources" / "fonts" / "Oswald-Bold.ttf"
+# MAGS is set in blackletter (UnifrakturCook, OFL 1.1). SYNTH stays a bold grotesque:
+# blackletter for both words is too heavy to read at this size.
+FONT_OLDE = ROOT / "resources" / "fonts" / "UnifrakturCook-Bold.ttf"
+
+# The wordmark plaque in the rail asset. Measured from the artwork: the plaque's straight
+# edges run wider than the lettering, and the fill colour is sampled from its own corner.
+PLAQUE = (33, 15, 183, 166)
 
 DESIGN = (1152, 768)
 SCALE = 2
@@ -39,7 +46,6 @@ PANELS = {
     "kPanelAmp": ("AMP", (13, 28, 34)),
     "kPanelLfo": ("LFO", (4, 11, 14)),
     "kPanelMod": ("MOD MATRIX", (11, 29, 36)),
-    "kPanelAnalyzer": ("SPECTRAL ANALYZER", (7, 20, 26)),
     "kPanelAmpMods": ("AMP MODIFIERS", (9, 24, 30)),
     "kPanelSample": ("LOADED SOUNDS", (9, 24, 30)),
     "kPanelPads": ("DRUM PADS", (11, 22, 26)),
@@ -74,6 +80,55 @@ def title(draw, box, text):
     draw.text((box[0] + TITLE_PAD_X, box[1] + TITLE_PAD_Y), spaced, fill=TITLE_INK, font=font)
 
 
+def clear_plaque(rail):
+    """Blank the wordmark plaque in the rail so the wordmark can be redrawn.
+
+    The rail asset ships MAGS SYNTH as artwork in the old spray face. Filling the plaque
+    with its own background colour removes it without touching the wood around it.
+    """
+    l, t, r, b = PLAQUE
+    fill = rail.getpixel((l + 1, b - 1))
+    out = rail.copy()
+    out.paste(Image.new("RGB", (r - l + 1, b - t + 1), fill), (l, t))
+    return out
+
+
+def draw_wordmark(canvas, box):
+    """Paint MAGS in pink blackletter and SYNTH in the white grotesque, centred in the box.
+
+    Both words are fitted to the box width independently, so neither can overflow the rail.
+    """
+    if not box:
+        return
+    x0, y0, x1, y1 = (int(v) for v in box)
+    draw = ImageDraw.Draw(canvas)
+    max_w = (x1 - x0) - 4
+
+    mags_px = 44
+    f_olde = ImageFont.truetype(str(FONT_OLDE), mags_px)
+    while mags_px > 12 and draw.textlength("MAGS", font=f_olde) > max_w:
+        mags_px -= 1
+        f_olde = ImageFont.truetype(str(FONT_OLDE), mags_px)
+
+    synth_px = 30
+    f_synth = ImageFont.truetype(str(FONT_HEAD), synth_px)
+    while synth_px > 10 and draw.textlength("SYNTH", font=f_synth) > max_w:
+        synth_px -= 1
+        f_synth = ImageFont.truetype(str(FONT_HEAD), synth_px)
+
+    def centred(text, font, top, colour):
+        wpx = draw.textlength(text, font=font)
+        x = x0 + ((x1 - x0) - wpx) / 2
+        draw.text((x, top), text, font=font, fill=colour)
+
+    # MAGS occupies the upper share of the box, SYNTH the lower.
+    h = y1 - y0
+    mags_top = y0 + int(h * 0.04)
+    synth_top = y0 + int(h * 0.58)
+    centred("MAGS", f_olde, mags_top, (232, 79, 163))
+    centred("SYNTH", f_synth, synth_top, (236, 228, 208))
+
+
 def main():
     boxes = parse_boxes()
     canvas = Image.new("RGB", DESIGN, CANVAS_BG)
@@ -87,16 +142,17 @@ def main():
         draw.rectangle(box, fill=fill, outline=BORDER, width=2)
         title(draw, box, name)
 
-    # The analyzer replaced the city plate. Its well is painted by the panel loop below,
-    # since it now has an entry in PANELS; nothing extra to paste.
-    vintage = boxes.get("kPanelVintage")
-    if vintage:
-        rig = Image.open(ASSETS / "vintage-rig.png").convert("RGB")
-        slot = (int(vintage[0]) + 6, int(vintage[1]) + 44)
-        canvas.paste(rig, slot)
+    # VINTAGE ANALOG MODELING carries no illustration. The vintage-rig plate used to be
+    # pasted here, but the panel now holds nine knobs -- the engine tab and the six tape
+    # controls moved up from the wood rail -- and the plate was taking the width they need.
 
     rail = Image.open(ASSETS / "left-column.png").convert("RGB")
+    # The rail asset ships the wordmark as artwork, in the spray face. Clear it so the
+    # wordmark can be redrawn below in the current faces -- MAGS in pink blackletter, SYNTH
+    # in the white grotesque. Filling the plaque is what removes the old one.
+    rail = clear_plaque(rail)
     canvas.paste(rail, (0, 0))
+    draw_wordmark(canvas, boxes.get("kWordmarkBox"))
 
     top = Image.open(ASSETS / "wood-frame-top.png").convert("RGB")
     canvas.paste(top, (0, 0))
