@@ -400,7 +400,9 @@ for slot, (src, dst, amt) in enumerate([(89, 90, 91), (92, 93, 94), (95, 96, 97)
     ky = y + (slot_h - KNOB_H) / 2
     rects[amt] = box(mr - PAD - mod_col, ky, mr - PAD, ky + KNOB_H)
 
-# SAMPLE — 3×2 knobs (value-sized width); MUT/SOL tabs share the preset row on the right.
+# SAMPLE — 3×2 knobs, and the mute/solo tabs sit up in the title band on the right so the
+# preset menu gets the full panel width. They used to share the menu's row, which left the
+# menu 123 px wide and cramped; it is 234 px now.
 sl, st, sr, sb = PANELS["kPanelSample"]
 inner_w = sr - sl - 2 * PAD
 sample_knobs = [33, 34, 35, 36, 37, 84]
@@ -408,6 +410,15 @@ kw3 = shared_knob_width(sample_knobs, inner_w - 2 * ROW_GAP, 3)
 tab_w82 = min_control_width(82)
 tab_w83 = min_control_width(83)
 tabs_total = tab_w82 + ROW_GAP + tab_w83
+
+# Mute/solo live in the title band, right-aligned, vertically centred on it.
+title_band_h = TITLE_BAND
+tab_h_ui = TAB_H
+tab_y = st + (title_band_h - tab_h_ui) / 2
+tab_x = sr - PAD - tabs_total
+rects[82] = box(tab_x, tab_y, tab_x + tab_w82, tab_y + tab_h_ui)
+rects[83] = box(tab_x + tab_w82 + ROW_GAP, tab_y, tab_x + tabs_total, tab_y + tab_h_ui)
+
 preset_h = _rf(36)
 y_knob_row2 = sb - PAD - KNOB_H
 y_knob_row1 = y_knob_row2 - ROW_GAP - KNOB_H
@@ -415,12 +426,8 @@ y_preset = y_knob_row1 - ROW_GAP - preset_h
 y0 = content_top(st)
 wave_h = max(0.0, y_preset - y0 - ROW_GAP)
 place_overlay("sample_waveform", sl + PAD, y0, sr - PAD, y0 + wave_h)
-preset_w = max(MIN_W, inner_w - tabs_total - ROW_GAP)
-place_overlay("preset_menu", sl + PAD, y_preset, sl + PAD + preset_w, y_preset + preset_h)
-tab_y = y_preset + (preset_h - TAB_H) / 2
-tab_x = sr - PAD - tabs_total
-rects[82] = box(tab_x, tab_y, tab_x + tab_w82, tab_y + TAB_H)
-rects[83] = box(tab_x + tab_w82 + ROW_GAP, tab_y, tab_x + tabs_total, tab_y + TAB_H)
+# The menu takes the whole inner width now.
+place_overlay("preset_menu", sl + PAD, y_preset, sr - PAD, y_preset + preset_h)
 for i, param in enumerate(sample_knobs):
     row, col = divmod(i, 3)
     y = y_knob_row1 if row == 0 else y_knob_row2
@@ -600,13 +607,18 @@ def panel_for_rect(r):
     return None
 
 
+# Controls that are deliberately drawn in a panel's title band, on the right, rather than
+# below it. LOADED SOUNDS puts its mute and solo tabs up there so the preset menu can use the
+# full panel width. Anything listed here is exempt from the title-band rule.
+TITLE_BAND_TABS = {82, 83}
+
 for p, r in rects.items():
     if r[2] > CANVAS[2] or r[3] > CANVAS[3] or r[0] < 0 or r[1] < 0:
         raise SystemExit(f"param {p} out of canvas: {r}")
     for pname, pb in panel_boxes.items():
         if overlaps(r, pb):
             band = title_band(pname)
-            if overlaps(r, band):
+            if overlaps(r, band) and p not in TITLE_BAND_TABS:
                 raise SystemExit(f"param {p} overlaps title band in {pname}: {r} vs {band}")
 
 kb = PANELS["kKeyboardBox"]

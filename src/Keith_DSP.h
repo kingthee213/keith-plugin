@@ -337,23 +337,29 @@ public:
     const IMidiMsg::EStatusMsg status = msg.StatusMsg();
     const bool noteMessage = status == IMidiMsg::kNoteOn || status == IMidiMsg::kNoteOff;
 
-    // Drum range (36-51) goes to the pads when all of these hold: PAD MIDI is on, and the
-    // kit is audible. PAD MIDI off means those notes fall through to the synth instead. A
-    // kit at -inf also falls through, which is what existing presets rely on.
-    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber())
-        && mPadMidi && mDrums.Audible())
+    // PAD MIDI ON: the pads are the only thing that plays. Notes in the drum range trigger
+    // them; every other note is swallowed rather than falling through to the synth. That is
+    // the point of the switch -- with it on, only what lines up with a pad makes a sound.
+    if (mPadMidi)
     {
+      if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
+      {
+        if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
+          QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
+                         static_cast<float>(msg.Velocity()) / 127.f);
+      }
+      if (noteMessage)
+        return;
+    }
+    else if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
+    {
+      // PAD MIDI OFF, audible kit: the drum range still plays the pads, as it always has.
+      // Existing presets rely on this -- an audible kit owns 36-51.
       if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
         QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
                        static_cast<float>(msg.Velocity()) / 127.f);
       return;
     }
-
-    // PAD MIDI on: the pads own the drum range exclusively. Anything outside 36-51 does not
-    // reach them, and a note in range that the pads did not take does not fall through to the
-    // synth either -- "only plays what aligns with the drum pad".
-    if (noteMessage && mPadMidi && keith::drums::IsDrumNote(msg.NoteNumber()))
-      return;
 
     if (status == IMidiMsg::kControlChange)
     {

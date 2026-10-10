@@ -172,7 +172,7 @@ inline constexpr OverlayRect kOverlayRects[] = {
   {"osc1_waveform", {201.5f, 49.5f, 295.8f, 60.0f}},
   {"osc2_waveform", {306.2f, 49.5f, 400.5f, 60.0f}},
   {"pad_midi_switch", {948.9f, 495.0f, 1108.5f, 519.5f}},
-  {"preset_menu", {458.5f, 361.5f, 581.5f, 388.5f}},
+  {"preset_menu", {458.5f, 361.5f, 665.5f, 388.5f}},
   {"sample_waveform", {458.5f, 343.0f, 665.5f, 351.0f}},
 };
 constexpr int kNumOverlayRects = static_cast<int>(sizeof(kOverlayRects) / sizeof(OverlayRect));
@@ -262,8 +262,8 @@ inline constexpr ControlRect kControlRects[] = {
   {79, {948.9f, 419.0f, 995.1f, 474.0f}, "DEC", 8.2f, 1836, ControlKind::Knob},
   {80, {1005.6f, 419.0f, 1051.8f, 474.0f}, "FLT", 8.2f, 1836, ControlKind::Knob},
   {81, {1062.3f, 419.0f, 1108.5f, 474.0f}, "DRV", 8.2f, 1836, ControlKind::Knob},
-  {82, {592.0f, 364.5f, 623.5f, 385.5f}, "MUT", 8.2f, 1836, ControlKind::Tab},
-  {83, {634.0f, 364.5f, 665.5f, 385.5f}, "SOL", 8.2f, 1836, ControlKind::Tab},
+  {82, {592.0f, 322.0f, 623.5f, 343.0f}, "MUT", 8.2f, 1836, ControlKind::Tab},
+  {83, {634.0f, 322.0f, 665.5f, 343.0f}, "SOL", 8.2f, 1836, ControlKind::Tab},
   {84, {589.5f, 464.5f, 644.5f, 519.5f}, "KIT", 8.2f, 1836, ControlKind::Knob},
   {85, {717.5f, 217.3f, 759.4f, 272.3f}, "RT", 8.2f, 1224, ControlKind::Knob},
   {86, {822.2f, 231.3f, 864.1f, 258.3f}, "SHP", 8.2f, 1836, ControlKind::Dropdown},
