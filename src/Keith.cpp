@@ -2057,8 +2057,9 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamDrumSlotDrive)->InitDouble("Drum Slot Drive", 0., 0., 100., 0.1, "%");
   GetParam(kParamDrumSlotMute)->InitBool("Drum Slot Mute", false);
   GetParam(kParamDrumSlotSolo)->InitBool("Drum Slot Solo", false);
-  GetParam(kParamDrumKitLevel)->InitDouble("Drum Kit Level", 0., -60., 6., 0.01, "dB");
-  GetParam(kParamDrumKitLevel)->SetDisplayText(-60., "-inf");
+  GetParam(kParamDrumKitLevel)->InitDouble("Drum Kit Level", -60., -60., 6., 0.01, "dB");
+  GetParam(kParamDrumKitLevel)->SetDisplayText(-60., "-- OFF");
+  GetParam(kParamDrumKitLevel)->SetDisplayText(0., "0 dB");
 
   // U15. Off sources, Off destinations and zero amounts make every new route inert.
   GetParam(kParamMod1Source)->InitEnum(
