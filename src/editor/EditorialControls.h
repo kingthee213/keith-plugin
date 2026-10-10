@@ -137,7 +137,8 @@ public:
     g.FillTriangle(kHotPink, menu.R - 13.f, menu.MH() - 2.f, menu.R - 5.f, menu.MH() - 2.f,
                     menu.R - 9.f, menu.MH() + 3.f);
 
-    const bool bypassed = plugin && plugin->GetParam(mBypassParam)->Int() > 0;
+    const IParam* bypassParam = plugin ? plugin->GetParam(mBypassParam) : nullptr;
+    const bool bypassed = bypassParam && bypassParam->Int() > 0;
     g.FillRect(bypassed ? kMuteRed.WithOpacity(0.65f) : kGreen, bypass);
     g.DrawRect(kLine, bypass, nullptr, 1.f);
     g.DrawText(MonoBold(9, kInk, EAlign::Center), bypassed ? "BYP" : "ACT", bypass);
@@ -150,8 +151,11 @@ public:
       auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
       if (!plugin)
         return;
-      const int bypassed = plugin->GetParam(mBypassParam)->Int();
-      plugin->GetParam(mBypassParam)->SetNormalized(bypassed > 0 ? 0.0 : 1.0);
+      IParam* bypass = plugin->GetParam(mBypassParam);
+      if (!bypass)
+        return;
+      const int bypassed = bypass->Int();
+      bypass->SetNormalized(bypassed > 0 ? 0.0 : 1.0);
       SetDirty(false);
       return;
     }
@@ -291,8 +295,14 @@ public:
     synth::Oscillator osc;
     osc.SetSampleRate(48000);
     osc.Reset();
+    // GetParam returns null if the index is out of range. This control is attached twice and
+    // draws on every repaint, so an unguarded deref here takes the host down rather than
+    // just mis-drawing.
+    const IParam* pwParam = GetParam(1);
+    if (!pwParam)
+      return;
     const float shape = static_cast<float>(GetValue(0));
-    const float pw = static_cast<float>(GetParam(1)->Value() / 100.);
+    const float pw = static_cast<float>(pwParam->Value() / 100.);
     g.FillRect(kInk, mRECT);
     g.DrawRect(kLine, mRECT, nullptr, 1.f);
     g.DrawLine(kPaper.WithOpacity(0.15f), mRECT.L, mRECT.MH(), mRECT.R, mRECT.MH(), nullptr, 1);

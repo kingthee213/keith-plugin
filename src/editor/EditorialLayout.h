@@ -14,7 +14,15 @@ inline IRECT CRect(int param)
 inline IRECT OverlayIRECT(const char* id)
 {
   const OverlayRect* overlay = OverlayFor(id);
-  assert(overlay);
+  // A missing overlay used to be an assert followed by a null deref. asserts compile out in
+  // release, so this became a silent segfault the moment the editor was built -- which is
+  // what took a host down. A missing id is a programming error that must never deref, so
+  // fall back to a zero rect and make the failure visible.
+  if (!overlay)
+  {
+    assert(false && "OverlayIRECT: no such overlay id");
+    return IRECT(0.f, 0.f, 0.f, 0.f);
+  }
   return IRECT(overlay->rect.l, overlay->rect.t, overlay->rect.r, overlay->rect.b);
 }
 
@@ -177,7 +185,10 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamTapeHiss, "HISS", kMagenta);
   freeKnob(kParamTapePrint, "PRINT", kMagenta);
   freeKnob(kParamTapeMix, "MIX", kPaper);
-  g->AttachControl(new KeithTextControl(OverlayIRECT("bypass_label"), "BYPASS", MonoBold(11, kPaper)));
+  // BYPASS itself moved into VINTAGE ANALOG MODELING, and its rail label went with it. The
+  // KeithTextControl that used to sit here looked up the "bypass_label" overlay, which no
+  // longer exists -- a null deref at editor build. The label is now drawn by the vintage
+  // panel's own switch row.
   tabs(kParamTapeBypass, {"ACTIVE", "BYPASS"});
   freeKnob(kParamOutLevel, "OUT", kMagenta, true);
   freeKnob(kParamDirectLevel, ControlFor(kParamDirectLevel).label, kGreen, true);
