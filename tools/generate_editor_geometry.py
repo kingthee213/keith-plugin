@@ -70,8 +70,11 @@ _PANELS_REF = {
     "kPanelAmp": (728, 24, 928, 416),
     "kPanelLfo": (938, 24, 1240, 416),
     "kPanelMod": (1250, 24, 1500, 416),
-    "kPanelArt": (258, 430, 808, 732),
-    "kPanelAmpMods": (734, 432, 980, 646),
+    "kPanelAnalyzer": (258, 430, 808, 732),
+    # AMP MODIFIERS takes the column between the analyzer and LOADED SOUNDS, full height
+    # of the analyzer. In reference units: analyzer ends at 808, sample starts at 988, so
+    # the strip runs 816..980 and spans the analyzer's own 430..732.
+    "kPanelAmpMods": (816, 430, 980, 732),
     "kPanelSample": (988, 426, 1256, 700),
     "kPanelPads": (1264, 426, 1500, 736),
     "kPanelVintage": (256, 724, 730, 996),
@@ -262,18 +265,22 @@ for row, params in enumerate(([39, 40], [41, 42])):
         x = al + PAD + i * (kw_amp + ROW_GAP)
         rects[p] = box(x, y, x + kw_amp, y + KNOB_H)
 
-# AMP MODIFIERS — two columns; compact height fits the strip beside the hero.
+# AMP MODIFIERS — eight U17 modifiers in a 2x4, in the tall column the analyzer gives
+# back. Was a 4x2 strip when the panel was 185 wide by 160 tall; the panel is now 123
+# wide by 227 tall, so the grid turns portrait and stays inside the box.
 aml, amt, amr, amb = PANELS["kPanelAmpMods"]
 amp_mods = [101, 102, 103, 104, 105, 106, 107, 108]
-mod_cols = 4
+mod_cols = 2
+mod_rows = 4
 mod_w = shared_knob_width(amp_mods, amr - aml - 2 * PAD, mod_cols)
+mod_h = min(KNOB_H, (amb - amt - TITLE_BAND - 2 * PAD - (mod_rows - 1) * ROW_GAP) / mod_rows)
 row_y0 = content_top(amt) + ROW_GAP
 for i, p in enumerate(amp_mods):
     row = i // mod_cols
     col = i % mod_cols
-    y = row_y0 + row * (KNOB_H + ROW_GAP)
+    y = row_y0 + row * (mod_h + ROW_GAP)
     x = aml + PAD + col * (mod_w + ROW_GAP)
-    rects[p] = box(x, y, x + mod_w, y + KNOB_H)
+    rects[p] = box(x, y, x + mod_w, y + mod_h)
 
 # LFO — one horizontal row per block (label, rate, depth, shape, dest).
 ll, lt, lr, lb = PANELS["kPanelLfo"]

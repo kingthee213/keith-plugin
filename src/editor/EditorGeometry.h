@@ -32,8 +32,8 @@ constexpr Box kPanelFilter {422.0f, 18.0f, 543.0f, 312.0f};
 constexpr Box kPanelAmp {546.0f, 18.0f, 696.0f, 312.0f};
 constexpr Box kPanelLfo {704.0f, 18.0f, 930.0f, 312.0f};
 constexpr Box kPanelMod {938.0f, 18.0f, 1125.0f, 312.0f};
-constexpr Box kPanelArt {194.0f, 322.0f, 606.0f, 549.0f};
-constexpr Box kPanelAmpMods {550.0f, 324.0f, 735.0f, 484.0f};
+constexpr Box kPanelAnalyzer {194.0f, 322.0f, 606.0f, 549.0f};
+constexpr Box kPanelAmpMods {612.0f, 322.0f, 735.0f, 549.0f};
 constexpr Box kPanelSample {741.0f, 320.0f, 942.0f, 525.0f};
 constexpr Box kPanelPads {948.0f, 320.0f, 1125.0f, 552.0f};
 constexpr Box kPanelVintage {192.0f, 543.0f, 548.0f, 747.0f};
@@ -158,7 +158,7 @@ constexpr PanelSpec kPanels[] = {
   {"AMP", kPanelAmp, "panel"},
   {"LFO", kPanelLfo, "panel"},
   {"MOD MATRIX", kPanelMod, "panel"},
-  {"ART", kPanelArt, "panel"},
+  {"SPECTRAL ANALYZER", kPanelAnalyzer, "panel"},
   {"AMP MODIFIERS", kPanelAmpMods, "panel"},
   {"LOADED SOUNDS", kPanelSample, "panel"},
   {"DRUM PADS", kPanelPads, "panel"},
@@ -284,14 +284,14 @@ inline constexpr ControlRect kControlRects[] = {
   {98, {951.5f, 247.1f, 1010.5f, 286.1f}, "S4", 8.2f, 1224, ControlKind::Dropdown},
   {99, {1021.0f, 247.1f, 1080.0f, 286.1f}, "D4", 8.2f, 1224, ControlKind::Dropdown},
   {100, {1080.0f, 247.1f, 1111.5f, 302.1f}, "A4", 8.2f, 1224, ControlKind::Knob},
-  {101, {563.5f, 355.5f, 595.1f, 410.5f}, "NKEY", 8.2f, 1836, ControlKind::Knob},
-  {102, {605.6f, 355.5f, 637.2f, 410.5f}, "AKEY", 8.2f, 1836, ControlKind::Knob},
-  {103, {647.8f, 355.5f, 679.4f, 410.5f}, "ABND", 8.2f, 1836, ControlKind::Knob},
-  {104, {689.9f, 355.5f, 721.5f, 410.5f}, "DKEY", 8.2f, 1836, ControlKind::Knob},
-  {105, {563.5f, 421.0f, 595.1f, 476.0f}, "DBND", 8.2f, 1836, ControlKind::Knob},
-  {106, {605.6f, 421.0f, 637.2f, 476.0f}, "SDLY", 8.2f, 1836, ControlKind::Knob},
-  {107, {647.8f, 421.0f, 679.4f, 476.0f}, "STRK", 8.2f, 1836, ControlKind::Knob},
-  {108, {689.9f, 421.0f, 721.5f, 476.0f}, "SWID", 8.2f, 1836, ControlKind::Knob},
+  {101, {625.5f, 353.5f, 668.2f, 390.4f}, "NKEY", 8.2f, 1836, ControlKind::Knob},
+  {102, {678.8f, 353.5f, 721.5f, 390.4f}, "AKEY", 8.2f, 1836, ControlKind::Knob},
+  {103, {625.5f, 400.9f, 668.2f, 437.8f}, "ABND", 8.2f, 1836, ControlKind::Knob},
+  {104, {678.8f, 400.9f, 721.5f, 437.8f}, "DKEY", 8.2f, 1836, ControlKind::Knob},
+  {105, {625.5f, 448.2f, 668.2f, 485.1f}, "DBND", 8.2f, 1836, ControlKind::Knob},
+  {106, {678.8f, 448.2f, 721.5f, 485.1f}, "SDLY", 8.2f, 1836, ControlKind::Knob},
+  {107, {625.5f, 495.6f, 668.2f, 532.5f}, "STRK", 8.2f, 1836, ControlKind::Knob},
+  {108, {678.8f, 495.6f, 721.5f, 532.5f}, "SWID", 8.2f, 1836, ControlKind::Knob},
   {109, {13.5f, 564.0f, 86.8f, 619.0f}, "DIR", 8.2f, 1836, ControlKind::Knob},
   {110, {97.2f, 564.0f, 170.5f, 619.0f}, "CBND", 8.2f, 1836, ControlKind::Knob},
 };

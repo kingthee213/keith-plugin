@@ -39,6 +39,7 @@ PANELS = {
     "kPanelAmp": ("AMP", (13, 28, 34)),
     "kPanelLfo": ("LFO", (4, 11, 14)),
     "kPanelMod": ("MOD MATRIX", (11, 29, 36)),
+    "kPanelAnalyzer": ("SPECTRAL ANALYZER", (7, 20, 26)),
     "kPanelAmpMods": ("AMP MODIFIERS", (9, 24, 30)),
     "kPanelSample": ("LOADED SOUNDS", (9, 24, 30)),
     "kPanelPads": ("DRUM PADS", (11, 22, 26)),
@@ -86,15 +87,8 @@ def main():
         draw.rectangle(box, fill=fill, outline=BORDER, width=2)
         title(draw, box, name)
 
-    hero = boxes.get("kPanelArt") or (258.0, 430.0, 720.0, 732.0)
-    hero_box = [int(v) for v in hero]
-    city = Image.open(ASSETS / "hero-city.png").convert("RGB")
-    wanted = (hero_box[2] - hero_box[0], hero_box[3] - hero_box[1])
-    if city.size != wanted:
-        city = city.crop((0, 0, min(city.width, wanted[0]), min(city.height, wanted[1])))
-    canvas.paste(city, (hero_box[0], hero_box[1]))
-    frame(canvas, hero_box)
-
+    # The analyzer replaced the city plate. Its well is painted by the panel loop below,
+    # since it now has an entry in PANELS; nothing extra to paste.
     vintage = boxes.get("kPanelVintage")
     if vintage:
         rig = Image.open(ASSETS / "vintage-rig.png").convert("RGB")
