@@ -341,21 +341,86 @@ public:
     mMenu.Clear();
     int count = 0;
     const auto* presets = BakedPresets(count);
-    for (int family = 1; family <= kNumFamilies; ++family)
+
+    // Grouped by kind rather than by family.
+    //
+    // The family grouping was how the original 109 were organised: five emulated machines, each
+    // with its own set. The 160-sound library is organised by what a sound IS -- polys, leads,
+    // pads, strings, FX, reeds, brass -- because that is how a player looks for one. Someone
+    // wanting a pad does not care which machine it came from.
+    //
+    // The order is the brief's order, so the menu reads the way the library was specified.
+    // Anything unlisted lands under its own heading rather than being dropped, so a new category
+    // cannot silently vanish from the menu.
+    static const char* kKindOrder[] = {
+      "poly", "lead", "pad", "strings", "fx", "reeds", "brass", "bass", "kit", "keys",
+    };
+
+    // A preset's kind, taken from the leading word of its category. The existing 109 use
+    // single-word roles ("keys", "pad"); the new library uses a prefixed form ("poly keys",
+    // "lead saw"). The prefix is the reliable signal, and the fallback maps the old one-word
+    // roles onto the new kinds so both sets sit in the same menu.
+    auto kindOf = [](const char* category) -> std::string {
+      const std::string cat = category ? category : "";
+      const std::size_t space = cat.find(' ');
+      const std::string first = (space == std::string::npos) ? cat : cat.substr(0, space);
+      for (const char* kind : kKindOrder)
+        if (first == kind)
+          return first;
+      if (cat == "electric piano" || cat == "clav" || cat == "organ" || cat == "piano")
+        return "keys";
+      if (cat == "choir" || cat == "motion" || cat == "drone" || cat == "pad mm")
+        return "pad";
+      if (cat == "texture")
+        return "fx";
+      if (cat == "arp" || cat == "lead")
+        return "lead";
+      if (cat == "stab" || cat == "pluck" || cat == "bells" || cat == "performance")
+        return "poly";
+      return cat.empty() ? std::string("other") : cat;
+    };
+
+    // Only kinds that actually have presets get a heading, so an empty "Reeds" does not appear
+    // in a build that predates those patches.
+    std::vector<std::string> present;
+    for (int i = 0; i < count; ++i)
+    {
+      const std::string k = kindOf(presets[i].category);
+      if (std::find(present.begin(), present.end(), k) == present.end())
+        present.push_back(k);
+    }
+    std::vector<std::string> ordered;
+    for (const char* kind : kKindOrder)
+      if (std::find(present.begin(), present.end(), kind) != present.end())
+        ordered.push_back(kind);
+    for (const auto& k : present)
+      if (std::find(ordered.begin(), ordered.end(), k) == ordered.end())
+        ordered.push_back(k);
+
+    for (const auto& kind : ordered)
     {
       auto* sub = new IPopupMenu;
+      int inKind = 0;
       for (int i = 0; i < count; ++i)
       {
-        if (presets[i].family != family)
+        if (kindOf(presets[i].category) != kind)
           continue;
         const char* name = std::strstr(presets[i].name, " / ");
         const int flags = i == plugin->GetCurrentPresetIdx() ? IPopupMenu::Item::kChecked : 0;
         sub->AddItem(new IPopupMenu::Item(name ? name + 3 : presets[i].name, flags, i));
+        ++inKind;
       }
-      char label[24];
-      std::snprintf(label, sizeof(label), "Family %02d", family);
+      if (inKind == 0)
+      {
+        delete sub;
+        continue;
+      }
+      // The count in the heading, so a kind's size is visible without opening it.
+      char label[64];
+      std::snprintf(label, sizeof(label), "%s (%d)", kind.c_str(), inKind);
       mMenu.AddItem(label, sub);
     }
+
     GetUI()->CreatePopupMenu(*this, mMenu, mRECT);
   }
   void OnPopupMenuSelection(IPopupMenu* menu, int) override
