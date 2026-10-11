@@ -104,6 +104,13 @@ if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core"
   # Bungee sets this on itself: signed overflow is relied upon to wrap in the grain arithmetic.
   target_compile_options(keith-bungee PRIVATE -fwrapv)
   set_target_properties(keith-bungee PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  # version.cpp is just `const char* versionDescription = BUNGEE_VERSION;` -- Bungee's own CMake
+  # sets the macro on that one file from its version variable. Set here on the whole target,
+  # which is simpler and equivalent: it uses the pinned commit rather than a release number,
+  # which is more accurate for a vendored copy anyway.
+  target_compile_definitions(keith-bungee PRIVATE
+    BUNGEE_VERSION="bungee-052451e")
 else()
   # Not fetched. The plugin builds without warp rather than failing: bootstrap-deps missing a
   # step should not stop the rest of the work.
