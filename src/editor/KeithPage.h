@@ -20,17 +20,10 @@
 // is untouched by anything here.
 
 #include "EditorialControls.h"
+#include "KeithPageId.h"
 
 namespace keith {
 namespace ui {
-
-/** Which page is showing. Only one at a time; None means the normal panel view. */
-enum class KeithPage : int
-{
-  None = 0,
-  Sampler,
-  Wavetable
-};
 
 /**
  * A button that shows or hides a page.
@@ -65,15 +58,15 @@ public:
     // tabs are square-cornered, so this also matches them.
     if (open)
     {
-      g.FillRect(kInk, mWidgetBounds);
-      g.DrawRect(kInk, mWidgetBounds);
-      g.DrawText(MonoBold(9.f, kPaper, EAlign::Center), Label(), mWidgetBounds);
+      g.FillRect(kInk, mRECT);
+      g.DrawRect(kInk, mRECT);
+      g.DrawText(MonoBold(9.f, kPaper, EAlign::Center), Label(), mRECT);
     }
     else
     {
-      g.FillRect(kPanel, mWidgetBounds);
-      g.DrawRect(kPaper, mWidgetBounds);
-      g.DrawText(MonoBold(9.f, kPaper, EAlign::Center), Label(), mWidgetBounds);
+      g.FillRect(kPanel, mRECT);
+      g.DrawRect(kPaper, mRECT);
+      g.DrawText(MonoBold(9.f, kPaper, EAlign::Center), Label(), mRECT);
     }
   }
 
