@@ -61,6 +61,9 @@ iplug_add_plugin(${PROJECT_NAME}
     # translation unit includes is never compiled, so a build would pass while proving nothing
     # about it. This pulls in src/synth/WavetableOsc.h for real.
     tools/wavetable_compilecheck.cpp
+    # The sampler's decoders. This is also the ONE translation unit that defines the dr_libs
+    # implementation macros -- anywhere else and the symbols collide at link time.
+    tools/sampler_compilecheck.cpp
     src/Keith.h
     src/Keith_DSP.h
     src/editor/KeithControls.h
