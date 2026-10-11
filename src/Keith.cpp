@@ -1,5 +1,6 @@
 // Main Keith iPlug2 plugin implementation: factory presets, parameter setup, state I/O, and host callbacks.
 #include "Keith.h"
+#include "KeithGuard.h"
 #include "IPlug_include_in_plug_src.h"
 
 #include <cmath>
@@ -5219,15 +5220,26 @@ int Keith::UnserializeState(const IByteChunk& chunk, int startPos)
 
 void Keith::OnRestoreState()
 {
-  const int selected = std::clamp(GetParam(kParamDrumSlotSelect)->Int() - 1, 0,
-                                  keith::drums::kNumSlots - 1);
-  mSelectedDrumSlot.store(selected);
-  LoadSelectedDrumSlotParams(selected);
+  try
+  {
+    const int selected = std::clamp(GetParam(kParamDrumSlotSelect)->Int() - 1, 0,
+                                    keith::drums::kNumSlots - 1);
+    mSelectedDrumSlot.store(selected);
+    LoadSelectedDrumSlotParams(selected);
 #if IPLUG_DSP
-  mDSP.SetDrumParams(mDrumKit);
+    mDSP.SetDrumParams(mDrumKit);
 #endif
-  mDrumUiDirty.store(true);
-  SendCurrentParamValuesFromDelegate();
+    mDrumUiDirty.store(true);
+    SendCurrentParamValuesFromDelegate();
+  }
+  catch (const std::exception& e)
+  {
+    DBGMSG("Keith: OnRestoreState threw: %s\n", e.what());
+  }
+  catch (...)
+  {
+    DBGMSG("Keith: OnRestoreState threw (unknown)\n");
+  }
 }
 
 void Keith::ResetDrumKitToDefaults()
@@ -5586,62 +5598,73 @@ Keith::Keith(const InstanceInfo& info)
 #if IPLUG_EDITOR
 void Keith::OnIdle()
 {
-  // The deferred sample load, once, on the first idle tick after a reset -- by which point the
-  // host has finished bringing the plugin up, so the resource-path call and the file reads are
-  // both safe.
-  if (mLoadRequested.exchange(false))
+  try
   {
-    LoadDrumKit();
-    LoadPercussionKit();
-    LoadGuitarBank();
-    LoadVocalBank();
-  }
-
-  UpdateDrumUi();
-
-  IGraphics* pGraphics = GetUI();
-
-  if (!pGraphics)
-    return;
-
-  const int current = GetCurrentPresetIdx();
-  if (current != mLastPreset)
-  {
-    mLastPreset = current;
-    pGraphics->SetAllControlsDirty();
-  }
-
-  const int fxAlgo[3] = {
-    GetParam(kParamIns1Algo)->Int(),
-    GetParam(kParamIns2Algo)->Int(),
-    GetParam(kParamMstAlgo)->Int()
-  };
-  for (int i = 0; i < 3; ++i)
-  {
-    if (fxAlgo[i] != mLastFxAlgo[i])
+    // The deferred sample load, once, on the first idle tick after a reset -- by which point the
+    // host has finished bringing the plugin up, so the resource-path call and the file reads are
+    // both safe.
+    if (mLoadRequested.exchange(false))
     {
-      mLastFxAlgo[i] = fxAlgo[i];
+      LoadDrumKit();
+      LoadPercussionKit();
+      LoadGuitarBank();
+      LoadVocalBank();
+    }
+
+    UpdateDrumUi();
+
+    IGraphics* pGraphics = GetUI();
+
+    if (!pGraphics)
+      return;
+
+    const int current = GetCurrentPresetIdx();
+    if (current != mLastPreset)
+    {
+      mLastPreset = current;
       pGraphics->SetAllControlsDirty();
     }
-  }
 
-  // Drum pad flashes. A pad lights when it sounds -- from MIDI or from a click -- and the
-  // flash fades, so the pads are repainted while any of them is still lit. The hit counters
-  // live on the audio thread; comparing them here is what tells the editor a pad just fired.
-  // When nothing has fired for the length of the fade, the repaints stop and the UI idles.
-  for (int i = 0; i < keith::drums::kNumSlots; ++i)
-  {
-    const uint64_t hits = mDSP.PadHitCount(i);
-    if (hits != mLastPadHits[i])
+    const int fxAlgo[3] = {
+      GetParam(kParamIns1Algo)->Int(),
+      GetParam(kParamIns2Algo)->Int(),
+      GetParam(kParamMstAlgo)->Int()
+    };
+    for (int i = 0; i < 3; ++i)
     {
-      mLastPadHits[i] = hits;
-      mPadFlashFrames = kPadFlashFrames;
+      if (fxAlgo[i] != mLastFxAlgo[i])
+      {
+        mLastFxAlgo[i] = fxAlgo[i];
+        pGraphics->SetAllControlsDirty();
+      }
+    }
+
+    // Drum pad flashes. A pad lights when it sounds -- from MIDI or from a click -- and the
+    // flash fades, so the pads are repainted while any of them is still lit. The hit counters
+    // live on the audio thread; comparing them here is what tells the editor a pad just fired.
+    // When nothing has fired for the length of the fade, the repaints stop and the UI idles.
+    for (int i = 0; i < keith::drums::kNumSlots; ++i)
+    {
+      const uint64_t hits = mDSP.PadHitCount(i);
+      if (hits != mLastPadHits[i])
+      {
+        mLastPadHits[i] = hits;
+        mPadFlashFrames = kPadFlashFrames;
+      }
+    }
+    if (mPadFlashFrames > 0)
+    {
+      pGraphics->SetAllControlsDirty();
+      --mPadFlashFrames;
     }
   }
-  if (mPadFlashFrames > 0)
+  catch (const std::exception& e)
   {
-    pGraphics->SetAllControlsDirty();
-    --mPadFlashFrames;
+    DBGMSG("Keith: OnIdle threw: %s\n", e.what());
+  }
+  catch (...)
+  {
+    DBGMSG("Keith: OnIdle threw (unknown)\n");
   }
 }
 #endif
@@ -5649,49 +5672,56 @@ void Keith::OnIdle()
 #if IPLUG_DSP
 void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 {
-  // PAD MIDI is editor-only state rather than a parameter, so it is handed to the DSP each
-  // block instead of being read from the parameter list.
-  mDSP.SetPadMidi(mPadMidiEnabled.load());
-
-  // Which of the two sampler behaviours the keyboard drives. Read once per block and pushed to
-  // the engine, rather than the engine polling a parameter from the audio thread.
-  mSampler.SetMode(GetParam(kParamSampleMode)->Int() == 1
-                     ? keith::sampler::SampleMode::Slice
-                     : keith::sampler::SampleMode::Play);
-
-  // Reverse, read the same way. Applied per trigger, so switching it does not disturb a note
-  // that is already sounding.
-  mSampler.SetReversed(GetParam(kParamSampleReverse)->Int() == 1);
-  SyncSamplerPageParams(*this);
-
-  // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
-  // the musical position.
-  //
-  // These are IPlugProcessor's accessors onto its mTimeInfo member, which the host keeps filled.
-  // Used rather than reading mTimeInfo directly -- they are the supported surface, and reaching
-  // into the member would break if the field moved.
+  try
   {
-    keith::sampler::Transport transport;
-    transport.tempo = GetTempo();
-    transport.ppqPosition = GetPPQPos();
-    transport.running = GetTransportIsRunning();
+    // PAD MIDI is editor-only state rather than a parameter, so it is handed to the DSP each
+    // block instead of being read from the parameter list.
+    mDSP.SetPadMidi(mPadMidiEnabled.load());
 
-    int numerator = 4, denominator = 4;
-    GetTimeSig(numerator, denominator);
-    // Guarded: a host that reports a zero denominator would divide by zero here.
-    transport.beatsPerBar = (denominator > 0)
-                              ? static_cast<int>(4.0 * numerator / denominator)
-                              : 4;
+    // Which of the two sampler behaviours the keyboard drives. Read once per block and pushed to
+    // the engine, rather than the engine polling a parameter from the audio thread.
+    mSampler.SetMode(GetParam(kParamSampleMode)->Int() == 1
+                       ? keith::sampler::SampleMode::Slice
+                       : keith::sampler::SampleMode::Play);
 
-    mSampler.SetTransport(transport);
+    // Reverse, read the same way. Applied per trigger, so switching it does not disturb a note
+    // that is already sounding.
+    mSampler.SetReversed(GetParam(kParamSampleReverse)->Int() == 1);
+    SyncSamplerPageParams(*this);
+
+    // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
+    // the musical position.
+    //
+    // These are IPlugProcessor's accessors onto its mTimeInfo member, which the host keeps filled.
+    // Used rather than reading mTimeInfo directly -- they are the supported surface, and reaching
+    // into the member would break if the field moved.
+    {
+      keith::sampler::Transport transport;
+      transport.tempo = GetTempo();
+      transport.ppqPosition = GetPPQPos();
+      transport.running = GetTransportIsRunning();
+
+      int numerator = 4, denominator = 4;
+      GetTimeSig(numerator, denominator);
+      // Guarded: a host that reports a zero denominator would divide by zero here.
+      transport.beatsPerBar = (denominator > 0)
+                                ? static_cast<int>(4.0 * numerator / denominator)
+                                : 4;
+
+      mSampler.SetTransport(transport);
+    }
+
+    // A pad clicked in the editor is played at the start of this block.
+    float padVelocity = 1.f;
+    const int padSlot = TakePendingDrumPad(padVelocity);
+    if (padSlot >= 0)
+      mDSP.TriggerPad(padSlot, padVelocity);
+    mDSP.ProcessBlock(outputs, 2, nFrames);
   }
-
-  // A pad clicked in the editor is played at the start of this block.
-  float padVelocity = 1.f;
-  const int padSlot = TakePendingDrumPad(padVelocity);
-  if (padSlot >= 0)
-    mDSP.TriggerPad(padSlot, padVelocity);
-  mDSP.ProcessBlock(outputs, 2, nFrames);
+  catch (...)
+  {
+    keith::detail::NoteAudioFailureOnce("ProcessBlock");
+  }
 }
 
 std::string Keith::SampleDir(const char* kind) const
@@ -5862,131 +5892,167 @@ void Keith::LoadPercussionKit()
 
 void Keith::OnReset()
 {
-  mDSP.Reset(GetSampleRate(), GetBlockSize());
+  try
+  {
+    mDSP.Reset(GetSampleRate(), GetBlockSize());
 
-  // The sample content is loaded on the FIRST IDLE TICK, not here. This is the fix for the plugin
-  // crashing on open with "Mags quit unexpectedly".
-  //
-  // OnReset runs while the plugin is still being initialised. Loading a kit calls
-  // BundleResourcePath, which on macOS goes into Cocoa, and calling Cocoa from inside plugin
-  // initialisation is not safe -- the process died rather than reporting a failure. It also reads
-  // several hundred files synchronously, which on its own can make a host time out and mark the
-  // plugin as failed to load.
-  //
-  // Reset clears the engines, so the kit is re-requested here and picked up on that first tick.
-  mLoadRequested.store(true);
-  mLoadedKitIndex = -1;
-  mLoadedGuitarBankIndex = -1;
-  // The sampler needs the host rate so a file at 48 kHz plays at the right speed in a 44.1 kHz
-  // host. It is set here rather than at construction because the rate is not known until now.
-  mSampler.SetSampleRate(GetSampleRate());
-  SyncTapeParams();
-  SyncSynthParams();
-  SyncFxParams();
-  SyncDrumParams();
-  mDSP.SetGain(GetParam(kParamGain)->Value());
+    // The sample content is loaded on the FIRST IDLE TICK, not here. This is the fix for the plugin
+    // crashing on open with "Mags quit unexpectedly".
+    //
+    // OnReset runs while the plugin is still being initialised. Loading a kit calls
+    // BundleResourcePath, which on macOS goes into Cocoa, and calling Cocoa from inside plugin
+    // initialisation is not safe -- the process died rather than reporting a failure. It also reads
+    // several hundred files synchronously, which on its own can make a host time out and mark the
+    // plugin as failed to load.
+    //
+    // Reset clears the engines, so the kit is re-requested here and picked up on that first tick.
+    mLoadRequested.store(true);
+    mLoadedKitIndex = -1;
+    mLoadedGuitarBankIndex = -1;
+    // The sampler needs the host rate so a file at 48 kHz plays at the right speed in a 44.1 kHz
+    // host. It is set here rather than at construction because the rate is not known until now.
+    mSampler.SetSampleRate(GetSampleRate());
+    SyncTapeParams();
+    SyncSynthParams();
+    SyncFxParams();
+    SyncDrumParams();
+    mDSP.SetGain(GetParam(kParamGain)->Value());
+  }
+  catch (const std::exception& e)
+  {
+    DBGMSG("Keith: OnReset threw: %s\n", e.what());
+  }
+  catch (...)
+  {
+    DBGMSG("Keith: OnReset threw (unknown)\n");
+  }
 }
 
 void Keith::ProcessMidiMsg(const IMidiMsg& msg)
 {
-  mDSP.ProcessMidiMsg(msg);
+  try
+  {
+    mDSP.ProcessMidiMsg(msg);
+  }
+  catch (const std::exception& e)
+  {
+    DBGMSG("Keith: ProcessMidiMsg threw: %s\n", e.what());
+  }
+  catch (...)
+  {
+    DBGMSG("Keith: ProcessMidiMsg threw (unknown)\n");
+  }
 }
 
 void Keith::OnParamChange(int paramIdx)
 {
-  if (paramIdx == kParamGain)
+  try
   {
-    mDSP.SetGain(GetParam(kParamGain)->Value());
-    return;
-  }
+    if (paramIdx == kParamGain)
+    {
+      mDSP.SetGain(GetParam(kParamGain)->Value());
+      return;
+    }
 
-  if (paramIdx >= kParamTapeSat && paramIdx <= kParamTapeBypass)
-  {
-    SyncTapeParams();
-    return;
-  }
+    if (paramIdx >= kParamTapeSat && paramIdx <= kParamTapeBypass)
+    {
+      SyncTapeParams();
+      return;
+    }
 
-  if (paramIdx >= kParamIns1Algo && paramIdx <= kParamOutLevel)
-  {
-    SyncFxParams();
-    return;
-  }
+    if (paramIdx >= kParamIns1Algo && paramIdx <= kParamOutLevel)
+    {
+      SyncFxParams();
+      return;
+    }
 
-  if (paramIdx == kParamDrumSlotSelect)
-  {
-    const int slot = std::clamp(GetParam(paramIdx)->Int() - 1, 0,
-                                keith::drums::kNumSlots - 1);
-    LoadSelectedDrumSlotParams(slot);
-    SyncDrumParams();
-    mDrumUiDirty.store(true);
-    return;
-  }
-
-  if (paramIdx >= kParamDrumSlotLevel && paramIdx <= kParamDrumSlotSolo)
-  {
-    StoreSelectedDrumSlotParam(paramIdx);
-    SyncDrumParams();
-    if (paramIdx == kParamDrumSlotMute || paramIdx == kParamDrumSlotSolo)
+    if (paramIdx == kParamDrumSlotSelect)
+    {
+      const int slot = std::clamp(GetParam(paramIdx)->Int() - 1, 0,
+                                  keith::drums::kNumSlots - 1);
+      LoadSelectedDrumSlotParams(slot);
+      SyncDrumParams();
       mDrumUiDirty.store(true);
-    return;
-  }
+      return;
+    }
 
-  if (paramIdx == kParamDrumKitLevel)
+    if (paramIdx >= kParamDrumSlotLevel && paramIdx <= kParamDrumSlotSolo)
+    {
+      StoreSelectedDrumSlotParam(paramIdx);
+      SyncDrumParams();
+      if (paramIdx == kParamDrumSlotMute || paramIdx == kParamDrumSlotSolo)
+        mDrumUiDirty.store(true);
+      return;
+    }
+
+    if (paramIdx == kParamDrumKitLevel)
+    {
+      mDrumKit.levelDb = static_cast<float>(GetParam(paramIdx)->Value());
+      SyncDrumParams();
+      return;
+    }
+
+    if (paramIdx == kParamGuitarBank)
+    {
+      LoadGuitarBank();
+      return;
+    }
+
+    if (paramIdx == kParamVocalEnable)
+    {
+      // The bank is loaded once at reset; this only flips the layer on and off. Loading on every
+      // toggle would re-read 14 files each time the switch moved.
+      mDSP.SetVocalEnabled(GetParam(paramIdx)->Bool());
+      return;
+    }
+
+    if (paramIdx == kParamGuitarLevel)
+    {
+      SyncGuitarLevel();
+      return;
+    }
+
+    if (paramIdx == kParamPercKit)
+    {
+      LoadPercussionKit();
+      return;
+    }
+
+    if (paramIdx == kParamDrumKit)
+    {
+      // Reloads only when the index actually moved -- LoadDrumKit checks, because OnParamChange
+      // fires for every automated change and loading ten WAVs per block would be a stutter.
+      LoadDrumKit();
+      mDrumUiDirty.store(true);
+      return;
+    }
+
+    if (paramIdx >= kParamSampleRegionStart && paramIdx <= kParamSampleGain)
+    {
+      SyncSamplerPageParams(*this);
+      return;
+    }
+
+    if (paramIdx == kParamSliceBy || paramIdx == kParamSliceSensitivity
+        || paramIdx == kParamSliceRegions)
+    {
+      ApplySliceBy(*this);
+      return;
+    }
+
+    SyncSynthParams();
+  }
+  catch (const std::exception& e)
   {
-    mDrumKit.levelDb = static_cast<float>(GetParam(paramIdx)->Value());
-    SyncDrumParams();
-    return;
+    // The host calls this for every parameter move, including automation. An exception escaping
+    // into the host calls std::terminate and takes the whole session down, so it is absorbed and
+    // reported here instead.
+    DBGMSG("Keith: OnParamChange threw: %s\n", e.what());
   }
-
-  if (paramIdx == kParamGuitarBank)
+  catch (...)
   {
-    LoadGuitarBank();
-    return;
+    DBGMSG("Keith: OnParamChange threw (unknown)\n");
   }
-
-  if (paramIdx == kParamVocalEnable)
-  {
-    // The bank is loaded once at reset; this only flips the layer on and off. Loading on every
-    // toggle would re-read 14 files each time the switch moved.
-    mDSP.SetVocalEnabled(GetParam(paramIdx)->Bool());
-    return;
-  }
-
-  if (paramIdx == kParamGuitarLevel)
-  {
-    SyncGuitarLevel();
-    return;
-  }
-
-  if (paramIdx == kParamPercKit)
-  {
-    LoadPercussionKit();
-    return;
-  }
-
-  if (paramIdx == kParamDrumKit)
-  {
-    // Reloads only when the index actually moved -- LoadDrumKit checks, because OnParamChange
-    // fires for every automated change and loading ten WAVs per block would be a stutter.
-    LoadDrumKit();
-    mDrumUiDirty.store(true);
-    return;
-  }
-
-  if (paramIdx >= kParamSampleRegionStart && paramIdx <= kParamSampleGain)
-  {
-    SyncSamplerPageParams(*this);
-    return;
-  }
-
-  if (paramIdx == kParamSliceBy || paramIdx == kParamSliceSensitivity
-      || paramIdx == kParamSliceRegions)
-  {
-    ApplySliceBy(*this);
-    return;
-  }
-
-  SyncSynthParams();
 }
 
 void Keith::SyncTapeParams()
