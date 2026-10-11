@@ -104,6 +104,9 @@ jobs:
         with:
           name: mags-synth-macos
           path: build/out/Release/mags-synth-macos.zip
+          # Not the default warn: this is the artifact that actually ships, and a green run with no
+          # zip is the failure mode that hid the Windows path for several runs. Missing means fail.
+          if-no-files-found: error
 
   build-windows:
     name: Windows x64 (VST3)
@@ -152,8 +155,21 @@ jobs:
       - name: Build VST3
         run: cmake --build build --config Release --target MagsSynth-vst3
 
+      # The VST3 lands at build/out/MagsSynth.vst3 -- there is no Release/ level on the Windows
+      # side, unlike macOS. The old path was copied from the macOS job and never matched anything,
+      # and upload-artifact only WARNED, so a green job was publishing nothing. The path assertions
+      # below make that a failure instead.
+      - name: Check the VST3 was built
+        shell: bash
+        run: |
+          if [ ! -d build/out/MagsSynth.vst3 ]; then
+            echo "::error::MagsSynth.vst3 is not at build/out -- the bundle layout changed"; exit 1
+          fi
+          find build/out/MagsSynth.vst3 -type f | head -20
+
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: mags-synth-windows-vst3
-          path: build/out/Release/MagsSynth.vst3
+          path: build/out/MagsSynth.vst3
+          if-no-files-found: error

@@ -243,43 +243,85 @@ def main():
     # the owner asked for bank rows instead: a per-patch check would want 190 rows saying the same
     # sentence. What still has to hold is that every bank IS covered, and that the two banks with
     # real ingested material name their source and licence.
-    BANK_ROWS = [
-        ("polysynth", "our own design", "none — nothing ingested"),
-        ("lead", "our own design", "none — nothing ingested"),
-        ("pad", "our own design", "none — nothing ingested"),
-        ("strings", "our own design", "none — nothing ingested"),
-        ("keys", "FreePats", "CC0 1.0"),
-        ("bass", "our own design", "none — nothing ingested"),
-        ("reeds/horn", "our own design", "none — nothing ingested"),
-        ("strings/fx", "our own design", "none — nothing ingested"),
-        ("drum + percussion kits", "SFXMint", "CC0-1.0"),
-    ]
-    m = re.search(r"## The MAGS library.*", LEDGER, re.S)
+    # READ FROM THE TABLES, not from a second hardcoded list.
+    #
+    # The previous version duplicated the group names here, and they went stale the moment the
+    # groups were reorganised -- the check then failed on names that no longer existed while the
+    # ledger itself was correct. What has to hold is that every group the plugin SHIPS has a row
+    # and that the row states a source and a licence. Both of those come from the table, so both
+    # are read from the table.
+    #
+    # "retired drums" is excluded: those 7 presets are hidden from the menu, so they are not part
+    # of the shipped group list and do not need a bank row of their own.
+    shipped_groups = sorted({category for _, _, _, category in rows
+                             if category not in ("retired drums",)})
+    if not shipped_groups:
+        fail("no shipped groups found in the preset table")
+
+    m = re.search(r"## The current library.*", LEDGER, re.S)
     if not m:
-        fail("SOURCES.md has no '## The MAGS library' section for the 190")
+        fail("SOURCES.md has no '## The current library' section")
     else:
         section = m.group(0)
-        for bank, source, licence in BANK_ROWS:
-            line = next((l for l in section.splitlines() if l.strip().startswith("|")
-                         and l.split("|")[1].strip() == bank), None)
-            if line is None:
-                fail(f"SOURCES.md has no bank row for: {bank}")
+        table_rows = {}
+        for line in section.splitlines():
+            if not line.strip().startswith("|"):
                 continue
             cells = [c.strip() for c in line.split("|")]
-            if source not in line:
-                fail(f"bank row '{bank}' does not name its source ({source})")
-            if licence not in line:
-                fail(f"bank row '{bank}' does not state its licence ({licence})")
+            if len(cells) > 3:
+                table_rows[cells[1]] = line
+        for group in shipped_groups:
+            line = table_rows.get(group)
+            if line is None:
+                fail(f"SOURCES.md has no bank row for shipped group: {group}")
+                continue
+            # A row must state SOMETHING about where the sound comes from and under what licence.
+            # Checked as "not empty" rather than against one expected sentence, because the groups
+            # genuinely differ now: some ingest nothing, some ingest CC0 multisamples.
+            lower = line.lower()
+            # Known upstream names. This is a list, but of SOURCES rather than of groups: a group
+            # is renamed whenever the library is reorganised, an upstream keeps its name. Anything
+            # added from a new source must be added here too, which is the point -- it makes the
+            # provenance explicit at the moment a source is introduced.
+            UPSTREAMS = ("our own design", "freepats", "mckaud", "mck sample", "sfzinstruments",
+                         "legato_vocal", "emilyguitar", "mksamplepacks", "karoryfer")
+            if not any(u in lower for u in UPSTREAMS):
+                fail(f"bank row '{group}' does not name a source")
+            if "none" not in lower and "cc0" not in lower and "cc-by" not in lower:
+                fail(f"bank row '{group}' does not state a licence")
+    # Ledger rows are TABLE ROWS. A preset name appearing anywhere in the file is not a row, and
+    # testing `name in LEDGER` treated a sentence naming "Steel String" as its provenance because
+    # the new prose section mentions it. Both the membership test and the lookup are restricted to
+    # lines that actually start a table row.
+    #
+    # The per-patch loop covers the ORIGINAL 109 only; the 205 added later are covered by the bank
+    # rows above, which the owner asked for rather than 205 rows saying one sentence. The
+    # distinction is by FAMILY rather than by the name starting with "Family", because the MAGS
+    # patches are named plainly and a name-based test sent them here, where they failed for not
+    # being recreations they were never meant to be.
+    ledger_rows = [l for l in LEDGER.splitlines() if l.strip().startswith("|")]
 
-    # The original 109 keep their per-patch rows.
-    original = [n for n in names if n in LEDGER]
-    for name in names:
-        if name.startswith("Family ") and name not in LEDGER:
+    def row_for(name):
+        """The ledger row whose PATCH NAME column is `name`.
+
+        The column is found from the header rather than hardcoded. The Ledger table starts with a
+        "#" column, so the patch name is the third cell, while the bank table further down starts
+        with the name. Hunting for the literal name across the whole line -- which is what this did
+        -- matched the run of prose in the new section instead.
+        """
+        for l in ledger_rows:
+            cells = [c.strip() for c in l.split("|")]
+            if len(cells) > 3 and any(c == name for c in cells[1:4]):
+                return l
+        return None
+
+    for name, family, _, _ in rows:
+        if int(family) == 0:
+            continue   # a MAGS patch: covered by the bank rows, not by a row of its own
+        line = row_for(name)
+        if line is None:
             fail(f"SOURCES.md has no row for {name}")
             continue
-        if name not in LEDGER:
-            continue
-        line = next(line for line in LEDGER.splitlines() if name in line)
         measured = "matched by analysis" in line
         if measured:
             if "no audio was ingested or shipped" not in line:

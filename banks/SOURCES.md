@@ -200,41 +200,71 @@ Neutral bank for the BRIEF section 8 production palette. These are shipped prese
 - Family 05 / 019 Dry Kit
 - Family 05 / 020 Hard Kit
 
-## The MAGS library (the 190 patches added after the families)
 
-**Bank rows, not patch rows.** The owner asked for one row per bank: everything here is our own
-design, so a row per patch would repeat the same sentence 190 times without saying anything more.
-The rows below name the bank, its size, and exactly what was ingested -- which for 170 of the 190
-is nothing at all.
+## The current library: nine groups, and where each sound comes from
 
-**No sample was ingested for any melodic patch.** Every one is built in the plugin's own engine: FM
-for the struck tines, additive partials for the drawbars, the wavetable bank for the tape choir,
-and oscillator-plus-filter voices for everything else. There is no sample content to license,
-because there is no sample content.
+The library was **rebuilt** since the table above was written. It is no longer all synthesis: the
+drums, the guitars and the choir are sampled from CC0 and CC-BY sources, and the remaining synth
+groups are still the plugin's own engine. This section is the current truth.
 
-| Bank | Patches | Type | Source of the sound | Licence of ingested asset | Attribution required | Verified |
+**314 presets in nine groups.** `retired drums` holds the 7 original synthesised kit presets, kept
+in the table so their indices -- and the deltas and level trims keyed to them -- do not shift onto
+other patches. They are hidden from the menu.
+
+| Group | Patches | Type | Source of the sound | Licence of ingested asset | Attribution | Verified by |
 |---|---:|---|---|---|---|---|
-| polysynth | 50 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | built and range-checked by `tools/check_patch_ranges.py`; not a recreation, so there is no reference document to verify against |
-| lead | 50 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| keys | 20 | preset bank, synthesised, plus a sampled wear layer | tone is our own design in the engine; the mechanical/key-noise character is from FreePats `electric-organ` | CC0 1.0 for the FreePats material only | N | FreePats provenance recorded in `resources/samples/KEYBOARD-WEAR-PROVENANCE.md`, including that the samples are recordings of the **setBfree** free-software synthesiser, so no hardware ROM is behind them |
-| pad | 20 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| strings | 15 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| strings/fx | 10 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| reeds/horn | 20 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| bass | 5 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
-| drum + percussion kits | 10 | drum kit, sampled | SFXMint `acoustic-drum-kit`, described by its publisher as AI-generated or procedurally synthesised; hits derived by `tools/build_drum_kits.py` and `tools/build_percussion_kits.py` | CC0-1.0 | N | every source file's SHA256 matched the publisher's; recorded in `resources/samples/PERCUSSION-PROVENANCE.md` |
+| mono synths | 61 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | `check_patch_ranges`, `verify_preset_metadata` |
+| poly synths | 103 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | as above |
+| guitars | 15 | **7 sampled banks, 8 synthesised** | 7 play FreePats / Emilyguitar multisamples; 8 have no clean source and stay synthesised | **CC0 1.0** for all 118 sampled files | **N** | licence file shipped inside each archive, checked; see `resources/samples/guitars/README.md` |
+| winds | 25 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | as above |
+| sfx | 28 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | as above |
+| vocal | 4 | **sampled**, 1 layer | `sfzinstruments/legato_vocal_tutorial`, sustained `a` vowel, 14 recorded notes | **CC0 1.0**, LICENSE in the repo | **N** | `resources/samples/vocal/README.md` |
+| bass | 14 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | as above |
+| strings | 57 | preset bank, synthesised | our own design, built in the engine | none -- nothing ingested | N | as above |
+| drum kits | 10 | drum kit, **sampled** | `MckAudio/MckSamplePacks` -- 90 one-shots, 9 slots per kit | **CC0 1.0**, LICENSE in the repo | **N** | `tools/build_sampled_drum_kits.py`; every hit normalised to -3.00 dBFS |
+| percussion kits | 2 | percussion kit, **sampled** | the same collection: congas, timbales, agogo, claves, cowbell, cabasa, castanets, sleigh bell | **CC0 1.0** | **N** | `tools/build_percussion_kits.py` |
 
-### Why the vibration references are not sources
+### The one source that is NOT CC0, and why it is not used
 
-The brief names Neptunes/Pharrell, Daft Punk, Timbaland, Justice, Rod Temperton and J Dilla as
-*vibe* references, and Juno/Jupiter/Prophet/Moog as *hardware* references. **None of those are
-sources.** No recording was sampled, no factory program was copied, and no ROM content was touched.
-They describe what the patches aim at. Rule 7 applies: those names appear in internal notes like
-this one and in **no shipped name or metadata**, which `tools/check_menu_grouping.py` and
-`tools/verify_preset_metadata.py` between them enforce.
+**Steel-string acoustic guitar.** The only FreePats steel-string bank is
+**GPL-3.0-with-exception**, whose exception is written for *"a composition which uses these
+sounds, and mix these sounds... into the composition."* Shipping sample files inside a plugin that
+other people play is not that -- it is redistributing the files, and the exception does not grant
+it. It also only covers *"unaltered"* portions, and the build trims and normalises. FreePats
+themselves have deprecated the licence:
 
-### Levels are not yet measured
+> *"This license has been deprecated and it won't be accepted anymore, please consider Creative
+> Commons CC0 for your new contributions."*
 
-The 190 carry no `kParamSynthMasterLevel` trim yet. Measuring needs
-`keith-recreation-render`, which CI did not build until now; the workflow builds it and runs
-`tools/measure_preset_levels.py` after these were added.
+So Steel String, and the other seven acoustics with no CC0 source, ship with `kParamGuitarBank = 0`
+(Off) and play the synth voice. **That is a deliberate limit, not an oversight.**
+
+### MckSamplePacks: what it actually is
+
+Recordings of the author's own drum machines -- **Roland TR-8, RX5, DR-5, RD-6**. This was put to
+the owner directly, because rule 1 forbids *"ROM content or factory program data ripped from
+hardware"* and a recording of hardware is adjacent to that. **The owner ruled it acceptable**
+(2026-10-11), on the basis that a CC0 recording someone makes of hardware they own is a different
+thing from extracted ROM data. Recorded here as a judgement rather than something the file proves.
+
+### The vocal layer, and the Ooh that is not there
+
+The choir is the `a` vowel only -- 14 notes, MIDI 48..71. The source has no sustained samples for
+any other vowel, so **there is no Ooh**. Deriving one by filtering the Aah would be inventing a
+recording and calling it one, so it was left out rather than approximated.
+
+### Attribution
+
+**Nothing in this library requires attribution.** Every ingested asset is CC0 1.0, which is a
+public-domain dedication with no attribution condition. The steel-string bank that WOULD have
+required care is the one that was not used.
+
+If a CC-BY source is ever added -- one acoustic guitar candidate was CC-BY 3.0 and was not taken --
+attribution becomes a real obligation on the manual and the about screen, not just a line here.
+
+### Levels
+
+Measured by `tools/measure_preset_levels.py` through `keith-recreation-render`, which CI builds and
+runs. **314 presets measured, zero clipping**, worst peak -2.55 dBFS. The trims are not yet written
+back into the presets: the render has roughly 2 dB of run-to-run variance, which is larger than the
++/-1 dB the trim targets, so trimming against it would be fitting to noise.
