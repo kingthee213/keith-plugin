@@ -190,6 +190,20 @@ public:
       mVoice.ApplyEnvTimes(p);
     }
 
+    /**
+     * The wavetable bank, so the WAVETABLE page can draw the frames.
+     *
+     * The bank lives on keith::synth::Voice (CoreSynth.h), not on this wrapper and not on
+     * MidiSynth. Every voice builds an identical bank in SetSampleRate, so the first one
+     * answers for all of them.
+     *
+     * This accessor is what the DSP-level Wavetable() below forwards to. It was missing,
+     * and the build failed with "no member named 'Wavetable' in 'KeithDSP<double>::Voice'"
+     * at the static_cast in that function -- the cast produced the wrapper type, which had
+     * no such member, while the bank it wanted was one level down on mVoice.
+     */
+    const keith::synth::WavetableBank* Wavetable() const { return mVoice.Wavetable(); }
+
   private:
     keith::synth::Voice mVoice;
     const keith::synth::Params* mParams = nullptr;
@@ -757,8 +771,9 @@ public:
    */
   const keith::synth::WavetableBank* Wavetable()
   {
-    // Non-const, matching every other ForEachVoice call in this file: the iterator hands out a
-    // non-const SynthVoice&, so a const lambda parameter would not bind.
+    // ForEachVoice hands out a non-const SynthVoice&, so the cast and the lambda must be
+    // non-const. Voice::Wavetable is const, which is fine to call through a non-const
+    // reference.
     const keith::synth::WavetableBank* bank = nullptr;
     mSynth.ForEachVoice([&bank](SynthVoice& voice) {
       if (!bank)
