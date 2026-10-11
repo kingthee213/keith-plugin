@@ -21,6 +21,10 @@
 // sample kits, and the offline renderer builds with IPLUG_EDITOR=0. Inside the guard it compiled
 // for the plugin and failed for the renderer.
 #include "IPlugPaths.h"
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace
 {

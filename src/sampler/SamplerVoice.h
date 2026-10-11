@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <string>   // SampleData::name is a std::string. GCC pulls this in transitively; MSVC does not
 #include <vector>
 
 // Sampler: load an audio file and play it back.

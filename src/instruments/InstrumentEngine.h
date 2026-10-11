@@ -39,6 +39,7 @@
 
 #include "sampler/SamplerVoice.h"   // SampleData
 #include "synth/VoiceAllocator.h"   // kMaxVoices
+#include <cstdlib>
 
 namespace keith {
 namespace instruments {

@@ -15,6 +15,8 @@
 #include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
+#include <atomic>
+#include <memory>
 
 using namespace iplug;
 

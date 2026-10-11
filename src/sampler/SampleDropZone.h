@@ -13,6 +13,8 @@
 #pragma once
 
 #include "SamplerEngine.h"
+#include <string>
+#include <vector>
 
 namespace keith {
 namespace ui {

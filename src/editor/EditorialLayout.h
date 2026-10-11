@@ -4,6 +4,7 @@
 #include "../sampler/SampleDropZone.h"
 #include "KeithPage.h"
 #include <cassert>
+#include <algorithm>
 
 // KeithPadMidiButton is declared in KeithControls.h (inside keith::ui) with only a forward
 // declaration of Keith, so its body lives here where the full type is available. This header

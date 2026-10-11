@@ -6,6 +6,8 @@
 #include "instruments/InstrumentEngine.h" // BankData: the loaded guitar bank
 
 #include <atomic>
+#include <memory>
+#include <string>
 
 const int kNumPresets = 314;
 

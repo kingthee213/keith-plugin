@@ -39,6 +39,9 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <algorithm>
+#include <memory>
+#include <string>
 
 namespace keith {
 namespace sampler {

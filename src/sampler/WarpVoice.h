@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <memory>
 
 namespace keith {
 namespace sampler {

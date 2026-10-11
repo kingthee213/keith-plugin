@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "instruments/InstrumentEngine.h"
+#include <algorithm>
 
 namespace keith {
 namespace instruments {

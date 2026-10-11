@@ -43,6 +43,8 @@ class IByteChunk;
 using iplug::IByteChunk;
 #else
 #include "IPlugStructs.h"
+#include <memory>
+#include <vector>
 // The real one lives inside the iPlug namespace, so the bare name used throughout this header
 // needs it brought in. The placeholder branch above does the same thing, which is why the two
 // paths look alike -- they have to agree on the name or the declarations do not match.
