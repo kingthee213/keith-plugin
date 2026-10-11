@@ -10,6 +10,8 @@ out/
 # vendored SDK checkouts pulled by the build (never committed as our own)
 third_party/iPlug2/
 third_party/Airwindows/
+# Eigen is ~8 MB of headers, fetched by bootstrap-deps instead of committed. Bungee needs it.
+third_party/eigen/
 tools/pluginval/
 # scratch
 .sam-*

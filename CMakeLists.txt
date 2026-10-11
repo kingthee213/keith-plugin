@@ -65,6 +65,51 @@ else()
   set(KEITH_FORMATS VST3 APP)
 endif()
 
+# --- Bungee: the time-stretcher behind the sampler's warp feature ------------------------
+#
+# Vendored in third_party/bungee (MPL-2.0). It is a SEPARATE static library rather than extra
+# sources in the plugin target, for two reasons:
+#
+#   1. Bungee is third-party code under its own licence. Keeping it a distinct target keeps the
+#      boundary visible, and the plugin and Bungee are separate compilation units.
+#   2. The plugin talks to it through Bungee's C API (extern "C" function table, plain C types
+#      across), so nothing about Bungee's internals reaches our headers.
+#
+# pffft is vendored alongside it (BSD/NCAR licence, third_party/pffft) and is Bungee's only FFT:
+# Fourier.cpp has an #if BUNGEE_USE_PFFFT with no alternative implementation, so it is required.
+#
+# Eigen is fetched by bootstrap-deps rather than committed -- see the note there.
+set(BUNGEE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/bungee")
+set(EIGEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/eigen")
+
+if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core")
+  add_library(keith-pffft STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft/pffft.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft/fftpack.c")
+  target_include_directories(keith-pffft PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft")
+  # Bungee's own CMake uses these two on pffft; -ffast-math is safe for an FFT, and the guard
+  # against finite-math-only stops it optimising away NaN checks.
+  target_compile_options(keith-pffft PRIVATE -ffast-math -fno-finite-math-only)
+
+  file(GLOB BUNGEE_SOURCES "${BUNGEE_DIR}/src/*.cpp")
+  add_library(keith-bungee STATIC ${BUNGEE_SOURCES})
+  target_include_directories(keith-bungee PUBLIC
+    "${BUNGEE_DIR}"
+    "${EIGEN_DIR}")
+  target_link_libraries(keith-bungee PUBLIC keith-pffft)
+  target_compile_features(keith-bungee PUBLIC cxx_std_20)
+  target_compile_definitions(keith-bungee PRIVATE
+    eigen_assert=BUNGEE_ASSERT1
+    EIGEN_DONT_PARALLELIZE=1)
+  # Bungee sets this on itself: signed overflow is relied upon to wrap in the grain arithmetic.
+  target_compile_options(keith-bungee PRIVATE -fwrapv)
+  set_target_properties(keith-bungee PROPERTIES POSITION_INDEPENDENT_CODE ON)
+else()
+  # Not fetched. The plugin builds without warp rather than failing: bootstrap-deps missing a
+  # step should not stop the rest of the work.
+  message(STATUS "Bungee or Eigen not present -- building without the warp stretcher")
+endif()
+
 iplug_add_plugin(${PROJECT_NAME}
   SOURCES
     src/Keith.cpp
@@ -100,6 +145,18 @@ iplug_add_plugin(${PROJECT_NAME}
     iPlug2::Extras::Synth
   EXCLUDE_FORMATS CLAP AAX AUV3 WAM WASM_DSP WASM_UI VST2
 )
+
+# Link Bungee into every plugin format. Done by target name rather than through iplug_add_plugin's
+# LINK block because the formats are separate targets (VST3, AU, APP) and the guard matters: if
+# bootstrap-deps has not fetched Eigen, keith-bungee does not exist and linking must not be
+# attempted.
+if(TARGET keith-bungee)
+  foreach(_fmt IN ITEMS MagsSynth-vst3 MagsSynth-au MagsSynth-app)
+    if(TARGET ${_fmt})
+      target_link_libraries(${_fmt} PRIVATE keith-bungee)
+    endif()
+  endforeach()
+endif()
 
 # Editor faces. Windows embeds them with resources/main.rc. macOS LoadFont looks in
 # the bundle's Contents/Resources (NSBundle resourcePath), so the same files are
