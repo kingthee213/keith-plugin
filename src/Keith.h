@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-const int kNumPresets = 321;
+const int kNumPresets = 314;
 
 enum EControlTags
 {
