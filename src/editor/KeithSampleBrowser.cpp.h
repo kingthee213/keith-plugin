@@ -76,7 +76,7 @@ inline void KeithSampleBrowser::Draw(IGraphics& g)
     // The group is shown as a dim prefix rather than a separate column: with four groups and a
     // narrow panel, a column would leave too little room for the name.
     const std::string text = mEntries[static_cast<size_t>(i)].label;
-    g.DrawText(MonoBold(9.f, sel ? kInk : kPaper, EAlign::Near), text, r.GetPadded(4.f, 0.f, 0.f, 0.f));
+    g.DrawText(MonoBold(9.f, sel ? kInk : kPaper, EAlign::Near), text.c_str(), r.GetPadded(4.f, 0.f, 0.f, 0.f));
   }
 
   // A scrollbar only when there is somewhere to scroll, so its presence means something.

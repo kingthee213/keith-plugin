@@ -36,8 +36,14 @@
 #include <string>
 #include <vector>
 
+// KeithPage.h FIRST: it pulls in iPlug2's IControl, and KeithPageElement derives from it. With the
+// sampler headers first, KeithPageElement was not yet declared when this class was defined, and
+// every IControl member -- AttachControl, DrawText, GetUI -- failed with a long cascade of
+// "no matching member function" that all traced back to this one ordering.
 #include "KeithPage.h"
-// Needed for SampleData and Slice: the view draws both, and neither arrives through KeithPage.h.
+
+// SampleData and Slice, which the view draws. Both live in keith::sampler, so they are qualified
+// at each use rather than assumed to be in scope.
 #include "sampler/SampleSlicer.h"
 #include "sampler/SamplerVoice.h"
 
@@ -70,7 +76,7 @@ struct WaveEnvelope
    * `width` is the number of columns. It is the panel's pixel width, so one column maps to one
    * pixel and the drawing loop is trivial. Rebuilt on load and on resize, never per paint.
    */
-  static WaveEnvelope Build(const std::shared_ptr<const SampleData>& sample, int width)
+  static WaveEnvelope Build(const std::shared_ptr<const sampler::SampleData>& sample, int width)
   {
     WaveEnvelope env;
     if (!sample || sample->Empty() || width <= 0)
@@ -123,14 +129,15 @@ public:
   }
 
   /** Called from the plugin when a sample is loaded or the panel is resized. */
-  void SetSample(const std::shared_ptr<const SampleData>& sample, double sampleRate)
+  void SetSample(const std::shared_ptr<const sampler::SampleData>& sample,
+                 double sampleRate)
   {
     mSample = sample;
     mRate = sampleRate > 0. ? sampleRate : 44100.;
     Rebuild();
   }
 
-  void SetSlices(std::shared_ptr<const std::vector<Slice>> slices)
+  void SetSlices(std::shared_ptr<const std::vector<sampler::Slice>> slices)
   {
     mSlices = std::move(slices);
   }
@@ -173,8 +180,8 @@ private:
   /** Frame -> x in pixels. */
   float XForFrame(int frame) const;
 
-  std::shared_ptr<const SampleData> mSample;
-  std::shared_ptr<const std::vector<Slice>> mSlices;
+  std::shared_ptr<const sampler::SampleData> mSample;
+  std::shared_ptr<const std::vector<sampler::Slice>> mSlices;
   WaveEnvelope mEnv;
   double mRate = 44100.;
   Grab mGrab = Grab::None;

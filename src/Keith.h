@@ -361,7 +361,17 @@ private:
    * Was DrumKitDir() when drums were the only thing; it now serves all three, and the name said
    * otherwise.
    */
+public:
+  /**
+   * Where the sample content lives, for the editor's browser.
+   *
+   * Public because the browser lists what these loaders can actually open -- it must not have a
+   * second, separate notion of where the samples are. It was private, and the layout could not
+   * call it.
+   */
   std::string SampleDir(const char* kind) const;
+
+private:
 
   static void SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit);
   static int UnserializeDrumKit(const IByteChunk& chunk, int startPos,

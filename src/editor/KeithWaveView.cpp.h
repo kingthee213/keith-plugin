@@ -108,21 +108,21 @@ inline void KeithWaveView::Draw(IGraphics& g)
   const auto& slices = *mSlices;
   for (size_t i = 0; i < slices.size(); ++i)
   {
-    const Slice& s = slices[i];
+    const sampler::Slice& s = slices[i];
     const IColor col = (i % 2 == 0) ? kHotPink : kCyan;
 
     const float x0 = XForFrame(s.startFrame);
     g.DrawLine(col, x0, mRECT.T + 2.f, x0, mRECT.B - 2.f, nullptr, 1.f);
 
     // The number, so the pad that plays this slice is identifiable without playing it.
-    if (static_cast<int>(i) < kMaxSliceKeys)
+    if (static_cast<int>(i) < sampler::kMaxSliceKeys)
     {
       IRECT tag(static_cast<int>(x0) + 2, static_cast<int>(mRECT.T) + 2,
                 static_cast<int>(x0) + 18, static_cast<int>(mRECT.T) + 14);
       if (tag.R < mRECT.R)
       {
         g.FillRect(kInk, tag);
-        g.DrawText(MonoBold(8.f, col, EAlign::Center), std::to_string(i + 1), tag);
+        g.DrawText(MonoBold(8.f, col, EAlign::Center), std::to_string(i + 1).c_str(), tag);
       }
     }
   }
