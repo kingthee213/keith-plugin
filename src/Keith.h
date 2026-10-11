@@ -317,6 +317,14 @@ public:
 
   /** The sampler, for the editor's drop zone and for the DSP to render. */
   keith::sampler::SamplerEngine& Sampler() { return mSampler; }
+
+  /**
+   * The synth's wavetable bank, for the wavetable page to draw.
+   *
+   * Passed through from the DSP, which owns the synth. The bank is rebuilt only on a sample-rate
+   * change, so the page can hold the pointer and rebuild its picture only when it differs.
+   */
+  const keith::synth::WavetableBank* WavetableBankForEditor() const { return mDSP.Wavetable(); }
   const keith::sampler::SamplerEngine& Sampler() const { return mSampler; }
 
 #if IPLUG_EDITOR

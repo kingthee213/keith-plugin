@@ -745,6 +745,14 @@ public:
     mSynth.AddMidiMsgToQueue(msg);
   }
 
+  /**
+   * The synth's wavetable bank, for the wavetable page to draw.
+   *
+   * The DSP owns the synth, so the page cannot reach the bank without this. Returns a pointer to a
+   * bank that is rebuilt only on a sample-rate change.
+   */
+  const keith::synth::WavetableBank* Wavetable() const { return mSynth.Wavetable(); }
+
   void SetGain(double gainPercent)
   {
     mParamsToSmooth[kModGain] = static_cast<T>(gainPercent / 100.);

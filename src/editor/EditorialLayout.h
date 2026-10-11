@@ -7,6 +7,8 @@
 #include "KeithWaveView.cpp.h"
 #include "KeithSampleBrowser.h"
 #include "KeithSampleBrowser.cpp.h"
+#include "KeithWavetableFrames.h"
+#include "KeithWavetableFrames.cpp.h"
 #include <cassert>
 #include <algorithm>
 
@@ -456,11 +458,23 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
       r = IRECT(r.L + 14.f, r.T + 4.f, r.R - 14.f, r.T + 30.f);
       g->AttachControl(new keith::ui::KeithPageLabel(r, pageState, kWavetable, "WAVETABLE", 15.f));
     }
+    // The frame view: every frame in the bank, with the morph position marked.
+    //
+    // page_wt_view and page_wt_frames were both KeithPagePanel -- a fill and a border, nothing
+    // drawn. That is what the owner saw: "the sampler and wave table both have a bunch of stuff
+    // missing". The engine has ONE bank of 8 frames, so what is worth showing is all eight at once
+    // with the morph marked, not a bank list that would have a single row.
+    {
+      const IRECT r = OverlayIRECT("page_wt_view");
+      auto* frames = new keith::ui::KeithWavetableFrames(r, pageState, kWavetable);
+      frames->SetBank(plugin.WavetableBankForEditor());
+      frames->SetMorph(static_cast<float>(plugin.GetParam(kParamOsc3Morph)->Value() / 100.0));
+      g->AttachControl(frames);
+    }
+    // page_wt_banks keeps its panel: there is one bank, so it holds a caption rather than a list.
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_banks"), pageState,
                                                    kWavetable));
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_frames"), pageState,
-                                                   kWavetable));
-    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_view"), pageState,
                                                    kWavetable));
     // The controls column gets a panel too, so it reads as a group the way the mock draws it.
     // Without this the morph knob and the source tabs float on the page background while the mock
