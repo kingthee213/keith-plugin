@@ -12,6 +12,15 @@
 #include "editor/EditorialLayout.h"
 #endif
 
+// BundleResourcePath, which resolves a plugin's resource directory across the three formats.
+// It lives in IPlugPaths.h, and neither the plugin base header nor IPlug_include_in_plug_src.h
+// pulls it in -- hence the undeclared-identifier error when it was first called.
+//
+// OUTSIDE the IPLUG_EDITOR guard on purpose: SampleDir() is used by the DSP side to find the
+// sample kits, and the offline renderer builds with IPLUG_EDITOR=0. Inside the guard it compiled
+// for the plugin and failed for the renderer.
+#include "IPlugPaths.h"
+
 namespace
 {
 constexpr uint32_t kDrumStateMagic = 0x4B445231u; // "KDR1"
