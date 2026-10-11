@@ -57,6 +57,11 @@ add_executable(keith-editor-tests tools/editor_geometry_test.cpp)
 target_compile_features(keith-editor-tests PRIVATE cxx_std_20)
 add_test(NAME editor-geometry COMMAND keith-editor-tests)
 
+# Measures Bungee's pipeline latency. Runs on the build machine because there is no compiler on
+# the development box, and because the target machine is the one whose number matters.
+add_executable(keith-warp-latency tools/warp_latency_test.cpp)
+target_compile_features(keith-warp-latency PRIVATE cxx_std_20)
+
 # Ship an editor: hosts that get a UI-less VST3 show an empty wrapper, and the
 # standalone target needs a window to be usable at all.
 if(APPLE)
@@ -167,9 +172,10 @@ endif()
 
 # The offline test binaries include the sampler headers, and WarpVoice.h constructs a Bungee
 # stretcher. Without this they fail to link on the Bungee symbols.
-foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests)
+foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests keith-warp-latency)
   if(TARGET ${_t} AND TARGET keith-bungee)
     target_link_libraries(${_t} PRIVATE keith-bungee)
+    add_test(NAME ${_t} COMMAND ${_t})
   endif()
 endforeach()
 
