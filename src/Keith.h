@@ -210,13 +210,16 @@ enum EParams
 
 #include "sampler/SamplerEngine.h"
 
-#if IPLUG_EDITOR
-#include "editor/KeithPage.h"
-#endif
 
 #if IPLUG_DSP
 #include "Keith_DSP.h"
 #endif
+
+// The editor page enum. Forward-declared rather than included: Keith.h is parsed before
+// iPlug2's graphics headers, and KeithPage.h needs IControl and IColor, so including it here
+// fails on macOS with "unknown type name 'IColor'". The plugin only stores the value and hands
+// out a pointer, which a forward declaration supports.
+namespace keith { namespace ui { enum class KeithPage : int; } }
 
 using namespace iplug;
 

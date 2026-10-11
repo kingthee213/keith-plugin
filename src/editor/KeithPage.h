@@ -25,7 +25,7 @@ namespace keith {
 namespace ui {
 
 /** Which page is showing. Only one at a time; None means the normal panel view. */
-enum class KeithPage
+enum class KeithPage : int
 {
   None = 0,
   Sampler,
