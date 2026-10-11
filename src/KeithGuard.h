@@ -33,12 +33,32 @@
 
 #pragma once
 
+#include <cstdio>      // std::fprintf, for the one report path that survives a release build
 #include <exception>
 
 #include "IPlug_include_in_plug_src.h"
 
 namespace keith {
 namespace detail {
+
+/**
+ * Report a caught exception somewhere that survives a release build.
+ *
+ * DBGMSG alone is not enough, and this cost a CI run to learn. DBGMSG compiles OUT in release, so
+ * a catch that only used it turned a visible crash into an invisible one: the offline renderer
+ * died on the first preset and the harness received an empty error string, because the exception
+ * was absorbed and nothing was printed. Before the guard existed, terminate() at least told us
+ * something.
+ *
+ * std::fprintf(stderr, ...) is what the renderer itself uses for its errors, and it reaches CI in
+ * a release binary.
+ */
+inline void ReportCaught(const char* what, const char* detail) noexcept
+{
+  std::fprintf(stderr, "Keith: %s threw: %s\n", what, detail ? detail : "(no detail)");
+  // Also to the debugger, when one is attached and the build has DBGMSG at all.
+  DBGMSG("Keith: %s threw: %s\n", what, detail ? detail : "(no detail)");
+}
 
 /**
  * Run a host callback, absorbing anything it throws.
@@ -56,14 +76,12 @@ inline bool Guard(const char* what, Fn&& fn) noexcept
   }
   catch (const std::exception& e)
   {
-    // DBGMSG is a debug-only write; in release it compiles out, so this costs a catch clause and
-    // nothing else on the hot path.
-    DBGMSG("Keith: %s threw: %s\n", what, e.what());
+    ReportCaught(what, e.what());
     return false;
   }
   catch (...)
   {
-    DBGMSG("Keith: %s threw (unknown)\n", what);
+    ReportCaught(what, "(unknown)");
     return false;
   }
 }
@@ -78,12 +96,12 @@ inline R GuardOr(const char* what, R fallback, Fn&& fn) noexcept
   }
   catch (const std::exception& e)
   {
-    DBGMSG("Keith: %s threw: %s\n", what, e.what());
+    ReportCaught(what, e.what());
     return fallback;
   }
   catch (...)
   {
-    DBGMSG("Keith: %s threw (unknown)\n", what);
+    ReportCaught(what, "(unknown)");
     return fallback;
   }
 }
@@ -91,9 +109,11 @@ inline R GuardOr(const char* what, R fallback, Fn&& fn) noexcept
 /**
  * Guard for the audio thread.
  *
- * Reports at most once per session. A log call per block would be its own problem, and the
- * condition that made the audio path throw is not going to fix itself between one block and the
- * next -- the useful signal is "this happened", not how many times.
+ * Reports at most once per session. A write per block would be its own problem on the audio
+ * thread, and the condition that made the audio path throw is not going to fix itself between one
+ * block and the next -- the useful signal is "this happened", not how many times.
+ *
+ * Reported through ReportCaught rather than DBGMSG, so it is visible in a release build too.
  */
 inline bool NoteAudioFailureOnce(const char* what) noexcept
 {
@@ -101,7 +121,7 @@ inline bool NoteAudioFailureOnce(const char* what) noexcept
   if (!reported)
   {
     reported = true;
-    DBGMSG("Keith: audio path failed in %s (further reports suppressed)\n", what);
+    ReportCaught(what, "(audio path; further reports suppressed)");
     return true;
   }
   return false;
