@@ -351,6 +351,8 @@ private:
   void LoadGuitarBank();
   /** Push the guitar layer's level onto the DSP. */
   void SyncGuitarLevel();
+  /** Load the sampled choir for the vocal layer. Message thread. */
+  void LoadVocalBank();
   /**
    * A directory under the bundle's sample content: drums, percussion or guitars.
    *

@@ -118,6 +118,14 @@ jobs:
         shell: bash
         run: ./tools/bootstrap-deps
 
+      # "could not find any instance of Visual Studio" is what the Configure step said, and it is
+      # not a missing install: windows-latest has VS 2022, but the CMake VS generator needs the
+      # developer environment in the shell. ilammy/msvc-dev-cmd does exactly that.
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Configure
         run: >
           cmake -S . -B build

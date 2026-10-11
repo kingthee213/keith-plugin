@@ -229,6 +229,8 @@ public:
     mPercussion.Reset();
     mInstrument.SetSampleRate(sampleRate);
     mInstrument.Reset();
+    mVocal.SetSampleRate(sampleRate);
+    mVocal.Reset();
     ApplyDrumSlotParams();
     mNumDrumEvents = 0;
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
@@ -414,6 +416,36 @@ public:
   float ProcessInstrument() { return mInstrument.Process(); }
 
   /**
+   * The sampled vocal layer.
+   *
+   * A SECOND instrument engine, not the guitar's. Both are multisamples and share a class, but they
+   * are separate layers that can sound at once -- a guitar patch with the choir behind it is an
+   * ordinary thing to want -- and sharing one engine would mean loading a guitar evicted the
+   * vocals and the two voices competed for the same 16-voice pool.
+   *
+   * The vocal bank is the same shape as a guitar bank (one file per recorded note, named by MIDI
+   * number), which is why there is no third engine.
+   */
+  void SetVocalBank(std::shared_ptr<const keith::instruments::BankData> bank)
+  {
+    mVocal.Publish(std::move(bank));
+    mVocalEnabled = mVocal.HandlesNotes();
+  }
+
+  void SetVocalEnabled(bool on) { mVocalEnabled = on && mVocal.HandlesNotes(); }
+  bool VocalEnabled() const { return mVocalEnabled; }
+
+  bool VocalHandlesNotes() const { return mVocalEnabled && mVocal.HandlesNotes(); }
+
+  bool TriggerVocal(int note, float velocity)
+  {
+    return mVocal.Trigger(note, velocity, mVocalGain);
+  }
+
+  void ReleaseVocal(int note) { mVocal.Release(note); }
+  float ProcessVocal() { return mVocalEnabled ? mVocal.Process() : 0.f; }
+
+  /**
    * The percussion kit.
    *
    * A SECOND engine rather than more slots on the first, and it is triggered from notes in its own
@@ -497,7 +529,8 @@ public:
         ApplyDrumSlotParams();
       // The guitar layer sums with the drums -- both are sample sources added on top of the synth
       // bus, and both go through the same insert chain afterwards.
-      const float drumMono = mDrums.Process() + mPercussion.Process() + mInstrument.Process();
+      const float drumMono = mDrums.Process() + mPercussion.Process() + mInstrument.Process()
+                             + ProcessVocal();
       drumLeft += drumMono;
       drumRight += drumMono;
       outputs[0][s] += static_cast<T>(drumLeft);
@@ -583,6 +616,20 @@ public:
         mInstrument.Release(note);
         return;
       }
+    }
+
+    // --- the sampled choir ----------------------------------------------------------------------
+    //
+    // Behind the sampler and behind the guitar, so a loaded sample or a guitar patch wins. The
+    // choir is a layer meant to sit under something else, not to take the keyboard away from it.
+    if (noteMessage && VocalHandlesNotes())
+    {
+      const int note = msg.NoteNumber();
+      const bool on = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
+      if (on)
+        TriggerVocal(note, static_cast<float>(msg.Velocity()) / 127.f);
+      else if (status == IMidiMsg::kNoteOff || (status == IMidiMsg::kNoteOn && msg.Velocity() == 0))
+        ReleaseVocal(note);
     }
 
     // --- the sampler takes the whole keyboard -------------------------------------------------
@@ -858,6 +905,10 @@ private:
   /** The multisampled guitar layer, played across the keyboard. */
   keith::instruments::InstrumentEngine mInstrument;
   float mInstrumentGain = 1.f;
+  /** The sampled choir, on its own engine so a guitar cannot evict it. */
+  keith::instruments::InstrumentEngine mVocal;
+  bool mVocalEnabled = false;
+  float mVocalGain = 0.7f;
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   /** The plugin's sampler. Null until SetSamplerEngine is called; never dereferenced when null. */
   keith::sampler::SamplerEngine* mSampler = nullptr;

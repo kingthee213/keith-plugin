@@ -148,18 +148,36 @@ def choir(name, cutoff, reso, attack, release, morph, **extra):
 
 
 def guitar(name, cat, cutoff, reso, attack, decay, sustain, release,
-           shape=44.0, pw=30.0, drive=0.0, **extra):
-    """A plucked-string voice.
+           shape=44.0, pw=30.0, drive=0.0, bank=0, **extra):
+    """A plucked-string voice, or a sampled bank.
+
+    ## bank
+
+    `bank` selects a sampled guitar bank for the multisample instrument layer, and it is the whole
+    point of this generator now. The index matches kParamGuitarBank: 0 Off, 1 clean electric,
+    2 jazz clean, 3 distorted 1, 4 distorted 2, 5 nylon.
+
+    **When `bank` is non-zero the synth parameters below still ship**, and that is deliberate. The
+    instrument layer plays the samples; the synth parameters are what the patch falls back to when
+    the bank is not loaded, and they also define the character the preset's FX stage was chosen
+    for. Setting bank alone would leave a preset that is silent whenever the samples are missing,
+    which is a worse failure than a synthesised note.
+
+    ## The synth side, for the patches that have no bank
 
     POLY, like every other group. The pluck is the whole character: a fast filter decay over a
     longer amplitude tail, so the note has bite at the front and rings behind it. Key tracking is
-    high because a real string's brightness rises with pitch, which is what stops a played chord
-    sounding like one sample stretched.
+    high because a real string's brightness rises with pitch.
 
     No unison: a six-string chord with unison on every note turns to mush.
     """
     d = dict(
         kParamEngine=0, kParamPolyMode=0,
+        # Which sampled bank this patch plays, and how loud the layer sits. Written for every
+        # guitar patch, including bank 0, so the preset states its intent rather than inheriting
+        # whatever was selected last.
+        kParamGuitarBank=float(bank),
+        kParamGuitarLevel=-6.0 if bank else -60.0,
         kParamOsc1Shape=shape, kParamOsc1PW=pw, kParamOsc1Level=84.0,
         kParamOsc2Shape=38.0, kParamOsc2Pitch=12.0, kParamOsc2Level=38.0,
         kParamSubLevel=20.0, kParamNoiseLevel=8.0,
@@ -184,7 +202,9 @@ def build_guitars():
     return [
         # --- acoustic family ---------------------------------------------------------------
         guitar("Steel String",      "guitars", 7200, 12, 2, 1400, 22, 1600, shape=44.0, pw=34.0),
-        guitar("Nylon String",      "guitars", 5400, 10, 3, 1200, 26, 1400, shape=32.0, pw=42.0),
+        # Nylon: the FreePats Spanish classical bank, 48 recorded notes.
+        guitar("Nylon String",      "guitars", 5400, 10, 3, 1200, 26, 1400, shape=32.0, pw=42.0,
+               bank=5),
         guitar("Bright Steel",      "guitars", 8600, 14, 1, 1100, 18, 1300, shape=46.0, pw=28.0),
         guitar("Warm Acoustic",     "guitars", 4600, 12, 4, 1600, 30, 1800, shape=32.0, pw=46.0),
         guitar("Tape Acoustic",     "guitars", 5600, 12, 3, 1300, 26, 1500, shape=38.0, pw=38.0,
@@ -196,20 +216,23 @@ def build_guitars():
         guitar("Muted Acoustic",    "guitars", 4200, 20, 1, 700, 12, 900, shape=34.0, pw=44.0,
                kParamFilterEnv=74.0, kParamAmpRelease=700),
         # --- electric family ---------------------------------------------------------------
+        # Clean: the FSBS direct-sampled electric, 19 notes.
         guitar("Clean Electric",    "guitars", 6800, 16, 2, 1300, 24, 1500, shape=44.0, pw=32.0,
-               kParamIns1Algo=2.0),
+               bank=1, kParamIns1Algo=2.0),
         guitar("Crunch Electric",   "guitars", 6200, 24, 2, 1200, 26, 1400, shape=46.0, pw=30.0,
-               drive=34.0),
+               bank=3, drive=34.0),
         guitar("High Gain",         "guitars", 5600, 30, 1, 1000, 30, 1300, shape=48.0, pw=26.0,
-               drive=64.0, kParamFilterEnv=48.0),
+               bank=4, drive=64.0, kParamFilterEnv=48.0),
+        # Hollow body: the jazz-voiced clean bank. 13 notes, so it transposes further than the
+        # nylon and the character is the warmer one -- which is what a hollow body is.
         guitar("Hollow Body",       "guitars", 5200, 18, 3, 1500, 28, 1700, shape=40.0, pw=36.0,
-               drive=18.0),
+               bank=2, drive=18.0),
         guitar("Muted Electric",    "guitars", 4400, 26, 1, 600, 10, 800, shape=42.0, pw=34.0,
-               drive=40.0, kParamFilterEnv=78.0, kParamAmpRelease=600),
+               bank=3, drive=40.0, kParamFilterEnv=78.0, kParamAmpRelease=600),
         guitar("Tremolo Electric",  "guitars", 6400, 18, 2, 1300, 24, 1500, shape=44.0, pw=32.0,
-               drive=24.0, kParamLfoRate=4.6, kParamLfoDest=1.0, kParamLfoAmount=42.0),
+               bank=1, drive=24.0, kParamLfoRate=4.6, kParamLfoDest=1.0, kParamLfoAmount=42.0),
         guitar("Tape Electric",     "guitars", 6000, 20, 2, 1200, 26, 1400, shape=44.0, pw=32.0,
-               drive=28.0, kParamTapeWow=40.0, kParamTapeFlutter=30.0, kParamTapeMix=44.0),
+               bank=1, drive=28.0, kParamTapeWow=40.0, kParamTapeFlutter=30.0, kParamTapeMix=44.0),
     ]
 
 
