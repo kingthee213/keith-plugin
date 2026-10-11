@@ -5070,9 +5070,11 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
 
 } // namespace keith::sampler
 
-namespace {
-
-void SyncSamplerPageParams(keith::Keith& plugin)
+// These two live at FILE scope, not in an anonymous namespace. They were wrapped, and the wrap
+// closed at line ~5121 while the member functions calling them are at ~5665 and ~5978 -- outside
+// it, so the calls failed to compile with "no matching function". They take `Keith&` as a
+// parameter, so they do not need internal linkage to stay out of the way.
+void SyncSamplerPageParams(Keith& plugin)
 {
   keith::sampler::SamplerEngine& sampler = plugin.Sampler();
   if (!sampler.HasSample())
@@ -5094,7 +5096,7 @@ void SyncSamplerPageParams(keith::Keith& plugin)
   sampler.SetSampleTuneSemitones(plugin.GetParam(kParamSampleTune)->Value());
 }
 
-void ApplySliceBy(keith::Keith& plugin)
+void ApplySliceBy(Keith& plugin)
 {
   keith::sampler::SamplerEngine& sampler = plugin.Sampler();
   if (!sampler.HasSample())
@@ -5117,8 +5119,6 @@ void ApplySliceBy(keith::Keith& plugin)
                                                    frames));
   }
 }
-
-} // namespace
 
 void Keith::SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit)
 {

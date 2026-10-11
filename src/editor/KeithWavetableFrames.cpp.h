@@ -10,7 +10,10 @@
 namespace keith {
 namespace ui {
 
-inline float KeithWavetableFrames::CurrentMorph() const
+// NOT const, although it only reads. GetDelegate() is a non-const member of IControl, so a const
+// method cannot call it -- which the compiler rejected. It is a read of the plugin's parameter, and
+// the non-const accessor is the only way there.
+inline float KeithWavetableFrames::CurrentMorph()
 {
   const auto* plugin = dynamic_cast<const iplug::IPluginBase*>(GetDelegate());
   if (plugin == nullptr || mMorphParam < 0 || plugin->GetParam(mMorphParam) == nullptr)

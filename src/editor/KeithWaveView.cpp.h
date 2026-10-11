@@ -280,7 +280,7 @@ inline void KeithWaveView::OnMouseDown(float x, float y, const IMouseMod& mod)
   (void) y;
 }
 
-inline void KeithWaveView::OnMouseDrag(float x, float y, float dX, float, const IMouseMod& mod)
+inline void KeithWaveView::OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod& mod)
 {
   if (!PageIsOpen() || mGrab == Grab::None || mEnv.Empty())
     return;

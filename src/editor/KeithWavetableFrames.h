@@ -93,7 +93,7 @@ public:
 
 private:
   void SetMorphFromPoint(float x, float y);
-  float CurrentMorph() const;
+  float CurrentMorph();
   void WriteMorph(float morph01);
 
   const synth::WavetableBank* mBank = nullptr;
