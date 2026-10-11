@@ -65,7 +65,33 @@ if [[ -d "${EIGEN_DEST}/.git" ]]; then
   git -C "${EIGEN_DEST}" checkout --detach "${EIGEN_REV}"
 else
   echo "Cloning Eigen ${EIGEN_REV} into ${EIGEN_DEST}"
-  git clone --depth 1 --branch 3.4.0 "${EIGEN_REPO}" "${EIGEN_DEST}"
+  # Retried, for the same reason the iPlug2 clone above is: GitLab, which hosts Eigen, returns
+  # "unable to handle this request due to load" often enough to fail a build on its own. It is
+  # INTERMITTENT rather than down -- a manual check a minute later succeeded -- which is the worst
+  # case, because a single attempt fails at random and looks like a code fault.
+  #
+  # Also falls back to GitHub mirrors, since either host can be the one that is struggling.
+  cloned=0
+  for repo in "${EIGEN_REPO}" \
+              "https://github.com/libeigen/eigen.git" \
+              "https://gitlab.com/libeigen/eigen.git"; do
+    for attempt in 1 2 3; do
+      if git clone --depth 1 --branch 3.4.0 "${repo}" "${EIGEN_DEST}" 2>/dev/null; then
+        cloned=1
+        break 2
+      fi
+      echo "  clone attempt ${attempt} from ${repo} failed; retrying in $((attempt * 10))s"
+      rm -rf "${EIGEN_DEST}"
+      sleep $((attempt * 10))
+    done
+  done
+  if [ "${cloned}" -ne 1 ]; then
+    echo "ERROR: could not clone Eigen from GitLab or its GitHub mirror after 9 attempts." >&2
+    echo "       If the output mentions 'GitLab is currently unable to handle this request due" >&2
+    echo "       to load', that is an intermittent outage on their side and re-running the job" >&2
+    echo "       is the fix. Nothing is wrong with this repository." >&2
+    exit 1
+  fi
   git -C "${EIGEN_DEST}" checkout --detach "${EIGEN_REV}"
 fi
 
