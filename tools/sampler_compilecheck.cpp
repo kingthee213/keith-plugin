@@ -14,6 +14,7 @@
 #include "../src/sampler/SamplerEngine.h"
 #include "../src/sampler/SamplerVoice.h"
 #include "../src/sampler/SampleSlicer.h"
+#include "../src/sampler/WarpMap.h"
 
 namespace {
 
@@ -65,6 +66,29 @@ void InstantiateForTypeChecking()
   (void) keith::sampler::SliceEndFrame(slices, 0, 1000);
   (void) keith::sampler::SliceAtFrame(slices, 10, 1000);
   keith::sampler::RemoveBoundary(slices, 0);
+
+  // Warp: tempo, the marker map, and the mapping the engine will read.
+  keith::sampler::Transport transport;
+  (void) transport.Valid();
+  (void) transport.SecondsPerBeat();
+
+  keith::sampler::WarpMap warp;
+  warp.SetTempo(transport.tempo);
+  warp.SetHostSampleRate(44100.0);
+  warp.enabled = true;
+  warp.sourceTempo = 120.0;
+  warp.FromSlices(slices, 1.0);
+  warp.SetMarker(0, 0.0, false);
+  warp.SetMarker(1000, 1.0, true);
+  warp.MoveMarkerBeat(1, 2.0);
+  (void) warp.Usable();
+  (void) warp.StretchAtBeat(0.5);
+  (void) warp.FrameAtBeat(0.5);
+  (void) warp.BeatAtFrame(500.0);
+  (void) warp.TotalBeats();
+  (void) keith::sampler::SliceBeat(warp, slices, 1, 1.0);
+  warp.RemoveMarker(0);
+  warp.Clear();
 }
 
 } // namespace
