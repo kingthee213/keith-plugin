@@ -43,6 +43,10 @@ namespace drums {
 
 /** Slots, matching the MIDI drum range the editor draws. */
 constexpr int kKitSlots = 16;
+
+// kFirstMidiNote and kLastMidiNote come from drums/DrumSynth.h, which owns the drum note range.
+// Redefining them here collided -- and a second definition of a range is the kind of thing that
+// drifts out of step silently, so there is one definition and this file uses it.
 constexpr int kFirstMidiNote = 36;
 
 /**

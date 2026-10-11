@@ -351,8 +351,13 @@ private:
   void LoadGuitarBank();
   /** Push the guitar layer's level onto the DSP. */
   void SyncGuitarLevel();
-  /** The directory the sample kits were copied into by the build. */
-  std::string DrumKitDir() const;
+  /**
+   * A directory under the bundle's sample content: drums, percussion or guitars.
+   *
+   * Was DrumKitDir() when drums were the only thing; it now serves all three, and the name said
+   * otherwise.
+   */
+  std::string SampleDir(const char* kind) const;
 
   static void SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit);
   static int UnserializeDrumKit(const IByteChunk& chunk, int startPos,

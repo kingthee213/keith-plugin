@@ -5593,11 +5593,14 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   mDSP.ProcessBlock(outputs, 2, nFrames);
 }
 
-std::string Keith::DrumKitDir() const
+std::string Keith::SampleDir(const char* kind) const
 {
-  // The kits are copied into the bundle's resources by CMake. The three formats put that in
-  // different places, and GetBundlePath() is iPlug2's answer for all of them.
-  return std::string(GetBundlePath()) + "/drums";
+  // The sample content is copied into the bundle's resources by CMake, and the three formats put
+  // that in different places. BundleResourcePath is iPlug2's answer for all of them -- there is no
+  // GetBundlePath(), which is what this first called and the compiler rejected.
+  WDL_String path;
+  BundleResourcePath(path);
+  return std::string(path.Get()) + "/samples";
 }
 
 void Keith::LoadDrumKit()
@@ -5609,7 +5612,7 @@ void Keith::LoadDrumKit()
   if (want == mLoadedKitIndex && mLoadedKit)
     return;   // already there; reloading on every parameter change would stutter
 
-  const std::string dir = DrumKitDir() + "/" + kKits[want];
+  const std::string dir = SampleDir("drums") + "/" + kKits[want];
   keith::drums::KitLoadReport report;
   auto kit = keith::drums::LoadKit(dir, report);
 
@@ -5645,7 +5648,7 @@ void Keith::LoadGuitarBank()
     return;
   }
 
-  const std::string dir = DrumKitDir() + "/../guitars/" + kBanks[want];
+  const std::string dir = SampleDir("guitars") + "/" + kBanks[want];
   keith::instruments::BankLoadReport report;
   auto bank = keith::instruments::LoadBank(dir, report);
   if (!report.Ok())
@@ -5674,7 +5677,7 @@ void Keith::LoadPercussionKit()
 {
   static const char* const kKits[] = {"hands", "metal"};
   const int want = std::max(0, std::min<int>(1, static_cast<int>(GetParam(kParamPercKit)->Value())));
-  const std::string dir = DrumKitDir() + "/../percussion/" + kKits[want];
+  const std::string dir = SampleDir("percussion") + "/" + kKits[want];
 
   keith::drums::KitLoadReport report;
   auto kit = keith::drums::LoadKit(dir, report);
