@@ -5513,6 +5513,17 @@ Keith::Keith(const InstanceInfo& info)
 #if IPLUG_EDITOR
 void Keith::OnIdle()
 {
+  // The deferred sample load, once, on the first idle tick after a reset -- by which point the
+  // host has finished bringing the plugin up, so the resource-path call and the file reads are
+  // both safe.
+  if (mLoadRequested.exchange(false))
+  {
+    LoadDrumKit();
+    LoadPercussionKit();
+    LoadGuitarBank();
+    LoadVocalBank();
+  }
+
   UpdateDrumUi();
 
   IGraphics* pGraphics = GetUI();
@@ -5624,9 +5635,16 @@ std::string Keith::SampleDir(const char* kind) const
     if (override[0] != 0)
       return std::string(override) + "/" + kind;
 
-  WDL_String path;
-  BundleResourcePath(path);
-  if (path.GetLength() == 0)
+  // Resolved once and cached: BundleResourcePath goes into Cocoa, so calling it on every load is
+  // needless risk and the answer cannot change while the plugin is running.
+  if (mResourceRoot.empty())
+  {
+    WDL_String path;
+    BundleResourcePath(path);
+    if (path.GetLength() > 0)
+      mResourceRoot = path.Get();
+  }
+  if (mResourceRoot.empty())
   {
     // No bundle to resolve against -- a standalone binary outside a .app, say. Return a path that
     // simply does not exist rather than one that crashes: a missing kit is a silent pad, which is
@@ -5634,71 +5652,84 @@ std::string Keith::SampleDir(const char* kind) const
     DBGMSG("Keith: no bundle resource path; set KEITH_SAMPLE_DIR to locate the samples\n");
     return std::string("samples/") + kind;
   }
-  return std::string(path.Get()) + "/samples/" + kind;
+  return mResourceRoot + "/samples/" + kind;
 }
 
 void Keith::LoadDrumKit()
 {
-  static const char* const kKits[] = {
-    "smoke", "velvet", "stone", "dust", "paper", "late", "corner", "crate", "swing", "clinic",
-  };
-  const int want = std::max(0, std::min<int>(9, static_cast<int>(GetParam(kParamDrumKit)->Value())));
-  if (want == mLoadedKitIndex && mLoadedKit)
-    return;   // already there; reloading on every parameter change would stutter
-
-  const std::string dir = SampleDir("drums") + "/" + kKits[want];
-  keith::drums::KitLoadReport report;
-  auto kit = keith::drums::LoadKit(dir, report);
-
-  // Report rather than fail silently: a kit with a missing slot is audible as a dead pad, and
-  // guessing which one from the sound alone is slow.
-  if (!report.Ok())
+  try
   {
-    DBGMSG("drum kit %s: %d slots, %d missing, %d failed\n", kKits[want], report.slotsLoaded,
-           static_cast<int>(report.missing.size()), static_cast<int>(report.failed.size()));
-    for (const std::string& m : report.missing)
-      DBGMSG("  missing slot: %s\n", m.c_str());
-  }
+    // Wrapped because this runs during load: a filesystem error must degrade to a silent kit
+    // rather than take the process down.
+    static const char* const kKits[] = {
+      "smoke", "velvet", "stone", "dust", "paper", "late", "corner", "crate", "swing", "clinic",
+    };
+    const int want =
+        std::max(0, std::min<int>(9, static_cast<int>(GetParam(kParamDrumKit)->Value())));
+    if (want == mLoadedKitIndex && mLoadedKit)
+      return;   // already there; reloading on every parameter change would stutter
 
-  mLoadedKit = kit;
-  mLoadedKitIndex = want;
-  mDSP.SetDrumKit(kit);
+    const std::string dir = SampleDir("drums") + "/" + kKits[want];
+    keith::drums::KitLoadReport report;
+    auto kit = keith::drums::LoadKit(dir, report);
+
+    // Report rather than fail silently: a kit with a missing slot is audible as a dead pad, and
+    // guessing which one from the sound alone is slow.
+    if (!report.Ok())
+    {
+      DBGMSG("drum kit %s: %d slots, %d missing, %d failed\n", kKits[want], report.slotsLoaded,
+             static_cast<int>(report.missing.size()), static_cast<int>(report.failed.size()));
+      for (const std::string& m : report.missing)
+        DBGMSG("  missing slot: %s\n", m.c_str());
+    }
+
+    mLoadedKit = kit;
+    mLoadedKitIndex = want;
+    mDSP.SetDrumKit(kit);
+  }
+  catch (const std::exception& e) { DBGMSG("drum kit: load failed: %s\n", e.what()); }
+  catch (...) { DBGMSG("drum kit: load failed (unknown)\n"); }
 }
 
 void Keith::LoadGuitarBank()
 {
-  static const char* const kBanks[] = {"", "clean", "jazz", "dist1", "dist2", "nylon"};
-  const int want = std::max(0, std::min<int>(5, static_cast<int>(GetParam(kParamGuitarBank)->Value())));
-
-  if (want == mLoadedGuitarBankIndex)
-    return;   // the same guard the drum kit uses: OnParamChange fires on every automated move
-
-  if (want == 0)
+  try
   {
-    // Off: publish an empty bank rather than leaving the old one in place, so the layer really
-    // stops sounding instead of continuing to answer notes after the control says Off.
-    mLoadedGuitarBankIndex = 0;
-    mDSP.SetInstrumentBank(nullptr);
-    return;
-  }
+    // Wrapped because this runs during load. A filesystem error or an unreadable file must
+    // degrade to silence rather than take the process down -- "Mags quit unexpectedly" on open was
+    // this code path without the guard.
+    static const char* const kBanks[] = {"", "clean", "jazz", "dist1", "dist2", "nylon"};
+    const int want =
+        std::max(0, std::min<int>(5, static_cast<int>(GetParam(kParamGuitarBank)->Value())));
 
-  const std::string dir = SampleDir("guitars") + "/" + kBanks[want];
-  keith::instruments::BankLoadReport report;
-  auto bank = keith::instruments::LoadBank(dir, report);
-  if (!report.Ok())
-  {
-    DBGMSG("guitar bank %s: %d zones, %d failed -- %s\n", kBanks[want], report.zonesLoaded,
-           static_cast<int>(report.failed.size()), report.error.c_str());
-  }
-  else
-  {
-    DBGMSG("guitar bank %s: %d zones, MIDI %d..%d\n", kBanks[want], report.zonesLoaded,
-           report.lowNote, report.highNote);
-  }
+    if (want == mLoadedGuitarBankIndex)
+      return;   // the same guard the drum kit uses: OnParamChange fires on every automated move
 
-  mLoadedGuitarBankIndex = want;
-  mDSP.SetInstrumentBank(bank);
-  SyncGuitarLevel();
+    if (want == 0)
+    {
+      // Off: publish nothing rather than leaving the old bank in place, so the layer really stops
+      // sounding instead of continuing to answer notes after the control says Off.
+      mLoadedGuitarBankIndex = 0;
+      mDSP.SetInstrumentBank(nullptr);
+      return;
+    }
+
+    const std::string dir = SampleDir("guitars") + "/" + kBanks[want];
+    keith::instruments::BankLoadReport report;
+    auto bank = keith::instruments::LoadBank(dir, report);
+    if (!report.Ok())
+      DBGMSG("guitar bank %s: %d zones, %d failed -- %s\n", kBanks[want], report.zonesLoaded,
+             static_cast<int>(report.failed.size()), report.error.c_str());
+    else
+      DBGMSG("guitar bank %s: %d zones, MIDI %d..%d\n", kBanks[want], report.zonesLoaded,
+             report.lowNote, report.highNote);
+
+    mLoadedGuitarBankIndex = want;
+    mDSP.SetInstrumentBank(bank);
+    SyncGuitarLevel();
+  }
+  catch (const std::exception& e) { DBGMSG("guitar bank: load failed: %s\n", e.what()); }
+  catch (...) { DBGMSG("guitar bank: load failed (unknown)\n"); }
 }
 
 void Keith::LoadVocalBank()
@@ -5706,17 +5737,25 @@ void Keith::LoadVocalBank()
   // The choir lives under the `a` vowel, which is the only vowel the CC0 source has sustains for.
   // An Ooh was left out rather than synthesised by filtering the Aah, which would be inventing a
   // recording. See resources/samples/vocal/README.md.
-  const std::string dir = SampleDir("vocal") + "/a";
-
-  keith::instruments::BankLoadReport report;
-  auto bank = keith::instruments::LoadBank(dir, report);
-  if (!report.Ok())
+  try
   {
-    DBGMSG("vocal bank: %d zones -- %s\n", report.zonesLoaded, report.error.c_str());
-    return;
+    // Wrapped because this runs during load. A filesystem error or an unreadable file must
+    // degrade to silence rather than take the process down -- "Mags quit unexpectedly" on open was
+    // this code path without the guard.
+    const std::string dir = SampleDir("vocal") + "/a";
+    keith::instruments::BankLoadReport report;
+    auto bank = keith::instruments::LoadBank(dir, report);
+    if (!report.Ok())
+    {
+      DBGMSG("vocal bank: %d zones -- %s\n", report.zonesLoaded, report.error.c_str());
+      return;
+    }
+    DBGMSG("vocal bank: %d zones, MIDI %d..%d\n", report.zonesLoaded, report.lowNote,
+           report.highNote);
+    mDSP.SetVocalBank(bank);
   }
-  DBGMSG("vocal bank: %d zones, MIDI %d..%d\n", report.zonesLoaded, report.lowNote, report.highNote);
-  mDSP.SetVocalBank(bank);
+  catch (const std::exception& e) { DBGMSG("vocal bank: load failed: %s\n", e.what()); }
+  catch (...) { DBGMSG("vocal bank: load failed (unknown)\n"); }
 }
 
 void Keith::SyncGuitarLevel()
@@ -5727,34 +5766,43 @@ void Keith::SyncGuitarLevel()
 
 void Keith::LoadPercussionKit()
 {
-  static const char* const kKits[] = {"hands", "metal"};
-  const int want = std::max(0, std::min<int>(1, static_cast<int>(GetParam(kParamPercKit)->Value())));
-  const std::string dir = SampleDir("percussion") + "/" + kKits[want];
-
-  keith::drums::KitLoadReport report;
-  auto kit = keith::drums::LoadKit(dir, report);
-  if (!report.Ok())
+  try
   {
-    DBGMSG("percussion kit %s: %d slots, %d missing\n", kKits[want], report.slotsLoaded,
-           static_cast<int>(report.missing.size()));
-  }
+    static const char* const kKits[] = {"hands", "metal"};
+    const int want =
+        std::max(0, std::min<int>(1, static_cast<int>(GetParam(kParamPercKit)->Value())));
+    const std::string dir = SampleDir("percussion") + "/" + kKits[want];
 
-  // Slid up to slots 9..15, above the eight drum slots a kit fills. A percussion kit is played
-  // alongside the drum kit, never instead of it, so the two must not contend for a slot.
-  mDSP.SetPercussionKit(kit, keith::drums::kPercussionFirstSlot);
+    keith::drums::KitLoadReport report;
+    auto kit = keith::drums::LoadKit(dir, report);
+    if (!report.Ok())
+      DBGMSG("percussion kit %s: %d slots, %d missing\n", kKits[want], report.slotsLoaded,
+             static_cast<int>(report.missing.size()));
+
+    // Slid above the drum range, so a percussion kit never contends for a pad slot.
+    mDSP.SetPercussionKit(kit, keith::drums::kPercussionFirstSlot);
+  }
+  catch (const std::exception& e) { DBGMSG("percussion kit: load failed: %s\n", e.what()); }
+  catch (...) { DBGMSG("percussion kit: load failed (unknown)\n"); }
 }
 
 void Keith::OnReset()
 {
   mDSP.Reset(GetSampleRate(), GetBlockSize());
-  // After Reset, because Reset clears the engine and the kit has to be published onto it. The
-  // index is invalidated first so switching hosts or rates really does reload.
+
+  // The sample content is loaded on the FIRST IDLE TICK, not here. This is the fix for the plugin
+  // crashing on open with "Mags quit unexpectedly".
+  //
+  // OnReset runs while the plugin is still being initialised. Loading a kit calls
+  // BundleResourcePath, which on macOS goes into Cocoa, and calling Cocoa from inside plugin
+  // initialisation is not safe -- the process died rather than reporting a failure. It also reads
+  // several hundred files synchronously, which on its own can make a host time out and mark the
+  // plugin as failed to load.
+  //
+  // Reset clears the engines, so the kit is re-requested here and picked up on that first tick.
+  mLoadRequested.store(true);
   mLoadedKitIndex = -1;
-  LoadDrumKit();
-  LoadPercussionKit();
   mLoadedGuitarBankIndex = -1;
-  LoadGuitarBank();
-  LoadVocalBank();
   // The sampler needs the host rate so a file at 48 kHz plays at the right speed in a 44.1 kHz
   // host. It is set here rather than at construction because the rate is not known until now.
   mSampler.SetSampleRate(GetSampleRate());
