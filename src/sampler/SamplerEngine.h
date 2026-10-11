@@ -42,7 +42,7 @@ class IByteChunk;
 }
 using iplug::IByteChunk;
 #else
-#include "IPlug/IPlugStructs.h"
+#include "IPlugStructs.h"
 #endif
 
 namespace keith {
