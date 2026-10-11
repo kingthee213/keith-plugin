@@ -54,7 +54,8 @@ BEGIN_NEW = "// --- BEGIN the MAGS library"
 END_NEW = "// --- END the MAGS library"
 
 # The owner's eight groups, in menu order.
-GROUP_ORDER = ["polysynth", "lead", "keys", "bass", "drums", "reeds/horn", "pad", "strings/fx"]
+GROUP_ORDER = ["polysynth", "lead", "keys", "bass", "guitars", "drums", "reeds/horn", "pad",
+               "strings/fx"]
 
 # Every category that exists, mapped onto those eight. Anything not listed is an error: a silent
 # fall-through would put a preset in a group of its own and nobody would notice.
@@ -67,6 +68,7 @@ CATEGORY_MAP = {
     "lead sync": "lead", "lead table": "lead",
     "key tine": "keys", "key organ": "keys", "key combo": "keys", "key tape": "keys",
     "reeds": "reeds/horn", "brass": "reeds/horn",
+    "guitars": "guitars",
     "strings": "strings/fx", "fx": "strings/fx",
     # the existing 109
     "keys": "keys", "electric piano": "keys", "piano": "keys", "clav": "keys",
@@ -216,7 +218,9 @@ def main():
     from collections import Counter
     total = Counter()
     for name, family, source, category in existing:
-        total[CATEGORY_MAP[category]] += 1
+        # Already-grouped rows map to themselves, so a re-apply does not fail here. Same rule as
+        # regroup_spec above -- this is the second place that needed it.
+        total[category if category in GROUP_ORDER else CATEGORY_MAP[category]] += 1
     for p in patches:
         total[CATEGORY_MAP[p.category]] += 1
     for g in GROUP_ORDER:

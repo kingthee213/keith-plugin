@@ -17,6 +17,7 @@ ROLE_ORDER = [
     "lead",
     "keys",
     "bass",
+    "guitars",
     "drums",
     "reeds/horn",
     "pad",

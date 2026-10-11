@@ -353,7 +353,8 @@ public:
     // Anything unlisted lands under its own heading rather than being dropped, so a new category
     // cannot silently vanish from the menu.
     static const char* kKindOrder[] = {
-      "polysynth", "lead", "keys", "bass", "drums", "reeds/horn", "pad", "strings/fx",
+      "polysynth", "lead", "keys", "bass", "guitars", "drums", "reeds/horn", "pad",
+      "strings/fx",
     };
 
     // The category IS the group now.

@@ -143,9 +143,14 @@ kParamTapeSat=30.0, kParamTapeMix=40.0,
 
 
 def reed(name, cat, cutoff, reso, attack, release, breath=32.0, pw=28.0, **extra):
-    """Narrow pulse plus breath. The noise is what makes it read as wind."""
+    """Narrow pulse plus breath. The noise is what makes it read as wind.
+
+    POLY, not mono -- see the note in build_lead_patches.py. Every mono patch in the library
+    measured a peak above 0 dBFS and no poly patch did, and the cause was not identified after
+    five candidates were eliminated. These are voiced poly to sidestep it.
+    """
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=0.0,
         kParamOsc1Shape=54.0, kParamOsc1PW=pw, kParamOsc1Level=82.0,
         kParamOsc2Shape=52.0, kParamOsc2Pitch=-12.0, kParamOsc2Level=44.0,

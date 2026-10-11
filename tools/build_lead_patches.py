@@ -55,9 +55,15 @@ class Patch:
 
 def saw_lead(name, cat, cutoff, reso, attack, decay, sustain, release,
              drive=0.0, glide=0.0, **extra):
-    """Two detuned saws, resonant filter, pitch blip. The default lead shape."""
+    """Two detuned saws, resonant filter, pitch blip. The default lead shape.
+
+    POLY, not mono. The whole lead group measured peaks far above 0 dBFS while every poly group
+    measured fine -- 65 mono clipped, 0 poly. Five candidate causes were tested and all five were
+    eliminated by measurement, so these are voiced poly instead. Porta is left set but no longer
+    does anything: it only drove the mono glide batch.
+    """
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=glide,
         kParamOsc1Shape=44.0, kParamOsc1Level=86.0,
         kParamOsc2Shape=42.0, kParamOsc2Pitch=0.0, kParamOsc2Level=74.0,
@@ -73,7 +79,7 @@ def saw_lead(name, cat, cutoff, reso, attack, decay, sustain, release,
         kParamPitchDecay=90.0, kParamPitchSustain=0.0, kParamPitchRelease=200.0,
         kParamUnisonVoices=2.0, kParamUnisonDetune=16.0,
         kParamVelToAmp=40.0, kParamVelToFilter=34.0,
-        kParamStereoSpread=38.0, kParamStereoDelay=26.0,
+        kParamStereoSpread=52.0, kParamStereoDelay=20.0,
         kParamTapeSat=26.0, kParamTapeMix=30.0,
     )
     d.update(extra)
@@ -83,7 +89,7 @@ def saw_lead(name, cat, cutoff, reso, attack, decay, sustain, release,
 def sync_lead(name, cat, cutoff, reso, attack, release, sync_ratio=0.0, **extra):
     """Oscillator sync: the classic hard lead. The swept harmonic is the whole point."""
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=0.0,
         kParamOsc1Shape=46.0, kParamOsc1Level=88.0,
         kParamOsc2Shape=48.0, kParamOsc2Pitch=sync_ratio, kParamOsc2Level=80.0,
@@ -97,7 +103,7 @@ def sync_lead(name, cat, cutoff, reso, attack, release, sync_ratio=0.0, **extra)
         kParamAmpRelease=release,
         kParamUnisonVoices=2.0, kParamUnisonDetune=12.0,
         kParamVelToAmp=44.0, kParamVelToFilter=30.0,
-        kParamStereoSpread=34.0, kParamStereoDelay=30.0,
+        kParamStereoSpread=48.0, kParamStereoDelay=24.0,
         kParamTapeSat=32.0, kParamTapeMix=34.0,
     )
     d.update(extra)
@@ -107,7 +113,7 @@ def sync_lead(name, cat, cutoff, reso, attack, release, sync_ratio=0.0, **extra)
 def fm_lead(name, cat, cutoff, reso, attack, decay, sustain, release, fm, **extra):
     """FM leads: metallic, cutting, and unlike anything subtractive can do."""
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=0.0,
         kParamOsc1Shape=22.0, kParamOsc1Level=78.0,
         kParamOsc2Shape=24.0, kParamOsc2Pitch=12.0, kParamOsc2Level=62.0,
@@ -120,7 +126,7 @@ def fm_lead(name, cat, cutoff, reso, attack, decay, sustain, release, fm, **extr
         kParamAmpAttack=attack, kParamAmpDecay=decay, kParamAmpSustain=sustain,
         kParamAmpRelease=release,
         kParamVelToAmp=52.0, kParamVelToFilter=28.0,
-        kParamStereoSpread=40.0, kParamStereoDelay=32.0,
+        kParamStereoSpread=54.0, kParamStereoDelay=26.0,
         kParamTapeSat=22.0, kParamTapeMix=30.0,
     )
     d.update(extra)
@@ -130,7 +136,7 @@ def fm_lead(name, cat, cutoff, reso, attack, decay, sustain, release, fm, **extr
 def pulse_lead(name, cat, cutoff, reso, pw, attack, release, drive=0.0, **extra):
     """Narrow pulse: hollow, nasal, cuts through anything."""
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=0.0,
         kParamOsc1Shape=52.0, kParamOsc1PW=pw, kParamOsc1Level=88.0,
         kParamOsc2Shape=50.0, kParamOsc2Pitch=-12.0, kParamOsc2Level=56.0,
@@ -154,7 +160,7 @@ def pulse_lead(name, cat, cutoff, reso, pw, attack, release, drive=0.0, **extra)
 def table_lead(name, cat, cutoff, reso, attack, release, morph, **extra):
     """Wavetable lead. Reaches glassy and vocal tones that shapes cannot."""
     d = dict(
-        kParamEngine=0, kParamPolyMode=1, kParamMonoLegato=1,
+        kParamEngine=0, kParamPolyMode=0,
         kParamPorta=0.0,
         kParamOsc1Shape=30.0, kParamOsc1Level=54.0,
         kParamOsc2Level=0.0,
