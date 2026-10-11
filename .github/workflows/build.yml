@@ -27,6 +27,29 @@ jobs:
       - name: Build VST3, AU and app
         run: cmake --build build --config Release --target MagsSynth-vst3 MagsSynth-au MagsSynth-app
 
+      # The offline recreation render binary. measure_preset_levels.py drives this to render each
+      # preset through the real engine and read its loudness, which is the only way a preset's
+      # level trim can be measured rather than guessed. It was a CMake target that CI never built,
+      # so nothing had ever been measured -- which is why the 190 new patches had no trims and
+      # were not in the tables.
+      - name: Build the offline preset renderer
+        run: cmake --build build --config Release --target keith-recreation-render
+
+      - name: Measure preset levels
+        run: |
+          ./build/Release/keith-recreation-render --help >/dev/null 2>&1 || true
+          python3 tools/measure_preset_levels.py measure \
+            --render build/Release/keith-recreation-render \
+            --out docs/level-measurements.tsv
+        continue-on-error: true
+
+      - name: Upload level measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: level-measurements
+          path: docs/level-measurements.tsv
+          if-no-files-found: warn
+
       - name: Sign ad hoc and verify architectures
         run: |
           cd build/out/Release
