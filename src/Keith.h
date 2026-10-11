@@ -408,8 +408,18 @@ private:
    * files can make a host give up and report the plugin as failed to load.
    */
   std::atomic<bool> mLoadRequested { false };
-  /** The bundle resource root, resolved once and cached. */
-  std::string mResourceRoot;
+  /**
+   * The bundle resource root, resolved once and cached.
+   *
+   * `mutable` because SampleDir() is const -- it only reads the plugin's configuration, and
+   * callers pass a const Keith -- while the cache is written on the first call. Without it the
+   * assignment inside SampleDir does not compile: 'this' has type const std::string.
+   *
+   * Caching is what makes this safe rather than merely fast. BundleResourcePath goes into Cocoa,
+   * and calling it on every kit load would be needless risk when the answer cannot change while
+   * the plugin is running.
+   */
+  mutable std::string mResourceRoot;
   std::atomic<int> mSelectedDrumSlot {0};
 
   /**
