@@ -31,26 +31,19 @@
 
 #include <algorithm>
 #include <cmath>
-#include <functional>   // std::function, the slice-drag callback
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-// KeithPage.h FIRST: it pulls in iPlug2's IControl, and KeithPageElement derives from it. With the
-// sampler headers first, KeithPageElement was not yet declared when this class was defined, and
-// every IControl member -- AttachControl, DrawText, GetUI -- failed with a long cascade of
-// "no matching member function" that all traced back to this one ordering.
 #include "KeithPage.h"
 
-// SampleData and Slice, which the view draws. Both live in keith::sampler, so they are qualified
-// at each use rather than assumed to be in scope.
 #include "sampler/SampleSlicer.h"
 #include "sampler/SamplerVoice.h"
 
 namespace keith {
 namespace ui {
 
-/** Build a min/max envelope at a fixed width, once, for the editor to draw repeatedly. */
 struct WaveEnvelope
 {
   struct Column
@@ -61,21 +54,14 @@ struct WaveEnvelope
   };
 
   std::vector<Column> columns;
-  int frames = 0;          // the sample length this was built from, for mapping to x
+  int frames = 0;
   double sampleRate = 44100.;
   std::string name;
 
-  /** True when there is nothing to draw, so the view can show its empty state. */
   bool Empty() const { return frames <= 0 || columns.empty(); }
 
   double Seconds() const { return sampleRate > 0. ? static_cast<double>(frames) / sampleRate : 0.; }
 
-  /**
-   * Build from the mono sum of a sample.
-   *
-   * `width` is the number of columns. It is the panel's pixel width, so one column maps to one
-   * pixel and the drawing loop is trivial. Rebuilt on load and on resize, never per paint.
-   */
   static WaveEnvelope Build(const std::shared_ptr<const sampler::SampleData>& sample, int width)
   {
     WaveEnvelope env;
@@ -87,8 +73,6 @@ struct WaveEnvelope
     env.name = sample->name;
     env.columns.assign(static_cast<size_t>(width), Column {});
 
-    // One pass over the frames, not one per column: framesPerColumn can be fractional, so a
-    // column-by-column scan would walk the sample width times.
     const double per = static_cast<double>(sample->frames) / width;
     for (int c = 0; c < width; ++c)
     {
@@ -114,12 +98,6 @@ struct WaveEnvelope
   }
 };
 
-/**
- * The waveform, with slice markers.
- *
- * Drawing and hit-testing share one mapping function, so a marker cannot be drawn in one place and
- * be draggable in another -- which is the usual way a view like this goes wrong.
- */
 class KeithWaveView : public KeithPageElement
 {
 public:
@@ -128,30 +106,38 @@ public:
   {
   }
 
-  /** Called from the plugin when a sample is loaded or the panel is resized. */
-  void SetSample(const std::shared_ptr<const sampler::SampleData>& sample,
-                 double sampleRate)
+  void SetSample(const std::shared_ptr<const sampler::SampleData>& sample, double sampleRate)
   {
     mSample = sample;
     mRate = sampleRate > 0. ? sampleRate : 44100.;
+    mVisStart = 0.f;
+    mVisEnd = 1.f;
     Rebuild();
   }
 
-  void SetSlices(std::shared_ptr<const std::vector<sampler::Slice>> slices)
+  using SlicePtr = std::shared_ptr<const std::vector<sampler::Slice>>;
+  void SetSliceSource(std::function<SlicePtr()> fn) { mSliceSource = std::move(fn); }
+
+  void SetRegionSource(std::function<void(int& start, int& endExclusive)> fn)
   {
-    mSlices = std::move(slices);
+    mRegionSource = std::move(fn);
   }
 
-  /**
-   * The drag target. Named rather than indexed, because the marker set is rebuilt on every
-   * detection and an index would then refer to a different marker.
-   */
+  void SetSliceEdit(std::function<void(int idx, int frame)> fn) { mOnMove = std::move(fn); }
+  void SetSliceAdd(std::function<void(int frame)> fn) { mOnAdd = std::move(fn); }
+  void SetSliceRemove(std::function<void(int idx)> fn) { mOnRemove = std::move(fn); }
+  void SetSliceToggleManual(std::function<void(int idx)> fn) { mOnToggleManual = std::move(fn); }
+  void SetRegionEdit(std::function<void(int which, int frame)> fn) { mOnRegion = std::move(fn); }
+  void SetOnHotSwap(std::function<void()> fn) { mOnHotSwap = std::move(fn); }
+
   enum class Grab
   {
     None,
-    Left,
-    Right,
-    Interior,
+    LeftFlag,
+    RightFlag,
+    SliceStart,
+    SliceEnd,
+    Pan,
   };
 
   void Draw(IGraphics& g) override;
@@ -159,36 +145,40 @@ public:
   void OnMouseDown(float x, float y, const IMouseMod&) override;
   void OnMouseDrag(float x, float y, float dX, float dY, const IMouseMod&) override;
   void OnMouseUp(float x, float y, const IMouseMod&) override;
+  void OnMouseDblClick(float x, float y, const IMouseMod&) override;
+  void OnMouseWheel(float x, float y, const IMouseMod&, float d) override;
 
-  /**
-   * Set by the page so a drag can move a slice boundary.
-   *
-   * The callback takes FRAMES, not fractions. The view is the only thing that knows the sample
-   * length, so it does the conversion; handing out fractions would make every caller repeat the
-   * mapping and get it subtly wrong. Frames are also what the sampler's MoveSliceBoundary takes.
-   */
-  void SetSliceEdit(std::function<void(int idx, int frame)> fn) { mOnEdit = std::move(fn); }
-
-  /** The sample's frame count, which the last slice needs to find its own end. */
   int TotalFrames() const { return mEnv.frames; }
 
 private:
   void Rebuild();
-  /** Frame -> normalised 0..1 across the view. One mapping, shared by draw and hit-test. */
   float FracForFrame(int frame) const;
   int FrameForFrac(float frac) const;
-  /** Frame -> x in pixels. */
-  float XForFrame(int frame) const;
+  float XForFrac(float frac) const;
+  float FracForX(float x) const;
+  int HitSliceBoundary(float x, bool* onStart) const;
+  int HitRegionFlag(float x) const;
+  void ZoomAt(float centerFrac, float factor);
+  SlicePtr CurrentSlices() const;
 
   std::shared_ptr<const sampler::SampleData> mSample;
-  std::shared_ptr<const std::vector<sampler::Slice>> mSlices;
+  std::function<SlicePtr()> mSliceSource;
+  std::function<void(int&, int&)> mRegionSource;
   WaveEnvelope mEnv;
   double mRate = 44100.;
+  float mVisStart = 0.f;
+  float mVisEnd = 1.f;
   Grab mGrab = Grab::None;
   int mGrabIndex = -1;
-  float mGrabStartFrac = 0.f;
-  float mGrabEndFrac = 0.f;
-  std::function<void(int, int)> mOnEdit;
+  int mGrabRegion = -1;
+  float mPanAnchorFrac = 0.f;
+  float mPanAnchorX = 0.f;
+  std::function<void(int, int)> mOnMove;
+  std::function<void(int)> mOnAdd;
+  std::function<void(int)> mOnRemove;
+  std::function<void(int)> mOnToggleManual;
+  std::function<void(int, int)> mOnRegion;
+  std::function<void()> mOnHotSwap;
 };
 
 }  // namespace ui

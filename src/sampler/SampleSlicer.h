@@ -41,6 +41,8 @@ struct Slice
   int startFrame = 0;
   /** MIDI note that triggers this slice. Assigned from the root key upward. */
   int midiNote = 36;
+  /** True when the user placed or edited this boundary; auto-detected slices are false. */
+  bool manual = false;
 
   /**
    * The last frame this slice sounds, given the whole slice list.
@@ -307,14 +309,70 @@ inline void RemoveBoundary(std::vector<Slice>& slices, std::size_t index)
 }
 
 /** Add a boundary at a frame, keeping the set sorted. Returns the new slice's index. */
-inline int AddBoundary(std::vector<Slice>& slices, int frame, int totalFrames, int midiNote)
+inline int AddBoundary(std::vector<Slice>& slices, int frame, int totalFrames, int midiNote,
+                       bool manual = true)
 {
+  if (slices.size() >= static_cast<std::size_t>(kMaxSliceKeys))
+    return -1;
   frame = std::clamp(frame, 0, std::max(0, totalFrames - 1));
   auto it = std::lower_bound(slices.begin(), slices.end(), frame,
                              [](const Slice& s, int f) { return s.startFrame < f; });
   const int index = static_cast<int>(it - slices.begin());
-  slices.insert(it, Slice {frame, midiNote});
+  if (index > 0 && slices[static_cast<std::size_t>(index - 1)].startFrame == frame)
+    return index - 1;
+  if (index < static_cast<int>(slices.size()) && slices[static_cast<size_t>(index)].startFrame == frame)
+    return index;
+  slices.insert(it, Slice {frame, midiNote, manual});
+  // Re-number MIDI notes from the root upward after any edit.
+  for (std::size_t i = 0; i < slices.size(); ++i)
+    slices[i].midiNote = kSliceLowNote + static_cast<int>(i);
   return index;
+}
+
+/** Evenly spaced boundaries across [regionStart, regionEnd), including regionStart at index 0. */
+inline std::vector<Slice> RegionSlices(int regionStart, int regionEnd, int count, int totalFrames)
+{
+  count = std::clamp(count, 2, kMaxSliceKeys);
+  regionStart = std::clamp(regionStart, 0, std::max(0, totalFrames - 1));
+  regionEnd = std::clamp(regionEnd, regionStart + 1, totalFrames);
+  const int span = std::max(1, regionEnd - regionStart);
+  std::vector<Slice> out;
+  out.reserve(static_cast<std::size_t>(count));
+  for (int i = 0; i < count; ++i)
+  {
+    const int frame = regionStart + (i * span) / count;
+    out.push_back(Slice {frame, kSliceLowNote + i, false});
+  }
+  return out;
+}
+
+/**
+ * Re-run auto detection but keep manual boundaries.
+ *
+ * Manual slices survive a sensitivity change, which is why the editor colours them differently.
+ */
+inline std::vector<Slice> MergeDetectedWithManual(const std::vector<Slice>& detected,
+                                                const std::vector<Slice>& previous, int totalFrames)
+{
+  std::vector<Slice> out = detected;
+  for (std::size_t i = 1; i < previous.size(); ++i)
+  {
+    if (!previous[i].manual)
+      continue;
+    const int frame = previous[i].startFrame;
+    bool found = false;
+    for (const Slice& s : out)
+    {
+      if (s.startFrame == frame)
+      {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+      AddBoundary(out, frame, totalFrames, kSliceLowNote, true);
+  }
+  return out;
 }
 
 } // namespace sampler

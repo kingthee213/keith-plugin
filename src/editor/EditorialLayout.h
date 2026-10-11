@@ -365,11 +365,13 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     // The browser and the waveform used to be KeithPagePanel -- a filled rectangle and a border,
     // with no content at all. That is what the owner saw: "theres literally no buttons, no graph
     // for the sample to be seen and edited". They are real controls now.
+    keith::ui::KeithSampleBrowser* sampleBrowser = nullptr;
     {
       const IRECT r = OverlayIRECT("page_sample_browser");
       // Inset below the SAMPLES caption, which is drawn over this panel's top edge.
       const IRECT list(r.L + 4.f, r.T + 22.f, r.R - 4.f, r.B - 4.f);
       auto* browse = new keith::ui::KeithSampleBrowser(list, pageState, kSampler);
+      sampleBrowser = browse;
       // SampleDir() is the same resolver the drum, guitar and vocal loaders use, so the browser
       // lists exactly what those loaders can actually open -- not a second, separate notion of
       // where the samples live.
@@ -379,8 +381,29 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
         // handler is -- and it publishes the new sample to the voices without freeing the one a
         // render in flight is still reading.
         plugin.Sampler().Load(e.path);
-        // The waveform shows the sample that was just published, and it does not know a load
-        // happened, so the redraw is asked for here rather than left to the next repaint.
+        if (plugin.Sampler().HasSample())
+        {
+          const int by = plugin.GetParam(kParamSliceBy)->Int();
+          if (by == 0)
+          {
+            keith::sampler::SliceSettings settings;
+            settings.sensitivity =
+                static_cast<float>(plugin.GetParam(kParamSliceSensitivity)->Value() / 100.0);
+            plugin.Sampler().DetectSlices(settings, false);
+          }
+          else if (by == 1)
+          {
+            const int frames = plugin.Sampler().Sample()->frames;
+            int r0 = static_cast<int>(std::lround(
+                plugin.GetParam(kParamSampleRegionStart)->Value() / 100.0 * frames));
+            int r1 = static_cast<int>(std::lround(
+                plugin.GetParam(kParamSampleRegionEnd)->Value() / 100.0 * frames));
+            r1 = std::clamp(r1, r0 + 1, frames);
+            plugin.Sampler().SetSlices(
+                keith::sampler::RegionSlices(r0, r1, plugin.GetParam(kParamSliceRegions)->Int(),
+                                             frames));
+          }
+        }
         g->SetAllControlsDirty();
       });
       g->AttachControl(browse);
@@ -389,14 +412,58 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     {
       const IRECT r = OverlayIRECT("page_sample_wave");
       auto* wave = new keith::ui::KeithWaveView(r, pageState, kSampler);
-      // The engine's current sample, so the view opens showing whatever is loaded rather than
-      // waiting for the next load to notice.
       wave->SetSample(plugin.Sampler().Sample(), plugin.Sampler().EngineSampleRate());
-      wave->SetSlices(plugin.Sampler().Slices());
+      wave->SetSliceSource([&plugin]() { return plugin.Sampler().Slices(); });
+      wave->SetRegionSource([&plugin](int& start, int& end) {
+        if (!plugin.Sampler().HasSample())
+        {
+          start = 0;
+          end = 0;
+          return;
+        }
+        const int frames = plugin.Sampler().Sample()->frames;
+        start = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionStart)->Value() / 100.0 * frames));
+        end = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionEnd)->Value() / 100.0 * frames));
+        end = std::clamp(end, start + 1, frames);
+      });
       wave->SetSliceEdit([&plugin](int idx, int frame) {
         plugin.Sampler().MoveSliceBoundary(static_cast<std::size_t>(idx), frame);
       });
+      wave->SetSliceAdd([&plugin](int frame) { plugin.Sampler().AddSlice(frame); });
+      wave->SetSliceRemove([&plugin](int idx) {
+        plugin.Sampler().RemoveSlice(static_cast<std::size_t>(idx));
+      });
+      wave->SetSliceToggleManual([&plugin](int idx) {
+        plugin.Sampler().ToggleSliceManual(static_cast<std::size_t>(idx));
+      });
+      wave->SetRegionEdit([&plugin](int which, int frame) {
+        if (!plugin.Sampler().HasSample())
+          return;
+        const int frames = plugin.Sampler().Sample()->frames;
+        const double pct = 100.0 * static_cast<double>(frame) / static_cast<double>(std::max(1, frames));
+        IParam* p = plugin.GetParam(which == 0 ? kParamSampleRegionStart : kParamSampleRegionEnd);
+        if (p != nullptr)
+          p->SetNormalized(std::clamp(pct / 100.0, 0.0, 1.0));
+      });
+      if (sampleBrowser != nullptr)
+      {
+        wave->SetOnHotSwap([sampleBrowser]() { sampleBrowser->RequestFocus(); });
+      }
       g->AttachControl(wave);
+    }
+
+    {
+      const IRECT slices = OverlayIRECT("page_sample_slices");
+      const IRECT sliceMenu(slices.L, slices.T, slices.L + 130.f, slices.B);
+      const IRECT sliceSens(slices.L + 136.f, slices.T, slices.L + 220.f, slices.B);
+      g->AttachControl(new keith::ui::KeithPageParamMenu(sliceMenu, kParamSliceBy, "SLICE BY",
+                                                         {"TRANSIENT", "REGION", "MANUAL"},
+                                                         pageState, kSampler));
+      g->AttachControl(new keith::ui::KeithPageKnob(sliceSens, kParamSliceSensitivity, "SENS",
+                                                    kCyan, pageState, kSampler));
+      const IRECT sliceRegions(slices.L + 226.f, slices.T, slices.L + 310.f, slices.B);
+      g->AttachControl(new keith::ui::KeithPageKnob(sliceRegions, kParamSliceRegions, "REGIONS",
+                                                    kCyan, pageState, kSampler));
     }
 
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_slices"), pageState,
@@ -413,25 +480,29 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
           IRECT(r.L, r.T - 2.f, r.L + 52.f, r.T + 13.f), pageState, kSampler, "SLICES", 8.f));
     }
 
-    // The six sampler knobs, each a real parameter-bound knob like the panels use.
+    // Sampler knobs: START/END/ROOT/TUNE/GAIN are real parameters. LENGTH has no engine loop yet.
     {
-      // Labels only. The sampler has no parameters for start, end, length, root, tune or gain
-      // yet, so these are captions on empty cells rather than knobs -- drawing a knob here would
-      // show a control that cannot be moved. There is deliberately no param field: an earlier
-      // version carried a -1 for each, which read as though six parameters existed.
-      static const struct { const char* id; const char* label; } kPageKnobs[] = {
-        {"page_knob_start",  "START"},
-        {"page_knob_end",    "END"},
-        {"page_knob_length", "LENGTH"},
-        {"page_knob_root",   "ROOT"},
-        {"page_knob_tune",   "TUNE"},
-        {"page_knob_gain",   "GAIN"},
+      static const struct { const char* id; int param; const char* label; } kBound[] = {
+        {"page_knob_start", kParamSamplePlayStart, "START"},
+        {"page_knob_end", kParamSamplePlayEnd, "END"},
+        {"page_knob_root", kParamSampleRoot, "ROOT"},
+        {"page_knob_tune", kParamSampleTune, "TUNE"},
+        {"page_knob_gain", kParamSampleGain, "GAIN"},
       };
-      for (const auto& k : kPageKnobs)
+      for (const auto& k : kBound)
+      {
+        g->AttachControl(new keith::ui::KeithPageKnob(OverlayIRECT(k.id), k.param, "", kCyan,
+                                                      pageState, kSampler));
         g->AttachControl(new keith::ui::KeithPageLabel(
             IRECT(OverlayIRECT(k.id).L, OverlayIRECT(k.id).B, OverlayIRECT(k.id).R,
                   OverlayIRECT(k.id).B + 14.f),
             pageState, kSampler, k.label, 8.f, EAlign::Center));
+      }
+      g->AttachControl(new keith::ui::KeithPageLabel(
+          IRECT(OverlayIRECT("page_knob_length").L, OverlayIRECT("page_knob_length").B,
+                OverlayIRECT("page_knob_length").R, OverlayIRECT("page_knob_length").B + 14.f),
+          pageState, kSampler, "LENGTH", 8.f, EAlign::Center));
+      // No kParam for loop length: Classic loop playback is not in the engine yet.
     }
 
     // WARP and TEMPO SYNC are captions only: neither has a parameter behind it yet, so drawing a
@@ -464,12 +535,28 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     // drawn. That is what the owner saw: "the sampler and wave table both have a bunch of stuff
     // missing". The engine has ONE bank of 8 frames, so what is worth showing is all eight at once
     // with the morph marked, not a bank list that would have a single row.
+    keith::ui::KeithWavetableFrames* wtFrames = nullptr;
     {
       const IRECT r = OverlayIRECT("page_wt_view");
       auto* frames = new keith::ui::KeithWavetableFrames(r, pageState, kWavetable);
       frames->SetBank(plugin.WavetableBankForEditor());
-      frames->SetMorph(static_cast<float>(plugin.GetParam(kParamOsc3Morph)->Value() / 100.0));
+      frames->SetMorphParam(kParamOsc3Morph);
+      wtFrames = frames;
       g->AttachControl(frames);
+    }
+    {
+      const IRECT fr = OverlayIRECT("page_wt_frames");
+      const int frameCount = plugin.WavetableBankForEditor()
+                               ? static_cast<int>(plugin.WavetableBankForEditor()->FrameCount())
+                               : 8;
+      g->AttachControl(new keith::ui::KeithWavetableViewSwitch(
+          IRECT(fr.L, fr.T, fr.L + 160.f, fr.B), pageState, kWavetable, wtFrames));
+      g->AttachControl(new keith::ui::KeithMorphStepButton(
+          IRECT(fr.R - 52.f, fr.MH() - 12.f, fr.R - 30.f, fr.MH() + 12.f), pageState, kWavetable,
+          kParamOsc3Morph, frameCount, -1));
+      g->AttachControl(new keith::ui::KeithMorphStepButton(
+          IRECT(fr.R - 26.f, fr.MH() - 12.f, fr.R - 4.f, fr.MH() + 12.f), pageState, kWavetable,
+          kParamOsc3Morph, frameCount, 1));
     }
     // page_wt_banks keeps its panel: there is one bank, so it holds a caption rather than a list.
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_banks"), pageState,
@@ -484,7 +571,8 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     {
       IRECT r = OverlayIRECT("page_wt_banks");
       g->AttachControl(new keith::ui::KeithPageLabel(
-          IRECT(r.L + 8.f, r.T + 6.f, r.R - 8.f, r.T + 22.f), pageState, kWavetable, "BANKS", 10.f));
+          IRECT(r.L + 8.f, r.T + 6.f, r.R - 8.f, r.T + 22.f), pageState, kWavetable,
+          "TABLE 8 FRAMES", 10.f));
     }
     // The controls column: the morph knob and the osc 3 source tabs.
     //

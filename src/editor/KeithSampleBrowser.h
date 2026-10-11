@@ -118,6 +118,13 @@ public:
 
   int Selected() const { return mSelected; }
 
+  /** Hot-swap: draw attention so the user knows to pick from the list. */
+  void RequestFocus()
+  {
+    mFocusPulse = 60;
+    SetDirty(false);
+  }
+
   void Draw(IGraphics& g) override;
   void OnMouseDown(float x, float y, const IMouseMod&) override;
   void OnMouseWheel(float x, float y, const IMouseMod&, float d) override;
@@ -133,6 +140,7 @@ private:
   std::vector<BrowserEntry> mEntries;
   int mSelected = -1;
   int mScroll = 0;
+  int mFocusPulse = 0;
   std::function<void(const BrowserEntry&)> mOnPick;
 };
 

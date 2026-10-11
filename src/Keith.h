@@ -240,6 +240,25 @@ enum EParams
   kParamGuitarBank = 123,
   kParamGuitarLevel = 124,
 
+  // U20 sampler page. IDs 0-124 stay put.
+  /** Left region flag, percent of the full sample length. */
+  kParamSampleRegionStart = 125,
+  /** Right region flag, percent of the full sample length. */
+  kParamSampleRegionEnd = 126,
+  /** Playback start within the flag region, percent of that region. */
+  kParamSamplePlayStart = 127,
+  /** Playback end within the flag region, percent of that region. */
+  kParamSamplePlayEnd = 128,
+  kParamSampleRoot = 129,
+  kParamSampleTune = 130,
+  kParamSampleGain = 131,
+  /** Transient, Region, or Manual slicing. */
+  kParamSliceBy = 132,
+  /** 0..100, mapped to SliceSettings::sensitivity. */
+  kParamSliceSensitivity = 133,
+  /** Even slice count when Slice By = Region. */
+  kParamSliceRegions = 134,
+
   kNumParams
 };
 

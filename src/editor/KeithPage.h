@@ -26,6 +26,7 @@
 #include "EditorialControls.h"
 #include "KeithControls.h"
 #include "KeithPageId.h"
+#include <algorithm>
 
 namespace keith {
 namespace ui {
@@ -403,6 +404,86 @@ private:
   bool Open() const { return mState != nullptr && *mState == mPage; }
   const KeithPage* mState;
   KeithPage mPage;
+};
+
+/** A parameter menu that only draws while its page is open. */
+class KeithPageParamMenu : public KeithParamMenu
+{
+public:
+  KeithPageParamMenu(const IRECT& bounds, int paramIdx, const char* label,
+                     std::initializer_list<const char*> options, const KeithPage* state,
+                     KeithPage page)
+  : KeithParamMenu(bounds, paramIdx, label, options)
+  , mState(state)
+  , mPage(page)
+  {
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (!Open())
+      return;
+    KeithParamMenu::Draw(g);
+  }
+
+  void OnMouseDown(float x, float y, const IMouseMod& mod) override
+  {
+    if (!Open())
+      return;
+    KeithParamMenu::OnMouseDown(x, y, mod);
+  }
+
+private:
+  bool Open() const { return mState != nullptr && *mState == mPage; }
+  const KeithPage* mState;
+  KeithPage mPage;
+};
+
+/** Step kParamOsc3Morph one frame up or down. */
+class KeithMorphStepButton : public KeithPageElement
+{
+public:
+  KeithMorphStepButton(const IRECT& bounds, const KeithPage* state, KeithPage page, int morphParam,
+                       int frameCount, int direction)
+  : KeithPageElement(bounds, state, page)
+  , mMorphParam(morphParam)
+  , mFrameCount(frameCount)
+  , mDir(direction)
+  {
+  }
+
+  void Draw(IGraphics& g) override
+  {
+    if (!PageIsOpen())
+      return;
+    g.FillRect(kPanelAlt, mRECT);
+    g.DrawRect(kLine, mRECT, nullptr, 1.f);
+    g.DrawText(MonoBold(12.f, kPaper, EAlign::Center), mDir < 0 ? "<" : ">", mRECT);
+  }
+
+  void OnMouseDown(float, float, const IMouseMod&) override
+  {
+    if (!PageIsOpen())
+      return;
+    auto* plugin = dynamic_cast<iplug::IPluginBase*>(GetDelegate());
+    if (plugin == nullptr || mMorphParam < 0 || mFrameCount < 2)
+      return;
+    IParam* param = plugin->GetParam(mMorphParam);
+    if (param == nullptr)
+      return;
+    const float morph = static_cast<float>(param->Value() / 100.0);
+    int idx = static_cast<int>(std::lround(morph * static_cast<float>(mFrameCount - 1)));
+    idx = std::clamp(idx + mDir, 0, mFrameCount - 1);
+    param->SetNormalized(static_cast<double>(idx) / static_cast<double>(mFrameCount - 1));
+    SetDirty(false);
+    if (auto* ui = GetUI())
+      ui->SetAllControlsDirty();
+  }
+
+private:
+  int mMorphParam;
+  int mFrameCount;
+  int mDir;
 };
 
 } // namespace ui

@@ -47,6 +47,11 @@ inline void KeithSampleBrowser::Draw(IGraphics& g)
 
   g.FillRect(kPanel, mRECT);
   g.DrawRect(kLine, mRECT, nullptr, 1.f);
+  if (mFocusPulse > 0)
+  {
+    g.DrawRect(kHotPink, mRECT, nullptr, 3.f);
+    --mFocusPulse;
+  }
 
   ClampScroll();
 

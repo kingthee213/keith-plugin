@@ -33,7 +33,7 @@ constexpr uint32_t kDrumStateMagic = 0x4B445231u; // "KDR1"
 constexpr uint32_t kDrumStateVersion = 1u;
 
 constexpr uint32_t kSamplerStateMagic = 0x4B535031u; // "KSP1"
-constexpr uint32_t kSamplerStateVersion = 1u;
+constexpr uint32_t kSamplerStateVersion = 2u;
 // 16-bit PCM payload limit on save and load. Above this we store the file path only so the
 // project stays small; slices and warp still round-trip.
 constexpr uint32_t kSampleEmbedCeilingBytes = 8u * 1024u * 1024u;
@@ -4875,8 +4875,10 @@ void SamplerEngine::SerializeState(IByteChunk& chunk) const
     {
       const int32_t startFrame = slice.startFrame;
       const int32_t midiNote = slice.midiNote;
+      const uint8_t manual = slice.manual ? 1u : 0u;
       chunk.Put(&startFrame);
       chunk.Put(&midiNote);
+      chunk.Put(&manual);
     }
   }
 
@@ -4901,8 +4903,10 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
   uint32_t version = 0;
   chunk.Get(&magic, startPos);
   chunk.Get(&version, startPos + static_cast<int>(sizeof(uint32_t)));
-  if (magic != kSamplerStateMagic || version != kSamplerStateVersion)
+  if (magic != kSamplerStateMagic
+      || (version != kSamplerStateVersion && version != kSamplerStateVersion - 1))
     return startPos;
+  const bool sliceHasManual = version >= 2;
 
   int pos = startPos + static_cast<int>(sizeof(uint32_t) * 2u);
 
@@ -4995,8 +4999,10 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
   // passes for any position and slices.resize(2^28) then tries to allocate 2 GB and throws. The
   // embedded-audio path above already computes in int64_t and cannot overflow; these two counts
   // did not, which was the inconsistency. Dividing here keeps the arithmetic inside int.
+  const int bytesPerSlice =
+      static_cast<int>(sizeof(int32_t) * 2u + (sliceHasManual ? sizeof(uint8_t) : 0));
   const int remaining = chunk.Size() - pos;
-  if (remaining < 0 || sliceCount > remaining / static_cast<int>(sizeof(int32_t) * 2u))
+  if (remaining < 0 || sliceCount > remaining / bytesPerSlice)
     return startPos;
 
   std::vector<Slice> slices;
@@ -5008,9 +5014,12 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
     int32_t midiNote = 0;
     pos = chunk.Get(&startFrame, pos);
     pos = pos >= 0 ? chunk.Get(&midiNote, pos) : -1;
+    uint8_t manual = 0;
+    if (sliceHasManual && pos >= 0)
+      pos = chunk.Get(&manual, pos);
     if (pos < 0)
       return startPos;
-    slices[static_cast<std::size_t>(i)] = Slice {startFrame, midiNote};
+    slices[static_cast<std::size_t>(i)] = Slice {startFrame, midiNote, manual != 0};
   }
 
   uint8_t warpEnabled = 0;
@@ -5060,6 +5069,56 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
 }
 
 } // namespace keith::sampler
+
+namespace {
+
+void SyncSamplerPageParams(keith::Keith& plugin)
+{
+  keith::sampler::SamplerEngine& sampler = plugin.Sampler();
+  if (!sampler.HasSample())
+    return;
+  const int frames = sampler.Sample()->frames;
+  int r0 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionStart)->Value() / 100.0 * frames));
+  int r1 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionEnd)->Value() / 100.0 * frames));
+  r0 = std::clamp(r0, 0, std::max(0, frames - 1));
+  r1 = std::clamp(r1, r0 + 1, frames);
+  sampler.SetRegionFrames(r0, r1);
+  const int span = r1 - r0;
+  const int p0 =
+      r0 + static_cast<int>(plugin.GetParam(kParamSamplePlayStart)->Value() / 100.0 * span);
+  const int p1 =
+      r0 + static_cast<int>(plugin.GetParam(kParamSamplePlayEnd)->Value() / 100.0 * span);
+  sampler.SetPlayWindow(p0, std::max(p0, p1 - 1));
+  sampler.SetSampleGain(static_cast<float>(plugin.GetParam(kParamSampleGain)->Value() / 100.0));
+  sampler.SetSampleRoot(plugin.GetParam(kParamSampleRoot)->Int());
+  sampler.SetSampleTuneSemitones(plugin.GetParam(kParamSampleTune)->Value());
+}
+
+void ApplySliceBy(keith::Keith& plugin)
+{
+  keith::sampler::SamplerEngine& sampler = plugin.Sampler();
+  if (!sampler.HasSample())
+    return;
+  const int frames = sampler.Sample()->frames;
+  int r0 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionStart)->Value() / 100.0 * frames));
+  int r1 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionEnd)->Value() / 100.0 * frames));
+  r1 = std::clamp(r1, r0 + 1, frames);
+  const int by = plugin.GetParam(kParamSliceBy)->Int();
+  if (by == 0)
+  {
+    keith::sampler::SliceSettings settings;
+    settings.sensitivity =
+        static_cast<float>(plugin.GetParam(kParamSliceSensitivity)->Value() / 100.0);
+    sampler.DetectSlices(settings, true);
+  }
+  else if (by == 1)
+  {
+    sampler.SetSlices(keith::sampler::RegionSlices(r0, r1, plugin.GetParam(kParamSliceRegions)->Int(),
+                                                   frames));
+  }
+}
+
+} // namespace
 
 void Keith::SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit)
 {
@@ -5290,8 +5349,9 @@ static_assert(kParamNoiseKey == 101 && kParamFilterKeyCurve == 110,
 static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 117 && kParamSampleMode == 118
                 && kParamSampleReverse == 119 && kParamDrumKit == 120 && kParamPercKit == 121
                 && kParamVocalEnable == 122 && kParamGuitarBank == 123 && kParamGuitarLevel == 124
-                && kNumParams == 125,
-              "the third oscillator appends 111..117, the sampler controls 118..119");
+                && kParamSampleRegionStart == 125 && kParamSliceRegions == 134
+                && kNumParams == 135,
+              "U18-U20 appends through sampler page controls");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -5361,6 +5421,18 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamGuitarBank)->InitEnum("Guitar Bank", 0,
     {"Off", "Clean Electric", "Jazz Clean", "Distorted 1", "Distorted 2", "Nylon"});
   GetParam(kParamGuitarLevel)->InitDouble("Guitar Level", 0., -60., 12., 0.01, "dB");
+
+  GetParam(kParamSampleRegionStart)->InitDouble("Sample Region Start", 0., 0., 100., 0.1, "%");
+  GetParam(kParamSampleRegionEnd)->InitDouble("Sample Region End", 100., 0., 100., 0.1, "%");
+  GetParam(kParamSamplePlayStart)->InitDouble("Sample Play Start", 0., 0., 100., 0.1, "%");
+  GetParam(kParamSamplePlayEnd)->InitDouble("Sample Play End", 100., 0., 100., 0.1, "%");
+  GetParam(kParamSampleRoot)->InitInt("Sample Root", 60, 0, 127);
+  GetParam(kParamSampleTune)->InitDouble("Sample Tune", 0., -48., 48., 0.01, "st");
+  GetParam(kParamSampleGain)->InitDouble("Sample Gain", 100., 0., 200., 0.1, "%");
+  GetParam(kParamSliceBy)->InitEnum("Slice By", 0, {"Transient", "Region", "Manual"});
+  GetParam(kParamSliceSensitivity)->InitDouble("Slice Sensitivity", 50., 0., 100., 0.1, "%");
+  GetParam(kParamSliceRegions)->InitInt("Slice Regions", 8, 2, 64);
+
   GetParam(kParamOsc3Morph)->InitDouble("Synth Osc3 Morph", 0., 0., 100., 0.1, "%");
   GetParam(kParamOsc3Enable)->InitBool("Synth Osc3 Enable", false);
 
@@ -5590,6 +5662,7 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   // Reverse, read the same way. Applied per trigger, so switching it does not disturb a note
   // that is already sounding.
   mSampler.SetReversed(GetParam(kParamSampleReverse)->Int() == 1);
+  SyncSamplerPageParams(*this);
 
   // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
   // the musical position.
@@ -5897,6 +5970,19 @@ void Keith::OnParamChange(int paramIdx)
     // fires for every automated change and loading ten WAVs per block would be a stutter.
     LoadDrumKit();
     mDrumUiDirty.store(true);
+    return;
+  }
+
+  if (paramIdx >= kParamSampleRegionStart && paramIdx <= kParamSampleGain)
+  {
+    SyncSamplerPageParams(*this);
+    return;
+  }
+
+  if (paramIdx == kParamSliceBy || paramIdx == kParamSliceSensitivity
+      || paramIdx == kParamSliceRegions)
+  {
+    ApplySliceBy(*this);
     return;
   }
 

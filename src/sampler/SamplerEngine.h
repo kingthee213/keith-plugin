@@ -45,6 +45,7 @@ using iplug::IByteChunk;
 #include "IPlugStructs.h"
 #include <memory>
 #include <vector>
+#include <algorithm>
 // The real one lives inside the iPlug namespace, so the bare name used throughout this header
 // needs it brought in. The placeholder branch above does the same thing, which is why the two
 // paths look alike -- they have to agree on the name or the declarations do not match.
@@ -221,8 +222,14 @@ public:
 
     if (mMode == SampleMode::Play)
     {
-      const double ratio = std::pow(2.0, (note - kSampleRootNote) / 12.0);
-      Trigger(velocity, ratio, 0, -1);
+      const int root = mSampleRoot > 0 ? mSampleRoot : kSampleRootNote;
+      const double ratio =
+          std::pow(2.0, (note - root + mSampleTune) / 12.0);
+      const int regionEnd = RegionEndFrame();
+      int start = std::clamp(mPlayStart, mRegionStart, std::max(mRegionStart, regionEnd - 1));
+      int end = mPlayEndInclusive < 0 ? regionEnd - 1
+                                       : std::clamp(mPlayEndInclusive, start, regionEnd - 1);
+      Trigger(velocity * mSampleGain, ratio, start, end);
       return true;
     }
 
@@ -316,7 +323,7 @@ public:
    * Message thread: detection allocates and reads the whole sample. The markers it produces are
    * then editable by the user.
    */
-  SliceResult DetectSlices(const SliceSettings& settings)
+  SliceResult DetectSlices(const SliceSettings& settings, bool preserveManual = true)
   {
     if (!HasSample())
     {
@@ -324,9 +331,12 @@ public:
       return SliceResult {};
     }
     SliceResult found = DetectTransients(*mSample, mSampleRate, settings);
-    // One publish at the end, not two. The old version assigned the single-slice default first
-    // and the found set second, which doubled the window in which the audio thread could see a
-    // half-built state.
+    if (preserveManual)
+    {
+      const std::shared_ptr<const std::vector<Slice>> prev = mSlices;
+      if (prev)
+        found.slices = MergeDetectedWithManual(found.slices, *prev, mSample->frames);
+    }
     PublishSlices(std::move(found.slices));
     return found;
   }
@@ -344,10 +354,79 @@ public:
     std::shared_ptr<const std::vector<Slice>> current = mSlices;
     std::vector<Slice> edited = current ? *current : SingleSlice();
     MoveBoundary(edited, index, frame, mSample->frames);
+    if (index < edited.size())
+      edited[index].manual = true;
     PublishSlices(std::move(edited));
   }
 
   void SetSlices(std::vector<Slice> slices) { PublishSlices(std::move(slices)); }
+
+  /** Remove one boundary (not the first). Message thread only. */
+  void RemoveSlice(std::size_t index)
+  {
+    if (!HasSample())
+      return;
+    std::shared_ptr<const std::vector<Slice>> current = mSlices;
+    std::vector<Slice> edited = current ? *current : SingleSlice();
+    RemoveBoundary(edited, index);
+    for (std::size_t i = 0; i < edited.size(); ++i)
+      edited[i].midiNote = kSliceLowNote + static_cast<int>(i);
+    PublishSlices(std::move(edited));
+  }
+
+  /** Insert a manual boundary. Returns the new index, or -1. */
+  int AddSlice(int frame)
+  {
+    if (!HasSample())
+      return -1;
+    std::shared_ptr<const std::vector<Slice>> current = mSlices;
+    std::vector<Slice> edited = current ? *current : SingleSlice();
+    const int idx = AddBoundary(edited, frame, mSample->frames, kSliceLowNote, true);
+    if (idx < 0)
+      return -1;
+    PublishSlices(std::move(edited));
+    return idx;
+  }
+
+  void ToggleSliceManual(std::size_t index)
+  {
+    if (!HasSample() || index == 0)
+      return;
+    std::shared_ptr<const std::vector<Slice>> current = mSlices;
+    if (!current || index >= current->size())
+      return;
+    std::vector<Slice> edited = *current;
+    edited[index].manual = !edited[index].manual;
+    PublishSlices(std::move(edited));
+  }
+
+  /** Playback region flags, in frames. End is exclusive; -1 means the sample end. */
+  void SetRegionFrames(int start, int endExclusive)
+  {
+    mRegionStart = std::max(0, start);
+    mRegionEndExclusive = endExclusive;
+  }
+
+  int RegionStartFrame() const { return mRegionStart; }
+  int RegionEndFrame() const
+  {
+    if (!HasSample())
+      return 0;
+    return mRegionEndExclusive < 0 ? mSample->frames : std::min(mRegionEndExclusive, mSample->frames);
+  }
+
+  void SetPlayWindow(int start, int endInclusive)
+  {
+    mPlayStart = std::max(0, start);
+    mPlayEndInclusive = endInclusive;
+  }
+
+  void SetSampleGain(float gain) { mSampleGain = std::clamp(gain, 0.f, 4.f); }
+  void SetSampleRoot(int note) { mSampleRoot = std::clamp(note, 0, 127); }
+  void SetSampleTuneSemitones(double semitones)
+  {
+    mSampleTune = std::clamp(semitones, -48., 48.);
+  }
 
   /** Adopt the slices as an evenly spaced warp map, which is the tempo-sync case. */
   void TempoSyncFromSlices(double beatsPerSlice)
@@ -430,6 +509,13 @@ private:
   bool mSampleEmbeddedInProject = true;
   double mSampleRate = 44100.;
   int mNextVoice = 0;
+  int mRegionStart = 0;
+  int mRegionEndExclusive = -1;
+  int mPlayStart = 0;
+  int mPlayEndInclusive = -1;
+  float mSampleGain = 1.f;
+  int mSampleRoot = kSampleRootNote;
+  double mSampleTune = 0.;
 };
 
 } // namespace sampler
