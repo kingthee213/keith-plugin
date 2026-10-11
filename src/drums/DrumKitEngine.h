@@ -33,6 +33,11 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+
+// For kFirstMidiNote and kLastMidiNote, which this file uses and does not define. DrumSynth.h owns
+// the drum note range -- the constants used to be duplicated between here and there, which is how
+// the redefinition error turned up.
+#include "drums/DrumSynth.h"
 #include <vector>
 
 #include "sampler/SamplerVoice.h"   // SampleData lives here
@@ -47,7 +52,6 @@ constexpr int kKitSlots = 16;
 // kFirstMidiNote and kLastMidiNote come from drums/DrumSynth.h, which owns the drum note range.
 // Redefining them here collided -- and a second definition of a range is the kind of thing that
 // drifts out of step silently, so there is one definition and this file uses it.
-constexpr int kFirstMidiNote = 36;
 
 /**
  * Where the percussion kit starts, in MIDI notes ABOVE the whole drum range.
