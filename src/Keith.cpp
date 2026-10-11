@@ -1926,8 +1926,10 @@ static_assert(kParamLfo2Rate == 85 && kParamLfo2Amount == 88,
               "U13 appends 85..88");
 static_assert(kParamMod1Source == 89 && kParamMod4Amount == 100,
               "U15 appends 89..100");
-static_assert(kParamNoiseKey == 101 && kParamFilterKeyCurve == 110 && kNumParams == 111,
+static_assert(kParamNoiseKey == 101 && kParamFilterKeyCurve == 110,
               "U17 appends 101..110");
+static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 117 && kNumParams == 118,
+              "the third oscillator appends 111..117");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
