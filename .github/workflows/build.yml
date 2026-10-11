@@ -37,6 +37,11 @@ jobs:
 
       - name: Measure preset levels
         run: |
+          # measure_preset_levels.py needs numpy for the K-weighting filter in ITU-R BS.1770-4.
+          # The runner has no numpy by default, and continue-on-error hid the ImportError on the
+          # first attempt -- the step reported success and produced no TSV. Installing it explicitly
+          # rather than relying on the runner image.
+          python3 -m pip install --quiet --disable-pip-version-check numpy
           python3 tools/measure_preset_levels.py measure \
             --render build/Release/keith-recreation-render \
             --out docs/level-measurements.tsv
