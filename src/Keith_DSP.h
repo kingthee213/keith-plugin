@@ -437,7 +437,65 @@ public:
       if (noteMessage)
         return;
     }
-    else if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
+
+    // --- the sampler takes the whole keyboard -------------------------------------------------
+    //
+    // Owner's rule: "if a sample is in sampler. drums and synth are overridden and only sampler
+    // triggers."
+    //
+    // Placed here, AFTER the PAD MIDI branch and BEFORE the drums. The order is the fix, and
+    // both ends of it matter:
+    //
+    //   * After PAD MIDI, because that switch is an explicit mode -- "only drum pads are
+    //     triggered, nothing should come from synth". It outranks the sampler, so with the pads
+    //     switch on the pads still play and a loaded sample stays silent.
+    //   * Before the drums, because the drum branch RETURNS as soon as it sees a drum note. With
+    //     it first, the sampler never received notes 36-51 and SLICE mode's first sixteen slices
+    //     were unreachable whenever a kit was audible -- which is always, by default.
+    //
+    // With no sample loaded this does nothing, so the synth and drums behave exactly as before.
+    if (mSampler && mSampler->HasSample())
+    {
+      if (noteMessage)
+      {
+        const int note = msg.NoteNumber();
+        const bool on = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
+        const float velocity = static_cast<float>(msg.Velocity()) / 127.f;
+
+        if (on)
+        {
+          // The ratio and range come from the sampler's mode: PLAY transposes the whole sample,
+          // SLICE plays the mapped slice at its recorded pitch. A key outside the slice range in
+          // SLICE mode starts nothing -- deliberately, since a slicer that also played the synth
+          // underneath would be two instruments at once.
+          mSampler->TriggerNote(note, velocity);
+        }
+
+        // Note-off is swallowed: these are one-shots, so a slice plays to its end. That is what
+        // makes a chopped break keep its rhythm rather than stuttering on key release.
+        return;
+      }
+
+      // Modulation and pitch bend do nothing to a one-shot sample, so they are swallowed.
+      //
+      // All-notes-off is NOT swallowed. The host sends it when playback stops, and it is what
+      // silences the drums -- swallowing it here would leave any ringing drum event sounding
+      // after the transport stopped. So it falls through to the handling below. That is the
+      // general rule for this block: swallow what a one-shot genuinely cannot use, and let
+      // everything else through to the code that owns it.
+      if (status == IMidiMsg::kPitchBend)
+        return;
+
+      if (status == IMidiMsg::kControlChange)
+      {
+        const int cc = msg.ControlChangeIdx();
+        const bool allNotesOff = (cc == IMidiMsg::kAllNotesOff || cc == 120);
+        if (!allNotesOff)
+          return;   // mod wheel, sustain and the rest: nothing to do to a one-shot sample
+      }
+    }
+
+    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
     {
       // PAD MIDI OFF, audible kit: the drum range still plays the pads, as it always has.
       // Existing presets rely on this -- an audible kit owns 36-51.
@@ -454,36 +512,6 @@ public:
       {
         mDrums.AllNotesOff();
         mNumDrumEvents = 0;
-      }
-    }
-
-    // --- the sampler ---------------------------------------------------------------------
-    //
-    // Reached only when a sample is loaded. With no sample the sampler consumes nothing and the
-    // synth and drums behave exactly as they did before, so no existing preset changes.
-    //
-    // The drum range is the awkward part. An audible kit owns 36-51, and in Slice mode the
-    // sampler wants 36 upward. Rather than silently reinterpreting those keys, the sampler only
-    // takes a note the drums did not already take, and in Slice mode it starts at kSliceLowNote
-    // (36) which means a loaded sample DOES shadow an audible kit across 36-51. That is the
-    // intended behaviour -- you pressed SLICE, so the keyboard is the slicer -- but it is worth
-    // knowing that loading a sample and pressing SLICE takes those keys from the kit.
-    if (noteMessage && mSampler && mSampler->HasSample())
-    {
-      const int note = msg.NoteNumber();
-      const bool on = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
-      const float velocity = static_cast<float>(msg.Velocity()) / 127.f;
-
-      if (on)
-      {
-        // The ratio and range are decided by the sampler's mode, not here.
-        if (mSampler->TriggerNote(note, velocity))
-          return;   // consumed: the note made a sampler voice, so the synth should not also take it
-      }
-      else if (status == IMidiMsg::kNoteOff || (status == IMidiMsg::kNoteOn && msg.Velocity() == 0))
-      {
-        // A one-shot sampler ignores note-off: the slice plays to its end, which is what makes a
-        // chopped break keep its rhythm instead of stuttering when keys are released.
       }
     }
 

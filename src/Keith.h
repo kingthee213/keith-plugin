@@ -215,6 +215,9 @@ enum EParams
    */
   kParamSampleMode = 118,
 
+  /** Play the sample backwards. Part of the sound, so it lives in the patch. */
+  kParamSampleReverse = 119,
+
   kNumParams
 };
 
@@ -363,7 +366,12 @@ private:
   keith::ui::KeithPage mPage = keith::ui::KeithPage::None;
 #endif
   /** PAD MIDI. Not serialised -- see PadMidiEnabled(). */
-  std::atomic<bool> mPadMidiEnabled {true};
+  // OFF at startup. Owner's instruction: "drum midi pad should be off on start up."
+  //
+  // It is deliberately not a parameter and not serialised, so this initialiser is the only thing
+  // that decides the startup state -- a saved project cannot turn it back on. The switch is a
+  // performance mode, not part of a sound.
+  std::atomic<bool> mPadMidiEnabled {false};
   /** A pad fired from the editor, handed to the DSP on the next block. -1 = nothing. */
   std::atomic<int> mPendingPadSlot {-1};
   std::atomic<float> mPendingPadVelocity {1.f};

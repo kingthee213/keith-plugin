@@ -364,6 +364,15 @@ public:
       const std::string cat = category ? category : "";
       const std::size_t space = cat.find(' ');
       const std::string first = (space == std::string::npos) ? cat : cat.substr(0, space);
+
+      // "key" is a PREFIX that groups, not a kind of its own. The keyboard patches carry
+      // "key tine", "key organ", "key combo" and "key tape" so the sub-type is recorded, but all
+      // four belong under one KEYS heading -- a user looking for a piano wants one place to look,
+      // not four. Collapsing the prefix here keeps the detail in the category field and the
+      // grouping in the menu.
+      if (first == "key")
+        return "keys";
+
       for (const char* kind : kKindOrder)
         if (first == kind)
           return first;

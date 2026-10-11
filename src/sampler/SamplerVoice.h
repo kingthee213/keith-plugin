@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -124,7 +125,13 @@ public:
     if (!mSample || mSample->Empty())
       return;
     mVelocity = std::clamp(velocity, 0.f, 1.f);
-    mPosition = static_cast<double>(mStartFrame);
+
+    // Reversed starts at the END of the range and walks back. The range is resolved here rather
+    // than in Process because the start point has to be right from the first sample -- starting at
+    // mStartFrame and correcting on the first Process call would emit one frame from the wrong end.
+    // The frame counter, from which the read position is DERIVED. See PositionForFrame().
+    mFrameIndex = 0;
+    mPosition = PositionForFrame(0);
     mActive = true;
   }
 
@@ -155,10 +162,12 @@ public:
     // just that slice. mEndFrame is inclusive, so a slice from frame 1000 to 5000 stops at 5000
     // rather than running on to the end of the sample -- which is the difference between playing
     // a slice and playing the rest of the file from that point.
-    const int fileLast = mSample->frames - 1;
-    const int lastFrame = std::min(mEndFrame < 0 ? fileLast : mEndFrame, fileLast);
+    const int lastFrame = ResolvedEndFrame();
 
-    if (mPosition >= static_cast<double>(lastFrame) + 1.0)
+    // The range is exhausted when the frame counter reaches its length. Because the counter is
+    // direction-agnostic, this one test stops both forward and reversed playback -- they differ
+    // only in how PositionForFrame() maps the counter to a position.
+    if (mFrameIndex >= FrameCount())
     {
       mActive = false;
       return 0.f;
@@ -178,10 +187,17 @@ public:
     const float b = mSample->MonoAt(i1);
     const float value = a + (b - a) * frac;
 
-    // The file's rate against the host's, so a 48 kHz file plays at the right speed in a
-    // 44.1 kHz host before any pitch shifting is applied.
-    const double rateAdjust = mSample->sampleRate / mSampleRate;
-    mPosition += mPitchRatio * rateAdjust;
+    // Advance the frame counter and derive the next position from it, rather than accumulating a
+    // position. Two reasons, and the second is the one that forced the change:
+    //
+    //   * Accumulation drifts. Adding a ratio like 1.059463 a few hundred thousand times
+    //     accumulates rounding error, so a long sample ends a frame or two off where it should.
+    //   * Forward and reversed must cover EXACTLY the same frames. Accumulating downward from the
+    //     end and upward from the start does the same arithmetic in a different order, and the
+    //     two sequences disagreed by one frame at non-unity ratios. Deriving both from one counter
+    //     makes reversed the forward sequence reversed, by construction.
+    ++mFrameIndex;
+    mPosition = PositionForFrame(mFrameIndex);
 
     return value * mVelocity;
   }
@@ -198,10 +214,65 @@ public:
   int StartFrame() const { return mStartFrame; }
   int EndFrame() const { return mEndFrame; }
 
+  /**
+   * Play the range backwards.
+   *
+   * A direction flag rather than a second reversed copy of the sample: no extra memory, no rebuild
+   * on load, and it works per-voice so it can be switched while a note is still sounding. The
+   * read is the same interpolation either way -- only the step and the stop condition change.
+   */
+  void SetReversed(bool reversed) { mReversed = reversed; }
+  bool Reversed() const { return mReversed; }
+
 private:
+  /** How many frames this voice will emit over its range. */
+  int FrameCount() const
+  {
+    const double step = StepPerFrame();
+    const double span = (static_cast<double>(ResolvedEndFrame()) + 1.0)
+                          - static_cast<double>(mStartFrame);
+    if (step <= 0.0 || span <= 0.0)
+      return 0;
+    // Ceiling, because a partial final frame still sounds. The epsilon keeps a span that is an
+    // exact multiple of the step from rounding up to one extra frame.
+    const int n = static_cast<int>(std::ceil(span / step - 1e-9));
+    return std::max(0, n);
+  }
+
+  /** Frames advanced per output sample: the pitch ratio against the file's own rate. */
+  double StepPerFrame() const
+  {
+    if (!mSample || mSampleRate <= 0.0)
+      return 0.0;
+    return mPitchRatio * (mSample->sampleRate / mSampleRate);
+  }
+
+  /**
+   * The read position for frame `n` of the range.
+   *
+   * Both directions use this one function, which is what guarantees they cover the same frames:
+   * forward walks n upward, reversed walks it downward, and the arithmetic is identical either
+   * way. Reversed is therefore the forward sequence in reverse, not an independent calculation
+   * that has to be kept in step.
+   */
+  double PositionForFrame(int n) const
+  {
+    const int index = mReversed ? (FrameCount() - 1 - n) : n;
+    return static_cast<double>(mStartFrame) + static_cast<double>(index) * StepPerFrame();
+  }
+
+  /** mEndFrame resolved against the sample, clamped so it can never point past the data. */
+  int ResolvedEndFrame() const
+  {
+    const int fileLast = mSample ? mSample->frames - 1 : 0;
+    return std::min(mEndFrame < 0 ? fileLast : mEndFrame, fileLast);
+  }
+
   std::shared_ptr<const SampleData> mSample;
   int mStartFrame = 0;
   int mEndFrame = -1;   // -1: play to the end of the sample
+  bool mReversed = false;
+  int mFrameIndex = 0;
   double mSampleRate = 44100.;
   double mPosition = 0.;
   double mPitchRatio = 1.0;

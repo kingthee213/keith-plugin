@@ -11,6 +11,8 @@
 // duplicate symbols.
 
 #include "../src/sampler/SampleLoader.h"
+#include <memory>
+#include <vector>
 #include "../src/sampler/SamplerEngine.h"
 #include "../src/sampler/SamplerVoice.h"
 #include "../src/sampler/SampleSlicer.h"
@@ -119,42 +121,83 @@ void InstantiateForTypeChecking()
   (void) warpEngine.ModeFor(warp);
   (void) keith::sampler::WarpEngine::BeatInSample(transport, 0.0, 0.0);
   warpEngine.Stop();
-}
 
-} // namespace
-
-  // The keyboard path: a note becomes a slice, and the slice plays its own range only. This is
-  // the correlation the owner asked for -- play the note, hear that piece and nothing else.
+  // --- the keyboard-to-slice path, and the published slice set -------------------------------
+  //
+  // Type-checking only. This unit is compiled into an object library and never run, so there are
+  // no error codes here: the assertions that must actually EXECUTE live in tools/slicer_check.py
+  // and the mirrored simulations. What matters here is that every call below compiles and that
+  // the signatures agree.
   {
     keith::sampler::SamplerEngine engine;
     engine.SetSampleRate(44100.);
 
+    // Modes and reverse.
+    engine.SetMode(keith::sampler::SampleMode::Play);
+    engine.SetMode(keith::sampler::SampleMode::Slice);
+    (void) engine.Mode();
+    engine.SetReversed(true);
+    engine.SetReversed(false);
+    (void) engine.Reversed();
+
+    // A snapshot of the slices. The return is a shared_ptr, not a reference, so a caller holds
+    // whatever it is reading alive across an edit.
+    std::shared_ptr<const std::vector<keith::sampler::Slice>> snapshot = engine.Slices();
+    (void) snapshot;
+
+    // Which key maps to which slice.
+    (void) engine.SliceForNote(36);
+    (void) engine.SliceForNote(60);
+
+    // The trigger the DSP calls on a note-on.
+    (void) engine.TriggerNote(60, 0.8f);
+
+    // The three writers. Each publishes a new set rather than editing the live one.
+    std::vector<keith::sampler::Slice> three(3);
+    three[0].startFrame = 0;
+    three[1].startFrame = 1000;
+    three[2].startFrame = 5000;
+    engine.SetSlices(three);
+    engine.MoveSliceBoundary(1, 1200);
+    (void) engine.DetectSlices(keith::sampler::SliceSettings {});
+
+    // A fresh snapshot still describes a consistent set.
+    std::shared_ptr<const std::vector<keith::sampler::Slice>> after = engine.Slices();
+    (void) after;
+  }
+
+  // --- reverse on the voice ------------------------------------------------------------------
+  {
+    keith::sampler::SamplerVoice voice;
+    voice.SetSampleRate(44100.);
+
     keith::sampler::SampleData data;
     data.sampleRate = 44100.;
-    data.frames = 44100;
-    data.channels.assign(1, std::vector<float>(static_cast<std::size_t>(data.frames), 0.1f));
-    keith::sampler::SamplerEngine probe;
+    data.frames = 2000;
+    data.channels.assign(1, std::vector<float>(static_cast<std::size_t>(data.frames), 0.25f));
 
-    // Range maths, without needing a loaded file: a slice ends one frame before the next starts,
-    // and the last slice ends with the sample.
-    std::vector<keith::sampler::Slice> slices(3);
-    slices[0].startFrame = 0;
-    slices[1].startFrame = 1000;
-    slices[2].startFrame = 5000;
+    const int frames = data.frames;                       // captured before the move below
+    voice.SetSample(std::make_shared<const keith::sampler::SampleData>(std::move(data)));
 
-    const int e0 = slices[0].EndFrame(slices, 0, 20000);
-    const int e1 = slices[1].EndFrame(slices, 1, 20000);
-    const int e2 = slices[2].EndFrame(slices, 2, 20000);
+    voice.SetReversed(true);
+    (void) voice.Reversed();
+    voice.SetRange(0, frames - 1);
+    voice.Trigger(1.f);
+    (void) voice.Active();
+    (void) voice.Process();
+    voice.Stop();
 
-    // 999, 4999, 19999
-    if (e0 != 999 || e1 != 4999 || e2 != 19999)
-      return 90;
+    // A one-frame range is the boundary both directions have to survive.
+    voice.SetReversed(false);
+    voice.SetRange(500, 500);
+    voice.Trigger(1.f);
+    (void) voice.Process();
 
-    // A slice must never invert: a malformed pair clamps to its own start rather than going
-    // backwards and reading audio before the slice.
-    std::vector<keith::sampler::Slice> bad(2);
-    bad[0].startFrame = 5000;
-    bad[1].startFrame = 100;
-    if (bad[0].EndFrame(bad, 0, 20000) < bad[0].startFrame)
-      return 91;
+    voice.SetReversed(true);
+    voice.SetRange(500, 500);
+    voice.Trigger(1.f);
+    (void) voice.Process();
   }
+}
+
+} // namespace

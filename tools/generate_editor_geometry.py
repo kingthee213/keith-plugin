@@ -640,18 +640,199 @@ place_overlay("wavetable_button", master_cx - MASTER_W / 2,
               master_cx + MASTER_W / 2,
               master_y + MASTER_H + _r(18) + BUTTON_H * 2 + _r(12))
 
-# PLAY and SLICE, under the two page buttons. These are the sampler's mode, and they are two
-# buttons rather than one toggle because they are two instruments rather than a setting: PLAY
-# transposes the whole sample across the keyboard, SLICE plays one slice per key. Side by side,
-# half the width each, so they read as a pair of alternatives and not as a sequence.
-SAMPLE_BTN_GAP = _r(10)
-SAMPLE_BTN_W = (MASTER_W - _r(10)) / 2
-sample_btn_y = master_y + MASTER_H + _r(18) + BUTTON_H * 2 + _r(12) + _r(14)
 
-place_overlay("sample_play_button", master_cx - MASTER_W / 2, sample_btn_y,
-              master_cx - MASTER_W / 2 + SAMPLE_BTN_W, sample_btn_y + BUTTON_H)
-place_overlay("sample_slice_button", master_cx - MASTER_W / 2 + SAMPLE_BTN_W + _r(10), sample_btn_y,
-              master_cx + MASTER_W / 2, sample_btn_y + BUTTON_H)
+
+# ---------------------------------------------------------------------------------------
+# THE SAMPLER / WAVETABLE PAGE
+#
+# One page covering the panel area, opened by the SAMPLER or WAVETABLE button on the rail. The
+# page is split in two: the sampler above, the wavetable below. The panels underneath are NOT
+# moved or hidden by this geometry -- the page draws over them, which is what keeps the panel
+# symmetry work untouched by anything here.
+#
+# The page uses the width added when the canvas went to 1400 (x to 1370 rather than 1122), so it
+# has room for a browser strip beside a wide waveform.
+# ---------------------------------------------------------------------------------------
+PAGE_L = _r(188)
+PAGE_R = _r(1370)
+PAGE_T = _r(18)
+PAGE_B = _r(750)
+PAGE_PAD = _r(14)
+
+# Split. The sampler takes the taller half because it carries the waveform, the slice row, the
+# knob row and the mode buttons. The split is measured from content rather than guessed: at
+# 361/357 the two halves hold their rows with clearance, which is what the mock showed.
+PAGE_SPLIT_GAP = _r(14)
+SAMPLER_TOP = PAGE_T
+
+# The sampler half's height is DERIVED from the rows it must hold, not guessed. An earlier version
+# used a round number and the mode row fell 106 units past the bottom of its own page -- it escaped
+# into the wavetable half, and the page-overlap check is what caught it.
+#
+# Each entry is (name, height). Kept as data so the total and the layout below cannot drift apart:
+# if a row's height changes here, the split follows automatically.
+SL_TITLE_H_D = 30
+MODE_BTN_H_D = 22
+MODE_BTN_GAP_D = 8
+SL_AFTER_MODES_GAP_D = 14
+WAVE_H_D = 150
+SL_AFTER_WAVE_GAP_D = 10
+SLICE_ROW_H_D = 15
+SL_AFTER_SLICES_GAP_D = 14
+# The knob row is the knob's own height PLUS the label row beneath it. The label is drawn by the
+# editor, not by the geometry, so it has to be budgeted here or the next row lands on top of it.
+# That is exactly what happened: at 64 the budget fitted the knobs but not their labels, and the
+# warp row overlapped START and END by 8 units.
+PAGE_KNOB_H_D = 48
+PAGE_KNOB_LABEL_H_D = 14
+KNOB_ROW_H_D = PAGE_KNOB_H_D + PAGE_KNOB_LABEL_H_D
+SL_AFTER_KNOBS_GAP_D = 10
+MODE_ROW_H_D = 16
+SL_BOTTOM_MARGIN_D = 8
+
+SL_CONTENT_H_D = (
+    SL_TITLE_H_D + MODE_BTN_H_D * 2 + MODE_BTN_GAP_D + SL_AFTER_MODES_GAP_D
+    + WAVE_H_D + SL_AFTER_WAVE_GAP_D
+    + SLICE_ROW_H_D + SL_AFTER_SLICES_GAP_D
+    + KNOB_ROW_H_D + SL_AFTER_KNOBS_GAP_D
+    + MODE_ROW_H_D + SL_BOTTOM_MARGIN_D
+)
+
+SAMPLER_BOTTOM = SAMPLER_TOP + _r(SL_CONTENT_H_D)
+WAVETABLE_TOP = SAMPLER_BOTTOM + PAGE_SPLIT_GAP
+WAVETABLE_BOTTOM = PAGE_B
+
+# Fail here rather than emitting a page that spills. The page-overlap check would also catch it,
+# but it reports the symptom (an escaping row) and this reports the cause (the split is too small).
+if WAVETABLE_TOP >= WAVETABLE_BOTTOM:
+    raise SystemExit(
+        f"the sampler half ({SL_CONTENT_H_D} units of content) leaves no room for the wavetable "
+        f"half; the page is {PAGE_B - PAGE_T} units tall")
+
+place_overlay("page_sampler", PAGE_L, SAMPLER_TOP, PAGE_R, SAMPLER_BOTTOM)
+place_overlay("page_wavetable", PAGE_L, WAVETABLE_TOP, PAGE_R, WAVETABLE_BOTTOM)
+
+# --- inside the sampler half -----------------------------------------------------------------
+SL_TITLE_H = _r(SL_TITLE_H_D)
+# PLAY and SLICE: directly under the SAMPLER title, full width, stacked. The owner asked for
+# exactly this -- "both be long directly under sampler on sampler page" -- so they are the page's
+# first controls and they span it edge to edge rather than sitting in a column.
+MODE_BTN_H = _r(MODE_BTN_H_D)
+MODE_BTN_GAP = _r(MODE_BTN_GAP_D)
+mode_l = PAGE_L + PAGE_PAD
+mode_r = PAGE_R - PAGE_PAD
+
+place_overlay("page_sample_play", mode_l, SAMPLER_TOP + SL_TITLE_H,
+              mode_r, SAMPLER_TOP + SL_TITLE_H + MODE_BTN_H)
+place_overlay("page_sample_slice", mode_l, SAMPLER_TOP + SL_TITLE_H + MODE_BTN_H + MODE_BTN_GAP,
+              mode_r, SAMPLER_TOP + SL_TITLE_H + MODE_BTN_H * 2 + MODE_BTN_GAP)
+
+# The rest of the sampler half, laid out from the mode buttons downward.
+SL_BODY_TOP = SAMPLER_TOP + SL_TITLE_H + MODE_BTN_H * 2 + MODE_BTN_GAP + _r(SL_AFTER_MODES_GAP_D)
+SL_BROWSER_W = _r(240)
+
+place_overlay("page_sample_browser", mode_l, SL_BODY_TOP, mode_l + SL_BROWSER_W, SAMPLER_BOTTOM - PAGE_PAD)
+place_overlay("page_sample_wave", mode_l + SL_BROWSER_W + PAGE_PAD, SL_BODY_TOP,
+              mode_r, SL_BODY_TOP + _r(WAVE_H_D))
+place_overlay("page_sample_slices", mode_l + SL_BROWSER_W + PAGE_PAD,
+              SL_BODY_TOP + _r(WAVE_H_D + SL_AFTER_WAVE_GAP_D),
+              mode_r, SL_BODY_TOP + _r(WAVE_H_D + SL_AFTER_WAVE_GAP_D + SLICE_ROW_H_D))
+
+# The control row: start, end, length, root, tune, gain. Six equal columns, which is the shape
+# the panel knobs use, so the page reads as part of the same instrument.
+knob_top = SL_BODY_TOP + _r(WAVE_H_D + SL_AFTER_WAVE_GAP_D + SLICE_ROW_H_D + SL_AFTER_SLICES_GAP_D)
+page_knob_gap = _r(10)
+avail = (mode_r - (mode_l + SL_BROWSER_W + PAGE_PAD)) - page_knob_gap * 5
+page_knob_w = avail / 6
+for idx, name in enumerate(("start", "end", "length", "root", "tune", "gain")):
+    kx = mode_l + SL_BROWSER_W + PAGE_PAD + idx * (page_knob_w + page_knob_gap)
+    # The rect is the KNOB only. Its label is drawn 14 units below by the editor, and that band is
+    # budgeted separately in KNOB_ROW_H_D. This was +64, which overflowed the knob by 16 units and
+    # swallowed the label band -- so the arithmetic looked right while the warp row below landed on
+    # top of the knob labels.
+    place_overlay(f"page_knob_{name}", kx, knob_top, kx + page_knob_w,
+                  knob_top + _r(PAGE_KNOB_H_D))
+
+# The mode row sits under the knobs: warp and tempo sync.
+mode_row_top = knob_top + _r(KNOB_ROW_H_D + SL_AFTER_KNOBS_GAP_D)
+place_overlay("page_sample_warp", mode_l + SL_BROWSER_W + PAGE_PAD, mode_row_top,
+              mode_l + SL_BROWSER_W + PAGE_PAD + _r(120), mode_row_top + _r(MODE_ROW_H_D))
+place_overlay("page_sample_temposync", mode_l + SL_BROWSER_W + PAGE_PAD + _r(130), mode_row_top,
+              mode_l + SL_BROWSER_W + PAGE_PAD + _r(270), mode_row_top + _r(MODE_ROW_H_D))
+
+# REVERSE, beside TEMPO SYNC. Same row, same height, so the three read as one group of sampler
+# switches rather than as separate features.
+place_overlay("page_sample_reverse", mode_l + SL_BROWSER_W + PAGE_PAD + _r(286), mode_row_top,
+              mode_l + SL_BROWSER_W + PAGE_PAD + _r(402), mode_row_top + _r(MODE_ROW_H_D))
+
+# --- inside the wavetable half ---------------------------------------------------------------
+WT_TITLE_H = _r(30)
+WT_BODY_TOP = WAVETABLE_TOP + WT_TITLE_H
+WT_BANKS_W = _r(240)
+
+place_overlay("page_wt_banks", PAGE_L + PAGE_PAD, WT_BODY_TOP,
+              PAGE_L + PAGE_PAD + WT_BANKS_W, WAVETABLE_BOTTOM - PAGE_PAD)
+
+# The wavetable half is banks | frames+view | controls, three columns. The controls get their own
+# column at the right rather than being laid over the frame view -- an earlier version put MORPH
+# and the OSC 3 SOURCE switch ON TOP of the large frame display, because the view spanned the
+# whole width and the controls were placed after it in the same space.
+WT_COL_L = PAGE_L + PAGE_PAD + WT_BANKS_W + PAGE_PAD
+WT_CTRL_W = _r(210)
+WT_RIGHT = PAGE_R - PAGE_PAD
+WT_VIEW_R = WT_RIGHT - WT_CTRL_W - PAGE_PAD
+
+place_overlay("page_wt_frames", WT_COL_L, WT_BODY_TOP, WT_VIEW_R, WT_BODY_TOP + _r(80))
+place_overlay("page_wt_view", WT_COL_L, WT_BODY_TOP + _r(90), WT_VIEW_R,
+              WAVETABLE_BOTTOM - PAGE_PAD)
+place_overlay("page_wt_controls", WT_RIGHT - WT_CTRL_W, WT_BODY_TOP,
+              WT_RIGHT, WAVETABLE_BOTTOM - PAGE_PAD)
+
+# The controls column, laid out INSIDE its own rect rather than at offsets from the page.
+#
+# The column is 210 units wide and holds a knob and a pair of tabs. Two tabs side by side need
+# twice a tab's width, so the tab width is DERIVED as half the available width minus the gap --
+# not a fixed number. A fixed 84 units per tab was 174 units total in a 158-unit column, which put
+# the OSC 3 SOURCE tabs off the right edge of the page. Deriving the width means the tabs cannot
+# exceed the column no matter how the column is resized.
+WT_COL_L = WT_RIGHT - WT_CTRL_W
+WT_COL_R = WT_RIGHT
+WT_COL_PAD = _r(12)
+WT_INNER_L = WT_COL_L + WT_COL_PAD
+WT_INNER_R = WT_COL_R - WT_COL_PAD
+WT_INNER_W = WT_INNER_R - WT_INNER_L
+
+WT_ROW_GAP = _r(14)
+WT_TITLE_H = _r(14)
+
+# Morph: the knob that walks the frames. The one control in this column that is a real parameter.
+wt_morph_title_y = WT_BODY_TOP + _r(10)
+place_overlay("page_wt_morph_label", WT_INNER_L, wt_morph_title_y,
+              WT_INNER_R, wt_morph_title_y + WT_TITLE_H)
+WT_MORPH_KNOB_H = _r(62)
+wt_morph_y = wt_morph_title_y + WT_TITLE_H + _r(4)
+place_overlay("page_wt_morph", WT_INNER_L, wt_morph_y, WT_INNER_R, wt_morph_y + WT_MORPH_KNOB_H)
+
+# Osc 3 source: SHAPES or TABLE. Two tabs, width derived from the column.
+wt_src_title_y = wt_morph_y + WT_MORPH_KNOB_H + WT_ROW_GAP
+place_overlay("page_wt_src_label", WT_INNER_L, wt_src_title_y,
+              WT_INNER_R, wt_src_title_y + WT_TITLE_H)
+WT_TAB_H = _r(22)
+WT_TAB_GAP = _r(8)
+WT_TAB_W = (WT_INNER_W - WT_TAB_GAP) / 2
+wt_tabs_y = wt_src_title_y + WT_TITLE_H + _r(4)
+place_overlay("page_wt_tab_shapes", WT_INNER_L, wt_tabs_y,
+              WT_INNER_L + WT_TAB_W, wt_tabs_y + WT_TAB_H)
+place_overlay("page_wt_tab_table", WT_INNER_L + WT_TAB_W + WT_TAB_GAP, wt_tabs_y,
+              WT_INNER_R, wt_tabs_y + WT_TAB_H)
+
+# A guard, so a future column resize cannot silently push the tabs past the page edge. The
+# overlap check would catch the spill, but it reports the symptom; this names the cause.
+if WT_INNER_L + WT_TAB_W + WT_TAB_GAP + WT_TAB_W > WT_COL_R + 0.001:
+    raise SystemExit(
+        f"the OSC 3 SOURCE tabs do not fit the controls column: "
+        f"2 x {WT_TAB_W:.1f} + {WT_TAB_GAP:.1f} gap needs "
+        f"{WT_TAB_W * 2 + WT_TAB_GAP:.1f} but the column is {WT_COL_R - WT_COL_L:.1f} wide")
 
 place_overlay("midi_hint1", lr_l + PAD, _r(944), lr_r - PAD, _r(962))
 place_overlay("midi_hint2", lr_l + PAD, _r(962), lr_r - PAD, _r(980))
@@ -689,8 +870,23 @@ for row_idx, knobs in enumerate((all_fx_knobs[:6], all_fx_knobs[6:])):
         x = left_fx + i * (knob_w + fx_gap)
         rects[p] = box(x, y, x + knob_w, y + KNOB_H)
 
+# Overlay vs control overlaps.
+#
+# A page overlay is EXEMPT, and deliberately so: the sampler/wavetable page is a full-area surface
+# that draws OVER the panels, so overlapping them is the whole point rather than a bug. Without
+# this exemption the check fires 183 times on a correct layout and aborts before writing anything,
+# which is how the page geometry silently failed to reach the header.
+#
+# The exemption is by name prefix, not by size: "page_" is the convention for a page surface. An
+# unrelated overlay that happens to be large is still checked.
+PAGE_OVERLAY_PREFIX = "page_"
+
 overlay_conflicts = []
+page_overlays = []
 for oid, r in OVERLAYS.items():
+    if oid.startswith(PAGE_OVERLAY_PREFIX):
+        page_overlays.append(oid)
+        continue
     for p, cr in rects.items():
         if overlaps(r, cr):
             overlay_conflicts.append(f"overlay {oid} {r} overlaps param {p} {cr}")
@@ -698,6 +894,47 @@ if overlay_conflicts:
     print(f"{len(overlay_conflicts)} overlay conflicts:", flush=True)
     print("\n".join(overlay_conflicts), flush=True)
     raise SystemExit(1)
+
+# Page overlays nest: the sampler page contains its waveform, its browser, its mode buttons. So
+# the rule is not "pages must not overlap" -- it is "a page surface must not cross OUTSIDE its
+# parent page". That is what actually breaks: a control that spills past its page would be drawn
+# over the wrong half of the window, or clipped, depending on the drawing order.
+#
+# The parent of each element is the SMALLEST page that contains it. An element that no page
+# contains is a top-level page, and top-level pages must not overlap each other.
+page_boxes = {oid: OVERLAYS[oid] for oid in page_overlays}
+
+def contains(outer, inner):
+    return (outer[0] <= inner[0] and outer[1] <= inner[1]
+            and outer[2] >= inner[2] and outer[3] >= inner[3])
+
+tops = []
+for oid in page_overlays:
+    r = page_boxes[oid]
+    parents = [o for o, pr in page_boxes.items() if o != oid and contains(pr, r)]
+    if not parents:
+        tops.append(oid)
+        continue
+    # The smallest containing page is the direct parent. Equality is impossible here because a
+    # page cannot properly contain an identical twin, and an identical pair would be a real bug.
+    parent = min(parents, key=lambda o: (page_boxes[o][2] - page_boxes[o][0])
+                 * (page_boxes[o][3] - page_boxes[o][1]))
+    if not contains(page_boxes[parent], r):
+        print(f"page overlay {oid} escapes its parent {parent}", flush=True)
+        raise SystemExit(1)
+
+for i, a in enumerate(tops):
+    for b in tops[i + 1:]:
+        if overlaps(page_boxes[a], page_boxes[b]):
+            print(f"top-level pages overlap: {a} {page_boxes[a]} and {b} {page_boxes[b]}",
+                  flush=True)
+            raise SystemExit(1)
+
+print(f"{len(page_overlays)} page overlays: {len(tops)} top-level ({', '.join(tops)}), "
+      f"{len(page_overlays) - len(tops)} nested", flush=True)
+if page_overlays:
+    print(f"{len(page_overlays)} page overlays, exempt from the control-overlap check: "
+          f"{', '.join(page_overlays)}", flush=True)
 
 for p in range(111):
     if p in BYPASS_VIA_ALGO:

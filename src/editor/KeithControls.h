@@ -108,56 +108,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// The sampler's mode: PLAY or SLICE.
-//
-// SetValueFromUserInput rather than a plain write, so the host records the change and a patch
-// saved with SLICE selected reloads with SLICE selected. The value is the enum: 0 is PLAY, 1 is
-// SLICE, matching kParamSampleMode's registration order.
-//
-// Drawn as a tab so it matches the editor's other small controls, with the active one lit. The
-// two buttons are alternatives rather than a sequence, which is why they sit side by side at the
-// same width instead of in a column like the page buttons above them.
-// ---------------------------------------------------------------------------
-class KeithSampleModeButton : public IControl
-{
-public:
-  KeithSampleModeButton(const IRECT& bounds, int modeValue)
-  : IControl(bounds, static_cast<int>(modeValue))
-  , mValue(modeValue)
-  {
-  }
-
-  void Draw(IGraphics& g) override
-  {
-    // GetValue() is the parameter; mValue is the value this button sets. Comparing them is what
-    // makes the two buttons mutually exclusive without either tracking the other.
-    const bool active = static_cast<int>(GetValue() + 0.5) == mValue;
-
-    if (active)
-    {
-      g.FillRect(kHotPink, mRECT);
-      g.DrawRect(kInk, mRECT);
-      g.DrawText(MonoBold(9.f, kInk, EAlign::Center), Label(), mRECT);
-    }
-    else
-    {
-      g.FillRect(kPanel, mRECT);
-      g.DrawRect(kPaper, mRECT);
-      g.DrawText(MonoBold(9.f, kPaper, EAlign::Center), Label(), mRECT);
-    }
-  }
-
-  void OnMouseDown(float, float, const IMouseMod&) override
-  {
-    SetValueFromUserInput(static_cast<double>(mValue), 0);
-    GetUI()->SetAllControlsDirty();
-  }
-
-private:
-  const char* Label() const { return mValue == 1 ? "SLICE" : "PLAY"; }
-  int mValue;
-};
-
 // Static text (wordmark, hints, status). Alignment comes from the IText.
 // ---------------------------------------------------------------------------
 class KeithTextControl : public IControl

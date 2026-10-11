@@ -33,7 +33,8 @@ ROOT = Path("/work/keith-plugin")
 KEITH_CPP = ROOT / "src" / "Keith.cpp"
 
 # The patch generators, each exposing build().
-GENERATORS = ["build_poly_patches", "build_lead_patches", "build_remaining_patches"]
+GENERATORS = ["build_poly_patches", "build_lead_patches", "build_remaining_patches",
+              "build_keyboard_patches", "build_final_patches"]
 
 
 def parse_ranges():

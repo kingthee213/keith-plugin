@@ -85,14 +85,165 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
                                                   keith::ui::KeithPage::Wavetable,
                                                   plugin.PageState()));
 
-  // PLAY and SLICE: what the keyboard does to a loaded sample. These ARE parameters, unlike the
-  // page buttons above them -- the mode is part of the sound, so a patch saved in SLICE mode
-  // should reload in SLICE mode. Both are attached to kParamSampleMode and pass the value they
-  // set, so they read as a pair of alternatives with no state of their own to keep in sync.
-  g->AttachControl(new keith::ui::KeithSampleModeButton(OverlayIRECT("sample_play_button"),
-                                                        kParamSampleMode, 0));
-  g->AttachControl(new keith::ui::KeithSampleModeButton(OverlayIRECT("sample_slice_button"),
-                                                        kParamSampleMode, 1));
+  // -----------------------------------------------------------------------------------------
+  // The sampler / wavetable page
+  //
+  // Attached after the panels so it draws over them, and every control skips drawing when the
+  // page is closed. See KeithPage.h for why visibility works that way rather than by attaching
+  // and detaching on each page change.
+  //
+  // The page is one surface per half, with the contents on top. That ordering matters: a surface
+  // covers the panels, and anything drawn under it would be invisible.
+  // -----------------------------------------------------------------------------------------
+  {
+    // Non-const, matching PageState()'s return. The page controls take a const pointer, so
+    // this converts down without ambiguity.
+    keith::ui::KeithPage* pageState = plugin.PageState();
+
+    // --- the two page surfaces, drawn over the panels ---------------------------------------
+    g->AttachControl(new keith::ui::KeithPageSurface(OverlayIRECT("page_sampler"), pageState,
+                                                     keith::ui::KeithPage::Sampler));
+    g->AttachControl(new keith::ui::KeithPageSurface(OverlayIRECT("page_wavetable"), pageState,
+                                                     keith::ui::KeithPage::Wavetable));
+
+    // --- SAMPLER ------------------------------------------------------------------------------
+    const keith::ui::KeithPage kSampler = keith::ui::KeithPage::Sampler;
+
+    // The page title, inside the surface so it reads as the page's own heading.
+    {
+      IRECT r = OverlayIRECT("page_sampler");
+      r = IRECT(r.L + 14.f, r.T + 4.f, r.R - 14.f, r.T + 30.f);
+      g->AttachControl(new keith::ui::KeithPageLabel(r, pageState, kSampler, "SAMPLER", 15.f));
+    }
+
+    // PLAY and SLICE: full width, stacked, directly under the title. The detail text is what
+    // tells a user which one does what without having to press them.
+    g->AttachControl(new keith::ui::KeithPageModeButton(
+        OverlayIRECT("page_sample_play"), pageState, kSampler, kParamSampleMode, 0,
+        "PLAY", "whole sample, pitched across the keyboard"));
+    g->AttachControl(new keith::ui::KeithPageModeButton(
+        OverlayIRECT("page_sample_slice"), pageState, kSampler, kParamSampleMode, 1,
+        "SLICE", "one slice per key, each at its recorded pitch"));
+
+    // The browser, the waveform and the slice row.
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_browser"), pageState,
+                                                   kSampler));
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_wave"), pageState,
+                                                   kSampler));
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_slices"), pageState,
+                                                   kSampler));
+
+    {
+      IRECT r = OverlayIRECT("page_sample_browser");
+      g->AttachControl(new keith::ui::KeithPageLabel(
+          IRECT(r.L + 8.f, r.T + 6.f, r.R - 8.f, r.T + 22.f), pageState, kSampler, "SAMPLES", 10.f));
+    }
+    {
+      IRECT r = OverlayIRECT("page_sample_slices");
+      g->AttachControl(new keith::ui::KeithPageLabel(
+          IRECT(r.L, r.T - 2.f, r.L + 52.f, r.T + 13.f), pageState, kSampler, "SLICES", 8.f));
+    }
+
+    // The six sampler knobs, each a real parameter-bound knob like the panels use.
+    {
+      // Labels only. The sampler has no parameters for start, end, length, root, tune or gain
+      // yet, so these are captions on empty cells rather than knobs -- drawing a knob here would
+      // show a control that cannot be moved. There is deliberately no param field: an earlier
+      // version carried a -1 for each, which read as though six parameters existed.
+      static const struct { const char* id; const char* label; } kPageKnobs[] = {
+        {"page_knob_start",  "START"},
+        {"page_knob_end",    "END"},
+        {"page_knob_length", "LENGTH"},
+        {"page_knob_root",   "ROOT"},
+        {"page_knob_tune",   "TUNE"},
+        {"page_knob_gain",   "GAIN"},
+      };
+      for (const auto& k : kPageKnobs)
+        g->AttachControl(new keith::ui::KeithPageLabel(
+            IRECT(OverlayIRECT(k.id).L, OverlayIRECT(k.id).B, OverlayIRECT(k.id).R,
+                  OverlayIRECT(k.id).B + 14.f),
+            pageState, kSampler, k.label, 8.f, EAlign::Center));
+    }
+
+    // WARP and TEMPO SYNC are captions only: neither has a parameter behind it yet, so drawing a
+    // tab would show a control that cannot be pressed.
+    g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_sample_warp"), pageState,
+                                                   kSampler, "WARP", 9.f, EAlign::Center));
+    g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_sample_temposync"), pageState,
+                                                   kSampler, "TEMPO SYNC", 9.f, EAlign::Center));
+
+    // REVERSE is real. A tab switch on kParamSampleReverse, page-aware so it only appears while
+    // the sampler page is open, and bound to a parameter so it is saved with the patch.
+    {
+      const IRECT r = OverlayIRECT("page_sample_reverse");
+      auto style = HardButton(kPaper, kInk, 11).WithValueText(MonoBold(10, kInk));
+      style.colorSpec.mColors[kPR] = kHotPink;
+      g->AttachControl(new keith::ui::KeithPageTabSwitch(r, kParamSampleReverse, {"FWD", "REV"},
+                                                         "", style, pageState, kSampler));
+    }
+
+    // --- WAVETABLE ----------------------------------------------------------------------------
+    const keith::ui::KeithPage kWavetable = keith::ui::KeithPage::Wavetable;
+    {
+      IRECT r = OverlayIRECT("page_wavetable");
+      r = IRECT(r.L + 14.f, r.T + 4.f, r.R - 14.f, r.T + 30.f);
+      g->AttachControl(new keith::ui::KeithPageLabel(r, pageState, kWavetable, "WAVETABLE", 15.f));
+    }
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_banks"), pageState,
+                                                   kWavetable));
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_frames"), pageState,
+                                                   kWavetable));
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_view"), pageState,
+                                                   kWavetable));
+    // The controls column gets a panel too, so it reads as a group the way the mock draws it.
+    // Without this the morph knob and the source tabs float on the page background while the mock
+    // shows them boxed -- a mock that disagrees with the build is worse than no mock.
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_controls"), pageState,
+                                                   kWavetable));
+    {
+      IRECT r = OverlayIRECT("page_wt_banks");
+      g->AttachControl(new keith::ui::KeithPageLabel(
+          IRECT(r.L + 8.f, r.T + 6.f, r.R - 8.f, r.T + 22.f), pageState, kWavetable, "BANKS", 10.f));
+    }
+    // The controls column: the morph knob and the osc 3 source tabs.
+    //
+    // Both parameters already have controls on the oscillator panels. These are SECOND controls on
+    // the same parameters, which is deliberate: the panel is where you set osc 3 while patching,
+    // the page is where you set it while looking at the bank it reads. iPlug2 supports multiple
+    // controls per parameter and keeps them in step, so the two cannot disagree.
+    g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_wt_morph_label"), pageState,
+                                                   kWavetable, "MORPH", 9.f));
+
+    // A real knob on kParamOsc3Morph, using the same control type the panels use so it looks and
+    // behaves identically. The signature is (bounds, param, label, accent, showValue, bipolar,
+    // taper, radius, native) -- the radius and taper are the panel knob's values, and the label is
+    // empty because the page draws its own title above the knob.
+    {
+      IRECT r = OverlayIRECT("page_wt_morph");
+      // KeithPageKnob, not KeithKnobControl: the plain control draws whenever it is attached,
+      // with no notion of a page, so it would sit over the panels permanently. The page-aware
+      // version draws only while the wavetable page is open.
+      g->AttachControl(new keith::ui::KeithPageKnob(r, kParamOsc3Morph, "", kCyan,
+                                                    pageState, kWavetable));
+    }
+
+    g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_wt_src_label"), pageState,
+                                                   kWavetable, "OSC 3 SOURCE", 9.f));
+
+    // The SHAPES / TABLE pair. Built exactly as the tabs lambda does, but with the page's rects
+    // instead of the panel's -- IVTabSwitchControl takes the whole pair's area and splits it, so
+    // it spans both rects at once.
+    {
+      const IRECT shapes = OverlayIRECT("page_wt_tab_shapes");
+      const IRECT table = OverlayIRECT("page_wt_tab_table");
+      const IRECT span(shapes.L, shapes.T, table.R, table.B);
+      auto style = HardButton(kPaper, kInk, 11).WithValueText(MonoBold(10, kInk));
+      style.colorSpec.mColors[kPR] = kHotPink;
+      g->AttachControl(new keith::ui::KeithPageTabSwitch(span, kParamOsc3Source,
+                                                         {"SHAPES", "TABLE"}, "", style,
+                                                         pageState, kWavetable));
+    }
+  }
 
   auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
                   bool native = true) {

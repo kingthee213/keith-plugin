@@ -25,6 +25,8 @@
 #include <cmath>
 #include <string>
 
+class IByteChunk;
+
 namespace keith {
 namespace sampler {
 
@@ -108,12 +110,13 @@ public:
     mSample = sample;
     mLastPath = path;
     mLastError = LoadError::None;
+    mSampleEmbeddedInProject = true;
     for (auto& v : mVoices)
       v.SetSample(std::move(sample));
 
     // A new sample invalidates the old slices and markers: their frames referred to the previous
     // file. Reset to one slice covering the whole thing, and let detection or the user fill it in.
-    mSlices = SingleSlice();
+    PublishSlices(SingleSlice());
     mWarpMap.Clear();
     mWarp.SetSample(mSample.get());
     mWarp.SetWarpMap(&mWarpMap);
@@ -135,11 +138,25 @@ public:
   SampleMode Mode() const { return mMode; }
   void SetMode(SampleMode m) { mMode = m; }
 
+  /**
+   * Play samples backwards.
+   *
+   * A parameter rather than editor state: reversing is part of how a sound is built -- a reversed
+   * hit or a backwards slice is a different sound, not a different way of looking at one -- so it
+   * belongs in the patch.
+   */
+  bool Reversed() const { return mReversed; }
+  void SetReversed(bool reversed) { mReversed = reversed; }
+
   /** In Slice mode, which slice a key plays. -1 when the key is outside the slice range. */
   int SliceForNote(int note) const
   {
     const int index = note - kSliceLowNote;
-    if (index < 0 || index >= static_cast<int>(mSlices.size()) || index >= kMaxSliceKeys)
+    // One read of the pointer, then everything through that copy. Reading mSlices twice could see
+    // two different buffers if an edit landed between the reads.
+    const std::shared_ptr<const std::vector<Slice>> slices = mSlices;
+    if (!slices || index < 0 || index >= static_cast<int>(slices->size())
+        || index >= kMaxSliceKeys)
       return -1;
     return index;
   }
@@ -171,9 +188,15 @@ public:
     if (sliceIndex < 0)
       return false;
 
-    const Slice& slice = mSlices[static_cast<std::size_t>(sliceIndex)];
+    // The shared_ptr copy is what keeps this buffer alive for the whole trigger: even if the
+    // editor publishes a new set immediately after, this vector stays allocated until we are done.
+    const std::shared_ptr<const std::vector<Slice>> slices = mSlices;
+    if (!slices || sliceIndex >= static_cast<int>(slices->size()))
+      return false;
+
+    const Slice& slice = (*slices)[static_cast<std::size_t>(sliceIndex)];
     Trigger(velocity, 1.0, slice.startFrame,
-            slice.EndFrame(mSlices, static_cast<std::size_t>(sliceIndex), mSample->frames));
+            slice.EndFrame(*slices, static_cast<std::size_t>(sliceIndex), mSample->frames));
     return true;
   }
 
@@ -193,6 +216,9 @@ public:
     SamplerVoice& voice = mVoices[static_cast<std::size_t>(mNextVoice % kSamplerVoices)];
     voice.SetPitchRatio(pitchRatio);
     voice.SetRange(startFrame, endFrame);
+    // Set per trigger rather than once, so flipping the switch takes effect on the next note
+    // without disturbing anything already sounding.
+    voice.SetReversed(mReversed);
     voice.Trigger(velocity);
     ++mNextVoice;
   }
@@ -232,7 +258,15 @@ public:
   WarpMap& Map() { return mWarpMap; }
   const WarpMap& Map() const { return mWarpMap; }
 
-  const std::vector<Slice>& Slices() const { return mSlices; }
+  /**
+   * A snapshot of the current slices.
+   *
+   * Returns a shared_ptr rather than a reference on purpose. The editor draws from this and the
+   * audio thread triggers from it; a reference would dangle the moment an edit published a new
+   * set. Holding the shared_ptr keeps whatever you are looking at alive and consistent, even if
+   * the user drags a marker while you read.
+   */
+  std::shared_ptr<const std::vector<Slice>> Slices() const { return mSlices; }
 
   /**
    * Run detection on the loaded sample and adopt the result.
@@ -242,11 +276,16 @@ public:
    */
   SliceResult DetectSlices(const SliceSettings& settings)
   {
-    mSlices = SingleSlice();
     if (!HasSample())
+    {
+      PublishSlices(SingleSlice());
       return SliceResult {};
+    }
     SliceResult found = DetectTransients(*mSample, mSampleRate, settings);
-    mSlices = found.slices;
+    // One publish at the end, not two. The old version assigned the single-slice default first
+    // and the found set second, which doubled the window in which the audio thread could see a
+    // half-built state.
+    PublishSlices(std::move(found.slices));
     return found;
   }
 
@@ -255,16 +294,25 @@ public:
   {
     if (!HasSample())
       return;
-    MoveBoundary(mSlices, index, frame, mSample->frames);
+
+    // A DRAG fires this repeatedly, so it is the hottest of the three writers. Copying the vector
+    // per drag step allocates, which is acceptable on the message thread but wasteful; the
+    // alternative -- editing the published vector -- is the race this change exists to remove. A
+    // slice set is tens of entries, so the copy is cheap and the correctness is worth it.
+    std::shared_ptr<const std::vector<Slice>> current = mSlices;
+    std::vector<Slice> edited = current ? *current : SingleSlice();
+    MoveBoundary(edited, index, frame, mSample->frames);
+    PublishSlices(std::move(edited));
   }
 
-  void SetSlices(std::vector<Slice> slices) { mSlices = std::move(slices); }
+  void SetSlices(std::vector<Slice> slices) { PublishSlices(std::move(slices)); }
 
   /** Adopt the slices as an evenly spaced warp map, which is the tempo-sync case. */
   void TempoSyncFromSlices(double beatsPerSlice)
   {
     mWarpMap.enabled = true;
-    mWarpMap.FromSlices(mSlices, beatsPerSlice);
+    const std::shared_ptr<const std::vector<Slice>> slices = mSlices;
+    mWarpMap.FromSlices(slices ? *slices : SingleSlice(), beatsPerSlice);
   }
 
   /** Patch state that belongs here rather than in the DSP. */
@@ -276,16 +324,67 @@ public:
 
   const Transport& CurrentTransport() const { return mTransport; }
 
+  /**
+   * Project save/restore for the loaded sample, slices, and warp map. Message thread only.
+   *
+   * Mode and reverse are host parameters and are not written here. If magic/version at `startPos`
+   * do not match, returns `startPos` unchanged so older chunks that go straight from the drum
+   * block to parameters still load.
+   */
+  void SerializeState(IByteChunk& chunk) const;
+  int UnserializeState(const IByteChunk& chunk, int startPos);
+
+  /**
+   * After restoring a project: true when the audio was embedded in the chunk, false when only a
+   * file path was stored (sample larger than the embed ceiling on save).
+   */
+  bool SampleEmbeddedInProject() const { return mSampleEmbeddedInProject; }
+
 private:
+  /**
+   * Publish a new slice set. Message thread only.
+   *
+   * One pointer store, so the audio thread sees either the whole old set or the whole new one and
+   * never a partial edit. The old buffer stays alive until the last shared_ptr to it goes away --
+   * including the copy the audio thread is holding mid-trigger.
+   */
+  void PublishSlices(std::vector<Slice> slices)
+  {
+    mSlices = std::make_shared<const std::vector<Slice>>(std::move(slices));
+  }
+
+  void PublishSampleToVoices()
+  {
+    for (auto& v : mVoices)
+      v.SetSample(mSample);
+    mWarp.SetSample(mSample.get());
+  }
+
   std::shared_ptr<const SampleData> mSample;
   SamplerVoice mVoices[kSamplerVoices];
-  std::vector<Slice> mSlices = SingleSlice();
+  // PUBLISHED, not mutated. The audio thread reads this while the editor edits slices, so the
+  // rules from SamplerVoice.h apply: the reader never allocates and never blocks, and the writer
+  // never frees memory the reader might be holding.
+  //
+  // The old version was a plain std::vector that the editor mutated in place. DetectSlices
+  // REPLACED it, so a re-detect landing in the same instant as a note-on could free the buffer
+  // the audio thread was indexing -- a use-after-free. Moving one boundary was narrower but still
+  // a race on the element being read.
+  //
+  // A shared_ptr<const std::vector<Slice>> fixes both the same way mSample is fixed: assignment
+  // swaps ONE pointer, the audio thread takes a copy of the shared_ptr so its buffer cannot be
+  // freed under it, and every edit builds a new vector rather than writing over the published one.
+  std::shared_ptr<const std::vector<Slice>> mSlices =
+      std::make_shared<const std::vector<Slice>>(SingleSlice());
   SampleMode mMode = SampleMode::Play;
+  bool mReversed = false;
   WarpMap mWarpMap;
   WarpEngine mWarp;
   Transport mTransport;
   std::string mLastPath;
   LoadError mLastError = LoadError::None;
+  /** Set from project restore; true when the last load embedded PCM in the state chunk. */
+  bool mSampleEmbeddedInProject = true;
   double mSampleRate = 44100.;
   int mNextVoice = 0;
 };

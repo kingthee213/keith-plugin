@@ -2,7 +2,10 @@
 #include "Keith.h"
 #include "IPlug_include_in_plug_src.h"
 
+#include <cmath>
+#include <cstdint>
 #include <initializer_list>
+#include <limits>
 
 #if IPLUG_EDITOR
 #include "IControls.h"
@@ -13,6 +16,12 @@ namespace
 {
 constexpr uint32_t kDrumStateMagic = 0x4B445231u; // "KDR1"
 constexpr uint32_t kDrumStateVersion = 1u;
+
+constexpr uint32_t kSamplerStateMagic = 0x4B535031u; // "KSP1"
+constexpr uint32_t kSamplerStateVersion = 1u;
+// 16-bit PCM payload limit on save and load. Above this we store the file path only so the
+// project stays small; slices and warp still round-trip.
+constexpr uint32_t kSampleEmbedCeilingBytes = 8u * 1024u * 1024u;
 
 // ---------------------------------------------------------------------------
 // Baked factory presets.
@@ -1705,6 +1714,303 @@ int FamilyForPreset(int presetIdx)
 }
 } // namespace keith
 
+namespace keith::sampler {
+namespace {
+
+void PutString(IByteChunk& chunk, const std::string& text)
+{
+  const int32_t len = static_cast<int32_t>(text.size());
+  chunk.Put(&len);
+  for (char c : text)
+  {
+    const uint8_t byte = static_cast<uint8_t>(c);
+    chunk.Put(&byte);
+  }
+}
+
+int GetString(const IByteChunk& chunk, int pos, std::string& text)
+{
+  int32_t len = 0;
+  pos = chunk.Get(&len, pos);
+  if (pos < 0 || len < 0)
+    return -1;
+  if (len == 0)
+  {
+    text.clear();
+    return pos;
+  }
+  if (pos + len > chunk.Size())
+    return -1;
+  text.resize(static_cast<std::size_t>(len));
+  for (int32_t i = 0; i < len; ++i)
+  {
+    uint8_t byte = 0;
+    pos = chunk.Get(&byte, pos);
+    if (pos < 0)
+      return -1;
+    text[static_cast<std::size_t>(i)] = static_cast<char>(byte);
+  }
+  return pos;
+}
+
+int16_t FloatToPcm16(float sample)
+{
+  const float clamped = std::clamp(sample, -1.f, 1.f);
+  return static_cast<int16_t>(std::lround(clamped * 32767.f));
+}
+
+bool ChunkHasBytes(const IByteChunk& chunk, int pos, int bytes)
+{
+  return pos >= 0 && bytes >= 0 && pos + bytes <= chunk.Size();
+}
+
+} // namespace
+
+void SamplerEngine::SerializeState(IByteChunk& chunk) const
+{
+  const uint32_t magic = kSamplerStateMagic;
+  const uint32_t version = kSamplerStateVersion;
+  chunk.Put(&magic);
+  chunk.Put(&version);
+
+  const bool hasSample = HasSample();
+  // Full decoded length, not START/END playback bounds, so slice markers stay editable after reopen.
+  const int frames = hasSample ? mSample->frames : 0;
+  const int channelCount = hasSample ? mSample->ChannelCount() : 0;
+  const std::size_t pcmBytes =
+      hasSample ? static_cast<std::size_t>(frames) * static_cast<std::size_t>(channelCount) * 2u
+                : 0u;
+  // Sources are 16-bit PCM; storing float32 would double the chunk for no audible gain.
+  const bool embed =
+      hasSample && pcmBytes > 0u && pcmBytes <= static_cast<std::size_t>(kSampleEmbedCeilingBytes);
+  const uint8_t embedded = embed ? 1u : 0u;
+  chunk.Put(&embedded);
+
+  const double sampleRate = hasSample ? mSample->sampleRate : 44100.;
+  chunk.Put(&sampleRate);
+
+  const uint8_t channels = static_cast<uint8_t>(std::clamp(channelCount, 0, 255));
+  chunk.Put(&channels);
+  const int32_t frameCount = static_cast<int32_t>(frames);
+  chunk.Put(&frameCount);
+
+  const std::string name = hasSample ? mSample->name : std::string {};
+  PutString(chunk, name);
+  // Always store the source path when we know it. When over the ceiling the path is the only copy
+  // of the audio; when embedded it still helps the user re-link after moving the project.
+  const std::string path = hasSample ? mLastPath : std::string {};
+  PutString(chunk, path);
+
+  if (embed)
+  {
+    for (int frame = 0; frame < frames; ++frame)
+    {
+      for (int ch = 0; ch < channelCount; ++ch)
+      {
+        const float sample = mSample->channels[static_cast<std::size_t>(ch)]
+                                 [static_cast<std::size_t>(frame)];
+        const int16_t pcm = FloatToPcm16(sample);
+        chunk.Put(&pcm);
+      }
+    }
+  }
+
+  const std::shared_ptr<const std::vector<Slice>> slices = mSlices;
+  const int32_t sliceCount =
+      static_cast<int32_t>(slices ? static_cast<int>(slices->size()) : 0);
+  chunk.Put(&sliceCount);
+  if (slices)
+  {
+    for (const Slice& slice : *slices)
+    {
+      const int32_t startFrame = slice.startFrame;
+      const int32_t midiNote = slice.midiNote;
+      chunk.Put(&startFrame);
+      chunk.Put(&midiNote);
+    }
+  }
+
+  const uint8_t warpEnabled = mWarpMap.enabled ? 1u : 0u;
+  chunk.Put(&warpEnabled);
+  const int32_t markerCount = static_cast<int32_t>(mWarpMap.Markers().size());
+  chunk.Put(&markerCount);
+  for (const WarpMarker& marker : mWarpMap.Markers())
+  {
+    const int32_t frame = marker.frame;
+    chunk.Put(&frame);
+    chunk.Put(&marker.beats);
+  }
+}
+
+int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
+{
+  if (startPos < 0 || !ChunkHasBytes(chunk, startPos, static_cast<int>(sizeof(uint32_t) * 2u)))
+    return startPos;
+
+  uint32_t magic = 0;
+  uint32_t version = 0;
+  chunk.Get(&magic, startPos);
+  chunk.Get(&version, startPos + static_cast<int>(sizeof(uint32_t)));
+  if (magic != kSamplerStateMagic || version != kSamplerStateVersion)
+    return startPos;
+
+  int pos = startPos + static_cast<int>(sizeof(uint32_t) * 2u);
+
+  uint8_t embedded = 0;
+  pos = chunk.Get(&embedded, pos);
+  double sampleRate = 44100.;
+  pos = pos >= 0 ? chunk.Get(&sampleRate, pos) : -1;
+  uint8_t channelCount = 0;
+  pos = pos >= 0 ? chunk.Get(&channelCount, pos) : -1;
+  int32_t frames = 0;
+  pos = pos >= 0 ? chunk.Get(&frames, pos) : -1;
+  if (pos < 0 || frames < 0 || channelCount == 0)
+    return startPos;
+
+  std::string name;
+  std::string path;
+  pos = GetString(chunk, pos, name);
+  pos = pos >= 0 ? GetString(chunk, pos, path) : -1;
+  if (pos < 0)
+    return startPos;
+
+  std::shared_ptr<const SampleData> sample;
+  LoadError loadError = LoadError::None;
+  bool embeddedInProject = embedded != 0;
+
+  if (embedded != 0)
+  {
+    const int64_t sampleCount =
+        static_cast<int64_t>(frames) * static_cast<int64_t>(channelCount);
+    if (sampleCount < 0 || sampleCount > std::numeric_limits<int32_t>::max())
+      return startPos;
+    const std::size_t payloadBytes = static_cast<std::size_t>(sampleCount) * sizeof(int16_t);
+    if (!ChunkHasBytes(chunk, pos, static_cast<int>(payloadBytes)))
+      return startPos;
+
+    if (payloadBytes > static_cast<std::size_t>(kSampleEmbedCeilingBytes))
+    {
+      // Reject oversized embedded audio (corrupt or hostile chunk) but keep parsing so slices
+      // and warp still restore.
+      loadError = LoadError::TooLarge;
+      embeddedInProject = false;
+      for (std::size_t i = 0; i < sampleCount && pos >= 0; ++i)
+      {
+        int16_t discard = 0;
+        pos = chunk.Get(&discard, pos);
+      }
+    }
+    else
+    {
+      auto restored = std::make_shared<SampleData>();
+      restored->sampleRate = sampleRate;
+      restored->frames = frames;
+      restored->name = name;
+      restored->channels.resize(static_cast<std::size_t>(channelCount));
+      for (auto& ch : restored->channels)
+        ch.resize(static_cast<std::size_t>(frames));
+
+      for (int frame = 0; frame < frames && pos >= 0; ++frame)
+      {
+        for (int ch = 0; ch < channelCount && pos >= 0; ++ch)
+        {
+          int16_t pcm = 0;
+          pos = chunk.Get(&pcm, pos);
+          restored->channels[static_cast<std::size_t>(ch)][static_cast<std::size_t>(frame)] =
+              static_cast<float>(pcm) / 32767.0f;
+        }
+      }
+      if (pos < 0)
+        return startPos;
+      sample = std::move(restored);
+    }
+  }
+  else if (!path.empty())
+  {
+    embeddedInProject = false;
+    loadError = LoadError::FileNotFound;
+    sample = LoadFile(path, &loadError);
+    if (sample)
+      loadError = LoadError::None;
+  }
+
+  int32_t sliceCount = 0;
+  pos = chunk.Get(&sliceCount, pos);
+  if (pos < 0 || sliceCount < 0)
+    return startPos;
+  // Bound the COUNT against the bytes actually remaining BEFORE multiplying.
+  //
+  // The previous form was `ChunkHasBytes(chunk, pos, sliceCount * 8)`, which multiplies in 32-bit
+  // int. A corrupt chunk declaring sliceCount = 2^28 wraps that product to 0, so the size check
+  // passes for any position and slices.resize(2^28) then tries to allocate 2 GB and throws. The
+  // embedded-audio path above already computes in int64_t and cannot overflow; these two counts
+  // did not, which was the inconsistency. Dividing here keeps the arithmetic inside int.
+  const int remaining = chunk.Size() - pos;
+  if (remaining < 0 || sliceCount > remaining / static_cast<int>(sizeof(int32_t) * 2u))
+    return startPos;
+
+  std::vector<Slice> slices;
+  if (sliceCount > 0)
+    slices.resize(static_cast<std::size_t>(sliceCount));
+  for (int i = 0; i < sliceCount && pos >= 0; ++i)
+  {
+    int32_t startFrame = 0;
+    int32_t midiNote = 0;
+    pos = chunk.Get(&startFrame, pos);
+    pos = pos >= 0 ? chunk.Get(&midiNote, pos) : -1;
+    if (pos < 0)
+      return startPos;
+    slices[static_cast<std::size_t>(i)] = Slice {startFrame, midiNote};
+  }
+
+  uint8_t warpEnabled = 0;
+  pos = chunk.Get(&warpEnabled, pos);
+  if (pos < 0)
+    return startPos;
+
+  int32_t markerCount = 0;
+  pos = chunk.Get(&markerCount, pos);
+  if (pos < 0 || markerCount < 0)
+    return startPos;
+  // Same overflow as the slice count above: markerCount * 16 in 32-bit wraps, and a wrapped-to-0
+  // product passes any bounds check before markers.resize allocates gigabytes and throws.
+  {
+    const int remaining = chunk.Size() - pos;
+    if (remaining < 0
+        || markerCount > remaining / static_cast<int>(sizeof(int32_t) + sizeof(double)))
+      return startPos;
+  }
+
+  std::vector<WarpMarker> markers;
+  if (markerCount > 0)
+    markers.resize(static_cast<std::size_t>(markerCount));
+  for (int i = 0; i < markerCount && pos >= 0; ++i)
+  {
+    int32_t frame = 0;
+    double beats = 0.;
+    pos = chunk.Get(&frame, pos);
+    pos = pos >= 0 ? chunk.Get(&beats, pos) : -1;
+    if (pos < 0)
+      return startPos;
+    markers[static_cast<std::size_t>(i)] = WarpMarker {frame, beats, false};
+  }
+
+  mSample = sample;
+  mLastPath = !path.empty() ? path : name;
+  mLastError = loadError;
+  mSampleEmbeddedInProject = embeddedInProject;
+  PublishSampleToVoices();
+  PublishSlices(std::move(slices));
+  mWarpMap.Clear();
+  mWarpMap.enabled = warpEnabled != 0;
+  for (const WarpMarker& marker : markers)
+    mWarpMap.SetMarker(marker.frame, marker.beats, marker.userPlaced);
+
+  return pos;
+}
+
+} // namespace keith::sampler
+
 void Keith::SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit)
 {
   const uint32_t magic = kDrumStateMagic;
@@ -1767,6 +2073,7 @@ int Keith::UnserializeDrumKit(const IByteChunk& chunk, int startPos,
 bool Keith::SerializeState(IByteChunk& chunk) const
 {
   SerializeDrumKit(chunk, mDrumKit);
+  mSampler.SerializeState(chunk);
   return SerializeParams(chunk);
 }
 
@@ -1777,7 +2084,8 @@ int Keith::UnserializeState(const IByteChunk& chunk, int startPos)
   if (paramsPos >= 0)
   {
     mDrumKit = restored;
-    return UnserializeParams(chunk, paramsPos);
+    const int afterSampler = mSampler.UnserializeState(chunk, paramsPos);
+    return UnserializeParams(chunk, afterSampler);
   }
 
   // Pre-U11 chunks contain only the old 75 doubles. Preserve those values and supply
@@ -1929,8 +2237,8 @@ static_assert(kParamMod1Source == 89 && kParamMod4Amount == 100,
               "U15 appends 89..100");
 static_assert(kParamNoiseKey == 101 && kParamFilterKeyCurve == 110,
               "U17 appends 101..110");
-static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 118 && kNumParams == 119,
-              "the third oscillator appends 111..117, the sampler mode 118");
+static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 118 && kNumParams == 120,
+              "the third oscillator appends 111..117, the sampler controls 118..119");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -1983,6 +2291,10 @@ Keith::Keith(const InstanceInfo& info)
   // exclusive: PLAY transposes the whole sample, SLICE plays one slice per key. Stepped
   // parameter, so the editor can draw a button per value rather than a continuous control.
   GetParam(kParamSampleMode)->InitEnum("Sample Mode", 0, {"Play", "Slice"});
+  // Reverse is a separate switch rather than a third mode, because it composes with both: a whole
+  // sample can play backwards, and so can each slice. A mode would have forced a choice between
+  // them.
+  GetParam(kParamSampleReverse)->InitEnum("Sample Reverse", 0, {"Fwd", "Rev"});
   GetParam(kParamOsc3Morph)->InitDouble("Synth Osc3 Morph", 0., 0., 100., 0.1, "%");
   GetParam(kParamOsc3Enable)->InitBool("Synth Osc3 Enable", false);
 
@@ -2197,6 +2509,10 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   mSampler.SetMode(GetParam(kParamSampleMode)->Int() == 1
                      ? keith::sampler::SampleMode::Slice
                      : keith::sampler::SampleMode::Play);
+
+  // Reverse, read the same way. Applied per trigger, so switching it does not disturb a note
+  // that is already sounding.
+  mSampler.SetReversed(GetParam(kParamSampleReverse)->Int() == 1);
 
   // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
   // the musical position.
