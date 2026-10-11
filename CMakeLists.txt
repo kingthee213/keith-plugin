@@ -20,6 +20,17 @@ endif()
 
 set(IPLUG_DEPLOY_PLUGINS OFF CACHE BOOL "Keep build artefacts in build/out" FORCE)
 
+# C++20. iPlug2 defaults to 17 and applies its choice globally, so this must be set before
+# iPlug2.cmake is included.
+#
+# The reason is Bungee, the time-stretcher behind the sampler's warp feature: it uses designated
+# initialisers, which are C++20. Raising the whole project rather than building Bungee as a
+# separate C++20 target is the owner's call, and it is the simpler arrangement to reason about --
+# one language standard everywhere, no mixed-standard boundary to maintain.
+#
+# iPlug2's own check only rejects a standard BELOW 17, so 20 passes it.
+set(IPLUG2_CXX_STANDARD 20 CACHE STRING "C++ standard for iPlug2" FORCE)
+
 include(${IPLUG2_DIR}/iPlug2.cmake)
 find_package(iPlug2 REQUIRED)
 
@@ -38,12 +49,12 @@ if(NOT DEFINED KEITH_PYTHON)
   endif()
 endif()
 add_executable(keith-synth-tests tools/synth_offline_test.cpp)
-target_compile_features(keith-synth-tests PRIVATE cxx_std_17)
+target_compile_features(keith-synth-tests PRIVATE cxx_std_20)
 add_test(NAME synth-offline COMMAND keith-synth-tests)
 add_executable(keith-render-voice tools/render_voice.cpp)
-target_compile_features(keith-render-voice PRIVATE cxx_std_17)
+target_compile_features(keith-render-voice PRIVATE cxx_std_20)
 add_executable(keith-editor-tests tools/editor_geometry_test.cpp)
-target_compile_features(keith-editor-tests PRIVATE cxx_std_17)
+target_compile_features(keith-editor-tests PRIVATE cxx_std_20)
 add_test(NAME editor-geometry COMMAND keith-editor-tests)
 
 # Ship an editor: hosts that get a UI-less VST3 show an empty wrapper, and the
@@ -180,7 +191,7 @@ add_executable(keith-preset-restore-tests
   "${_keith_vst3_sdk}/public.sdk/source/main/pluginfactory.cpp"
   ${_keith_vst3_entry}
 )
-target_compile_features(keith-preset-restore-tests PRIVATE cxx_std_17)
+target_compile_features(keith-preset-restore-tests PRIVATE cxx_std_20)
 target_include_directories(keith-preset-restore-tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -240,7 +251,7 @@ add_executable(keith-recreation-render
   "${_keith_vst3_sdk}/public.sdk/source/main/pluginfactory.cpp"
   ${_keith_vst3_entry}
 )
-target_compile_features(keith-recreation-render PRIVATE cxx_std_17)
+target_compile_features(keith-recreation-render PRIVATE cxx_std_20)
 target_include_directories(keith-recreation-render PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
