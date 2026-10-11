@@ -2,6 +2,8 @@
 
 #include "IPlug_include_in_plug_hdr.h"
 #include "drums/DrumSynth.h"
+#include "drums/DrumKitEngine.h"          // KitData: the loaded kit, held on the plugin
+#include "instruments/InstrumentEngine.h" // BankData: the loaded guitar bank
 
 #include <atomic>
 

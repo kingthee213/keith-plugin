@@ -7,7 +7,11 @@
 
 #include "MidiSynth.h"
 #include "Smoothers.h"
-#include "drums/DrumSynth.h"
+#include "drums/DrumSynth.h"        // KitParams: the per-slot level, pan, tune, mute and solo
+#include "drums/DrumKitEngine.h"    // the sampled kit engine that replaced the synthesis
+#include "drums/DrumKitLoader.h"    // LoadKit: reads a kit directory into a KitData
+#include "instruments/InstrumentEngine.h"   // the multisampled guitar layer
+#include "instruments/InstrumentLoader.h"
 #include "fx/PatchEffects.h"
 #include "fx/TapeAnalog.h"
 #include "synth/CoreSynth.h"
