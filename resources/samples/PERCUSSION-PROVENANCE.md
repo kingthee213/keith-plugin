@@ -87,3 +87,72 @@ are audibly and measurably different sets, not two labels on one thing.
 Kit names are descriptive: `percussion-neptunes` is an internal directory name only. Shipped
 names must be neutral — no artist, no trademarked instrument — and the shipped kit labels are
 being chosen with the rest of the library's naming.
+
+---
+
+# The eight drum kits
+
+Owner named them: **pudgy, muck, who, deep, bang, tank, bruh, there**.
+
+## Source
+
+The same verified CC0 source as the percussion kits: SFXMint `acoustic-drum-kit`, CC0-1.0, all 13
+files SHA256-checked against the publisher's own metadata. See the top of this document.
+
+Ten kits from one 13-hit source is deliberate rather than a limitation. The differences are
+entirely in the editing — tuning, decay, saturation, filtering — because that is where the
+difference actually lies. A trap kit and an 808-flavoured kit differ mostly in how long the kick
+rings and how hard it is driven, not in what was sampled.
+
+## The eight characters
+
+| Kit | Character |
+|---|---|
+| **pudgy** | round, soft, fat low end. A kick that fills space without clicking. |
+| **muck** | dirty, saturated, lo-fi. Driven hard, filtered dark. |
+| **who** | big room, long tails. Trap-adjacent, with space. |
+| **deep** | sub-forward, very little top. Low-end-led. |
+| **bang** | hard, snappy, dry. Loud transients, short tails. |
+| **tank** | heavy and slow. Big bodies, long decays, saturated. |
+| **bruh** | tight, dry, modern, controlled. |
+| **there** | dusty and detuned, tape character. |
+
+Measured, not asserted — kick brightness and length across the kits:
+
+| Kit | Kick length | Brightness (zcr/s) |
+|---|---|---|
+| deep | 0.61 s | 169 (darkest) |
+| tank | 0.72 s (longest) | 177 |
+| pudgy | 0.55 s | 197 |
+| there | 0.42 s | 204 |
+| muck | 0.54 s | 216 |
+| who | 0.49 s | 238 |
+| bruh | 0.32 s | 344 |
+| bang | 0.27 s (shortest) | 533 (brightest) |
+
+All 72 hits peak at −3 dBFS so the kits are level-matched to each other.
+
+## A bug worth recording
+
+The first run produced eight kits whose kicks were **75 frames long — two milliseconds**. They
+were valid WAV files. Nothing errored, nothing warned, and the build reported success.
+
+Cause: the one-pole lowpass used `alpha = 1/(rc+dt)`, which is unbounded. At 2600 Hz and 44.1 kHz
+that is **11920** instead of a value in (0,1), so every sample was multiplied by a runaway gain
+and the signal reached 1e300 within a few hundred samples. The `inf` then propagated through tilt
+and saturation, and by the time `trim` ran, only the first few dozen samples were above the
+threshold — so the hit was cut to nothing.
+
+Two fixes, both structural:
+
+1. `alpha = dt/(rc+dt)`, which is `1/(1+rc/dt)` and is always inside (0,1) for any positive cutoff
+   and sample rate. It cannot blow up.
+2. **The chain now raises on non-finite output** rather than writing it out. A filter that
+   produces `inf` used to become a plausible-looking tiny WAV; now it is a hard error naming the
+   parameters that caused it. The first bug produced silent garbage; the second fix means the
+   next one cannot.
+
+## Shipping names
+
+All eight are neutral: no artist, no track, no trademarked instrument. They satisfy the owner's
+rule and SOURCES.md rule 7.
