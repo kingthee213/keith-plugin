@@ -1,5 +1,7 @@
 #pragma once
 
+#include "WavetableOsc.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -182,6 +184,17 @@ struct Params
   float osc2Pitch = 0.f;
   float osc2Level = 0.8f;
   float osc2PW = 0.5f;
+
+  // --- Third oscillator. Off by default so no pre-existing patch changes. ---
+  // `osc3Source` picks the built-in wave morph or the wavetable bank; `osc3Morph` walks the
+  // wavetable frames when the bank is the source.
+  bool osc3Enabled = false;
+  float osc3Shape = 0.f;
+  float osc3Pitch = 0.f;
+  float osc3Level = 0.f;
+  float osc3PW = 0.5f;
+  int osc3Source = 0;       // 0 = built-in shapes, 1 = wavetable bank
+  float osc3Morph = 0.f;    // 0..1 across the frames
 
   float subLevel = 0.f;
   float noiseLevel = 0.f;
@@ -746,11 +759,58 @@ inline bool LegatoAttack(const Params& p, int otherKeysHeld, bool voiceBusy)
 class Voice
 {
 public:
+  /**
+   * The built-in wavetable bank, available without loading anything from disk.
+   *
+   * Eight frames walking from a pure sine to a bright, slightly hollow harmonic stack. The
+   * morph parameter sweeps across them. This exists so osc 3 in wavetable mode makes a sound
+   * with no file loading -- the derived tables from the analysis pipeline replace this bank
+   * later, but a sampler that is silent until a file arrives cannot be tested at all.
+   */
+  static WavetableBank MakeStarterBank()
+  {
+    WavetableBank bank;
+    std::vector<WavetableFrame> frames;
+
+    for (int f = 0; f < 8; ++f)
+    {
+      WavetableFrame frame;
+      const float t = static_cast<float>(f) / 7.f;
+      // Frame 0 is a sine. Each later frame adds more upper harmonics and pulls the odd ones
+      // back, which opens a hollow, squarer tone -- the classic sine-to-square sweep.
+      for (int h = 0; h < 48; ++h)
+      {
+        const int n = h + 1;
+        const float rolloff = 1.f / static_cast<float>(n);
+        const float odd = (n % 2 == 1) ? 1.f : (1.f - t);
+        const float top = std::min(1.f, 48.f / static_cast<float>(n));
+        frame.harmonic[h] = t * rolloff * odd * top;
+      }
+      // Keep the fundamental at unity so the frame is never quiet.
+      frame.harmonic[0] = 1.f;
+      frames.push_back(frame);
+    }
+
+    bank.SetFrames(frames);
+    return bank;
+  }
+
   void SetSampleRate(double sr)
   {
     mSampleRate = sr > 1. ? sr : 44100.;
     mSub.SetSampleRate(mSampleRate);
     mAnalogSub.SetSampleRate(mSampleRate);
+    for (auto& o : mUniOsc3)
+      o.SetSampleRate(mSampleRate);
+    // The starter bank is built once per sample-rate change. Building it is a few hundred
+    // sine evaluations per frame, which is a message-thread cost, not an audio-thread one --
+    // SetSampleRate is called from OnReset.
+    mWavetableBank = MakeStarterBank();
+    for (auto& o : mUniOsc3Wt)
+    {
+      o.SetSampleRate(mSampleRate);
+      o.SetBank(&mWavetableBank);
+    }
     mFilter.SetSampleRate(mSampleRate);
     mLadder.SetSampleRate(mSampleRate);
     mAnalogBrightHz = std::min(4200.f, static_cast<float>(mSampleRate * 0.5f) - 10.f);
@@ -796,6 +856,8 @@ public:
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
       mUniOsc2[i].Reset(static_cast<float>(i) * 0.13f + 0.2f);
+      mUniOsc3[i].Reset(static_cast<float>(i) * 0.19f + 0.41f);
+      mUniOsc3Wt[i].Reset(static_cast<float>(i) * 0.19f + 0.41f);
     }
   }
 
@@ -825,6 +887,8 @@ public:
     {
       mUniOsc1[i].Reset(static_cast<float>(i) * 0.07f);
       mUniOsc2[i].Reset(static_cast<float>(i) * 0.13f + 0.2f);
+      mUniOsc3[i].Reset(static_cast<float>(i) * 0.19f + 0.41f);
+      mUniOsc3Wt[i].Reset(static_cast<float>(i) * 0.19f + 0.41f);
     }
   }
 
@@ -972,6 +1036,20 @@ public:
       float voice = osc1 * p.osc1Level + osc2 * p.osc2Level;
       if (p.oscRing)
         voice += osc1 * osc2; // ring modulation: a distinct algorithm from the FM path
+
+      // Third oscillator. Detuned between the other two so a three-oscillator stack spreads
+      // rather than doubling one pitch, and taken OUTSIDE the FM/sync path -- it is a layer,
+      // not a modulator, so it must not alter how osc 1 and 2 interact.
+      if (p.osc3Enabled && p.osc3Level > 0.f)
+      {
+        const float note3 = baseNote + p.osc3Pitch + detuneSemi * 0.5f;
+        const float f3 = MidiNoteToHz(note3);
+        const float osc3Shape = std::clamp(p.osc3Shape + shapeBias + shapeMod, 0.f, 1.f);
+        const float osc3 = p.osc3Source == 1
+                             ? mUniOsc3Wt[u].Process(f3, p.osc3Morph)
+                             : mUniOsc3[u].Process(f3, osc3Shape, p.osc3PW);
+        voice += osc3 * p.osc3Level;
+      }
 
       mix += voice * norm;
     }
@@ -1125,6 +1203,17 @@ public:
       if (p.oscRing)
         voice += osc1 * osc2;
 
+      if (p.osc3Enabled && p.osc3Level > 0.f)
+      {
+        const float note3 = baseNote + p.osc3Pitch + detuneSemi * 0.5f;
+        const float f3 = MidiNoteToHz(note3);
+        const float osc3Shape = std::clamp(p.osc3Shape - 0.14f + shapeMod, 0.f, 1.f);
+        const float osc3 = p.osc3Source == 1
+                             ? mUniOsc3Wt[u].Process(f3, p.osc3Morph)
+                             : mUniOsc3[u].Process(f3, osc3Shape, p.osc3PW);
+        voice += osc3 * p.osc3Level;
+      }
+
       mix += voice * norm;
     }
 
@@ -1237,6 +1326,16 @@ private:
   SubSquareOsc mAnalogSub;
   Oscillator mUniOsc1[kMaxUnison];
   Oscillator mUniOsc2[kMaxUnison];
+  /** Third oscillator, built-in wave morph. Only rendered when osc3Enabled. */
+  Oscillator mUniOsc3[kMaxUnison];
+  /** Third oscillator reading the wavetable bank. */
+  WavetableOscillator mUniOsc3Wt[kMaxUnison];
+  /**
+   * The wavetable bank osc 3 reads. Held by the Voice rather than passed in per sample so a
+   * patch change does not have to thread a pointer through the render loop; the engine sets
+   * it when the patch loads, which is a message-thread operation.
+   */
+  WavetableBank mWavetableBank;
   MultiFilter mFilter;
   LadderFilter mLadder;
   float mVoiceDetuneSemi = 0.f;

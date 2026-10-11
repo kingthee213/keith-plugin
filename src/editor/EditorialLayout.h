@@ -110,11 +110,17 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     g->AttachControl(new KeithFxMixKnobControl(CRect(param), param, algoParam, label, color));
   };
 
-  // OSCILLATORS — two oscillators plus a mixer column (not a third osc).
+  // OSCILLATORS -- three oscillators plus a mixer column.
+  //
+  // Osc 3 gets its own waveform and knobs in the same shape as the other two, so the three
+  // read as one family across the panel. Its source switch, morph knob and ON tab are extra
+  // because it can read a wavetable rather than only the built-in shapes.
   g->AttachControl(new KeithWaveform(OverlayIRECT("osc1_waveform"), kParamOsc1Shape, kParamOsc1PW,
                                      kGreen));
   g->AttachControl(new KeithWaveform(OverlayIRECT("osc2_waveform"), kParamOsc2Shape, kParamOsc2PW,
                                      kMagenta));
+  g->AttachControl(new KeithWaveform(OverlayIRECT("osc3_waveform"), kParamOsc3Shape, kParamOsc3PW,
+                                     kCyan));
   freeKnob(kParamOsc1Shape, "SHAPE", kGreen);
   freeKnob(kParamOsc1Pitch, "TUNE", kGreen, true);
   freeKnob(kParamOsc1Level, "LEVEL", kGreen);
@@ -125,6 +131,15 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamOsc2Level, "LEVEL", kMagenta);
   freeKnob(kParamOsc2PW, "PW", kMagenta);
   tabs(kParamOscRing, {"OFF", "ON"});
+  freeKnob(kParamOsc3Shape, "SHAPE", kCyan);
+  freeKnob(kParamOsc3Pitch, "TUNE", kCyan, true);
+  freeKnob(kParamOsc3Level, "LEVEL", kCyan);
+  freeKnob(kParamOsc3PW, "PW", kCyan);
+  // The wavetable oscillator's own two controls, then its on/off. ON rather than OFF/ON
+  // because the tab is the switch itself -- it reads as the state, not a choice between two.
+  tabs(kParamOsc3Source, {"SHAPES", "TABLE"});
+  freeKnob(kParamOsc3Morph, "MORPH", kCyan);
+  tabs(kParamOsc3Enable, {"OFF", "ON"});
   freeKnob(kParamSubLevel, "SUB");
   freeKnob(kParamNoiseLevel, "NOISE");
   freeKnob(kParamFmAmount, "FM", kMagenta);

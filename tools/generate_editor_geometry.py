@@ -159,6 +159,11 @@ LABELS = {
     102: ("AKEY", "knob", 1836), 103: ("ABND", "knob", 1836), 104: ("DKEY", "knob", 1836),
     105: ("DBND", "knob", 1836), 106: ("SDLY", "knob", 1836), 107: ("STRK", "knob", 1836),
     108: ("SWID", "knob", 1836), 109: ("DIR", "knob", 1836), 110: ("CBND", "knob", 1836),
+    # Third oscillator. Labels follow osc 1 and 2 so the columns read alike; SRCE and MRPH
+    # are four-letter abbreviations, which the gate requires for anything under five.
+    111: ("SHP", "knob", 1836), 112: ("TUN", "knob", 2448), 113: ("LVL", "knob", 1836),
+    114: ("PW", "knob", 1224), 115: ("ON", "tab", 1836), 116: ("MRPH", "knob", 2448),
+    117: ("SRCE", "tab", 2448),
 }
 
 LABEL_ABBREVIATIONS = sorted({label for label, _kind, _units in LABELS.values()})
@@ -239,57 +244,74 @@ def place_overlay(oid: str, l, t, r, b):
     OVERLAYS[oid] = box(l, t, r, b)
 
 
-# OSC
+# OSC — three oscillators, each a waveform over two rows of two knobs.
 #
-# Four equal columns with equal gaps, so the knob rows are symmetric inside the panel. The
-# columns used to be laid out as two groups of two, which left a 0 px gap between the middle
-# pair and a 10.5 px overhang on the right -- visibly unbalanced.
+# Six equal columns: shape/pitch on the top row, level/pulse-width on the bottom, two columns
+# per oscillator. The panel was widened from four columns to six when the third oscillator
+# was added; see the panel table for where the width came from. Equal gaps and matched margins
+# throughout, so no oscillator pair looks more tightly packed than another.
 #
-# Vertically: title band, a gap, the waveform, then two rows of knobs, then the tabs. The
-# waveform used to start flush against the title band with no gap at all, which read as
-# crowded. The slack below the title is given to the waveform so it is larger, not tighter.
+# Osc 3 also carries a source switch, a morph knob and an on/off tab. Those sit underneath
+# osc 3's own columns rather than in the shared rows, so osc 1 and 2 are unaffected by its
+# extra controls.
 osc_l, osc_t, osc_r, osc_b = PANELS["kPanelOsc"]
 inner_l, inner_r = osc_l + PAD, osc_r - PAD
 inner_osc = inner_r - inner_l
 
-osc_cols = 4
+osc_cols = 6
 kw = (inner_osc - (osc_cols - 1) * ROW_GAP) / osc_cols
 col_x = [inner_l + i * (kw + ROW_GAP) for i in range(osc_cols)]
 
 title_end = content_top(osc_t)
-# Four elements under the title: the waveform, two knob rows and the tab row. The five gaps
-# around and between them are all equal, with the waveform taking whatever height is left --
-# so the space above it matches the space below the tabs.
-# Five elements (the waveform, three knob rows, the tab row) with six gaps around and
-# between them. The waveform counts as two gap-units, so the slack divides into eight.
-osc_gap = ((osc_b - PAD) - title_end - (3 * KNOB_H + TAB_H)) / 8
-wave_h = osc_gap * 2
+# Six elements under the title -- waveform, two knob rows, osc 3's extras row, the mixer row
+# and the tab row -- with seven gaps around and between them. The waveform takes two
+# gap-units, so the slack divides into nine. The fixed heights are three knob rows (the two
+# oscillator rows and the mixer) plus two tab-height rows (the extras and the tabs).
+# Three knob rows -- osc 1, osc 2, and the mixer row, which now carries MORPH as a fourth
+# column -- plus one tab row. Four knob rows would not fit: it would leave 3 px for the
+# waveform, which is not a waveform. Folding MORPH into the mixer row is what keeps it a
+# proper knob (68 px wide, wider than a standard 42) instead of a cramped tab.
+osc_fixed_h = 3 * KNOB_H + TAB_H
+# The title gap is weighted heavier than the gaps between rows, so the whole stack sits down
+# off the heading instead of starting immediately under it. At the even split the first
+# waveform sat 9 px below the title band, which is the tightest of any panel -- FILTER gives
+# 16, VINTAGE 14, GLOBAL 28. The extra comes out of the waveform and the interior gaps, both
+# of which have room, rather than out of the knobs.
+OSC_TITLE_EXTRA = 16.0
+osc_unit = ((osc_b - PAD) - title_end - osc_fixed_h - OSC_TITLE_EXTRA) / 8
+osc_gap = osc_unit
+wave_h = osc_unit * 1.5
+osc_title_gap = osc_unit + OSC_TITLE_EXTRA
 
-y = title_end + osc_gap
-half = (inner_osc - ROW_GAP) / 2
-place_overlay("osc1_waveform", inner_l, y, inner_l + half, y + wave_h)
-place_overlay("osc2_waveform", inner_l + half + ROW_GAP, y, inner_r, y + wave_h)
+y = title_end + osc_title_gap
+third = (inner_osc - 2 * ROW_GAP) / 3
+for i, oid in enumerate(("osc1_waveform", "osc2_waveform", "osc3_waveform")):
+    x = inner_l + i * (third + ROW_GAP)
+    place_overlay(oid, x, y, x + third, y + wave_h)
 y += wave_h + osc_gap
 
-# Osc 1 on the left two columns, osc 2 on the right two.
-osc_layout = [(14, 0, 0), (15, 1, 0), (18, 2, 0), (19, 3, 0),
-              (16, 0, 1), (17, 1, 1), (20, 2, 1), (21, 3, 1)]
+# Osc 1 in columns 0-1, osc 2 in 2-3, osc 3 in 4-5.
+osc_layout = [(14, 0, 0), (15, 1, 0), (18, 2, 0), (19, 3, 0), (111, 4, 0), (112, 5, 0),
+              (16, 0, 1), (17, 1, 1), (20, 2, 1), (21, 3, 1), (113, 4, 1), (114, 5, 1)]
 for p, col, row in osc_layout:
     yy = y + row * (KNOB_H + ROW_GAP)
     rects[p] = box(col_x[col], yy, col_x[col] + kw, yy + KNOB_H)
-y += 2 * (KNOB_H + ROW_GAP)
+y += 2 * (KNOB_H + osc_gap)
 
-# Mixer: the three controls share the full width, evenly.
-mix_w = (inner_osc - 2 * ROW_GAP) / 3
-for i, p in enumerate([22, 23, 24]):
+# Mixer row, four equal columns: SUB, NOISE, FM and osc 3's MORPH. MORPH belongs here because
+# it is a level-like control on the same row and there is no height for a row of its own.
+mix_w = (inner_osc - 3 * ROW_GAP) / 4
+for i, p in enumerate([22, 23, 24, 116]):
     x = inner_l + i * (mix_w + ROW_GAP)
     rects[p] = box(x, y, x + mix_w, y + KNOB_H)
-y += KNOB_H + ROW_GAP
+y += KNOB_H + osc_gap
 
-# SYNC and RING share the width as a symmetric pair.
-half_t = (inner_osc - ROW_GAP) / 2
-rects[43] = box(inner_l, y, inner_l + half_t, y + TAB_H)
-rects[44] = box(inner_l + half_t + ROW_GAP, y, inner_r, y + TAB_H)
+# Tab row, four equal columns: SYNC, RING, and osc 3's source switch and on/off.
+tab_w = (inner_osc - 3 * ROW_GAP) / 4
+for i, p in enumerate([43, 44, 117, 115]):
+    x = inner_l + i * (tab_w + ROW_GAP)
+    rects[p] = box(x, y, x + tab_w, y + TAB_H)
+
 
 # FILTER — the type tab, then three rows of two.
 #

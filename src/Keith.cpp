@@ -1961,6 +1961,17 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamOsc2Level)->InitDouble("Synth Osc2 Level", 80., 0., 100., 0.1, "%");
   GetParam(kParamOsc2PW)->InitDouble("Synth Osc2 PW", 50., 5., 95., 0.1, "%");
 
+  // Third oscillator. Level and enable both default to silent/off: every existing preset was
+  // written before osc 3 existed, so it has to add nothing to their sound. Shape, pitch and
+  // PW match the other two so a patch that switches it on starts from the familiar place.
+  GetParam(kParamOsc3Shape)->InitDouble("Synth Osc3 Shape", 0., 0., 100., 0.1, "%");
+  GetParam(kParamOsc3Pitch)->InitDouble("Synth Osc3 Pitch", 0., -24., 24., 0.01, "st");
+  GetParam(kParamOsc3Level)->InitDouble("Synth Osc3 Level", 0., 0., 100., 0.1, "%");
+  GetParam(kParamOsc3PW)->InitDouble("Synth Osc3 PW", 50., 5., 95., 0.1, "%");
+  GetParam(kParamOsc3Source)->InitDouble("Synth Osc3 Source", 0., 0., 1., 1., "");
+  GetParam(kParamOsc3Morph)->InitDouble("Synth Osc3 Morph", 0., 0., 100., 0.1, "%");
+  GetParam(kParamOsc3Enable)->InitBool("Synth Osc3 Enable", false);
+
   GetParam(kParamSubLevel)->InitDouble("Synth Sub Level", 0., 0., 100., 0.1, "%");
   GetParam(kParamNoiseLevel)->InitDouble("Synth Noise Level", 0., 0., 100., 0.1, "%");
   GetParam(kParamFmAmount)->InitDouble("Synth FM Amount", 0., 0., 100., 0.1, "%");
@@ -2277,6 +2288,17 @@ void Keith::SyncSynthParams()
   p.osc2Pitch = static_cast<float>(GetParam(kParamOsc2Pitch)->Value());
   p.osc2Level = static_cast<float>(GetParam(kParamOsc2Level)->Value() / 100.);
   p.osc2PW = static_cast<float>(GetParam(kParamOsc2PW)->Value() / 100.);
+
+  // Osc 3. The enable check is applied here as well as in the voice, so a disabled oscillator
+  // reports zero level and the render loop can skip it without re-reading the flag.
+  const bool osc3On = GetParam(kParamOsc3Enable)->Bool();
+  p.osc3Enabled = osc3On;
+  p.osc3Shape = static_cast<float>(GetParam(kParamOsc3Shape)->Value() / 100.);
+  p.osc3Pitch = static_cast<float>(GetParam(kParamOsc3Pitch)->Value());
+  p.osc3Level = osc3On ? static_cast<float>(GetParam(kParamOsc3Level)->Value() / 100.) : 0.f;
+  p.osc3PW = static_cast<float>(GetParam(kParamOsc3PW)->Value() / 100.);
+  p.osc3Source = GetParam(kParamOsc3Source)->Int();
+  p.osc3Morph = static_cast<float>(GetParam(kParamOsc3Morph)->Value() / 100.);
 
   p.subLevel = static_cast<float>(GetParam(kParamSubLevel)->Value() / 100.);
   p.noiseLevel = static_cast<float>(GetParam(kParamNoiseLevel)->Value() / 100.);

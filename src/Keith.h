@@ -181,6 +181,30 @@ enum EParams
   kParamDirectLevel = 109,
   kParamFilterKeyCurve = 110,
 
+  // Third oscillator. IDs 0-110 stay put, as every append block before this one has.
+  //
+  // Four controls match osc 1 and 2 -- shape, pitch, level, pulse width -- so the voice can
+  // treat all three identically rather than special-casing the new one.
+  //
+  // Osc 3 carries three extra controls the first two do not need:
+  //
+  //   Source  picks the built-in wave shapes or the wavetable bank. A separate switch rather
+  //           than overloading shape, so the existing shape range keeps its meaning and the
+  //           wavetable can be reached without shrinking it.
+  //   Morph   walks the wavetable frames. One control, not one per frame.
+  //   Enable  because the existing two oscillators are always on, and level-at-zero is the
+  //           only way to silence them. A third oscillator that always summed into the mix
+  //           would change the sound of every existing preset, so it defaults to OFF.
+  kParamOsc3Shape = 111,
+  kParamOsc3Pitch = 112,
+  kParamOsc3Level = 113,
+  kParamOsc3PW = 114,
+  kParamOsc3Enable = 115,
+  /** Morph position across the wavetable frames. Only meaningful when the bank is loaded. */
+  kParamOsc3Morph = 116,
+  /** Which source osc 3 draws from: the built-in shapes, or the wavetable bank. */
+  kParamOsc3Source = 117,
+
   kNumParams
 };
 
