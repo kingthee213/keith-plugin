@@ -284,7 +284,7 @@ public:
     if (mSampler == nullptr || nFrames <= 0)
       return;
 
-    WarpEngine& warp = mSampler->Warp();
+    keith::sampler::WarpEngine& warp = mSampler->Warp();
     if (!warp.WarpAvailable() || !warp.Active())
       return;
 

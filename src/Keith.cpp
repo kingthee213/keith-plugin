@@ -2188,18 +2188,24 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   mDSP.SetPadMidi(mPadMidiEnabled.load());
 
   // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
-  // the musical position. GetTimeInfo is cheap and must be called on the audio thread here --
-  // the object it returns is only valid for the duration of this call, so nothing may be stored
-  // except copies of the fields.
+  // the musical position.
+  //
+  // These are IPlugProcessor's accessors onto its mTimeInfo member, which the host keeps filled.
+  // Used rather than reading mTimeInfo directly -- they are the supported surface, and reaching
+  // into the member would break if the field moved.
   {
-    const ITimeInfo& timeInfo = GetTimeInfo();
     keith::sampler::Transport transport;
-    transport.tempo = timeInfo.mTempo;
-    transport.ppqPosition = timeInfo.mPPQPos;
-    transport.running = timeInfo.mTransportIsRunning;
-    transport.beatsPerBar = (timeInfo.mDenominator > 0)
-                              ? static_cast<int>(4.0 * timeInfo.mNumerator / timeInfo.mDenominator)
+    transport.tempo = GetTempo();
+    transport.ppqPosition = GetPPQPos();
+    transport.running = GetTransportIsRunning();
+
+    int numerator = 4, denominator = 4;
+    GetTimeSig(numerator, denominator);
+    // Guarded: a host that reports a zero denominator would divide by zero here.
+    transport.beatsPerBar = (denominator > 0)
+                              ? static_cast<int>(4.0 * numerator / denominator)
                               : 4;
+
     mSampler.SetTransport(transport);
   }
 
