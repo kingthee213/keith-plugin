@@ -1,11 +1,14 @@
-// The single translation unit that instantiates the sampler's file decoders.
+// Forces the sampler's headers to be compiled.
 //
-// SampleLoader.h defines the dr_libs implementation macros, which must happen in exactly one
-// translation unit -- defining them in more than one produces duplicate symbols at link time.
-// This is that unit.
+// The headers are header-only and nothing else includes some of them, and a header no
+// translation unit includes is never type-checked.
 //
-// It also pulls in SamplerVoice.h, and both are header-only, so this file is what gets them
-// compiled at all. A header no translation unit includes is never type-checked.
+// NOTE: this unit deliberately does NOT define the dr_libs implementation macros -- those live
+// in src/sampler/SampleLoader.cpp and must exist in exactly one translation unit. Including
+// SampleLoader.h here is fine because it now only declares LoadFile; the decoders and dr_libs
+// itself are compiled in the .cpp. The first attempt had the macros in the header, which put
+// every dr_libs symbol in both this unit and Keith.o and the link failed with hundreds of
+// duplicate symbols.
 
 #include "../src/sampler/SampleLoader.h"
 #include "../src/sampler/SamplerEngine.h"
@@ -38,7 +41,6 @@ void InstantiateForTypeChecking()
   // The engine that owns the voices, which the plugin holds and the DSP reads.
   keith::sampler::SamplerEngine engine;
   engine.SetSampleRate(44100.0);
-  (void) engine.Load("/nonexistent/probe.wav");
   (void) engine.HasSample();
   (void) engine.Sample();
   (void) engine.LastPath();
