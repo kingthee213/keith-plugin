@@ -38,8 +38,19 @@ def param_id_to_name(header_text):
 
 def main():
     receipt = json.loads((IMAGES / 'physical-layout.json').read_text())
-    # 1152x768 design canvas x2 for hi-dpi: the composed panel grid and the wood furniture.
-    assert png_size(IMAGES / 'chassis.png') == (2304, 1536)
+    # The canvas at 2x for hi-dpi. Read from the generated geometry rather than hardcoded: this
+    # assertion said (2304, 1536) and refused the 1400 px canvas outright when the sampler page
+    # widened it. A hardcoded size here turns a deliberate change into a gate failure, which is
+    # the opposite of what it is for -- it should catch a face that does not match the geometry.
+    geo = (ROOT / 'src/editor/EditorGeometry.h').read_text()
+    import re as _re
+    cw = int(round(float(_re.search(r'kCanvasW = ([\d.]+)f', geo).group(1))))
+    ch = int(round(float(_re.search(r'kCanvasH = ([\d.]+)f', geo).group(1))))
+    expected = (cw * 2, ch * 2)
+    actual = png_size(IMAGES / 'chassis.png')
+    assert actual == expected, (
+        f"chassis.png is {actual}, but the geometry says the canvas is {cw}x{ch} "
+        f"so the face must be {expected}")
     # Read the placements from the geometry the generator emits, not from ControlLayout.h.
     # ControlLayout.h used to carry `{kParamX, "source", ...}` rows; the current generator
     # writes `{<id>, "single", l, t, r, b, radius}`, so the old regex matched nothing and

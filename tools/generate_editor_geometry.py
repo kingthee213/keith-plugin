@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate EditorGeometry.h control rects for W7 laptop grid (1152x768, 0.75 of reference)."""
+"""Generate EditorGeometry.h control rects for the editor grid (1400x768, 0.75 of reference)."""
 from __future__ import annotations
 
 import re
@@ -69,7 +69,11 @@ def shared_knob_width(params: list[int], inner_w: float, cols: int, gap: float =
 
 TITLE_BAND = _rf(28)
 VISIBLE_ROW_GAP = _rf(14)
-CANVAS = (0, 0, _r(1536), _r(1024))
+# The reference grid the panels are authored in. 1536 reference units was the 1152 px canvas;
+# the sampler page needs more width, so the grid grows with it. 1867 units converts to exactly
+# 1400.25 design px, and every coordinate here goes through _r() so the odd ratio is consistent
+# rather than accumulating rounding.
+CANVAS = (0, 0, _r(1867), _r(1024))
 
 _PANELS_REF = {
     # Top band, left to right. The LFO is narrow and stacked (knobs above their menus), which
@@ -621,6 +625,20 @@ master_cx = (lr_l + lr_r) / 2
 master_y = _r(330)
 rects[38] = box(master_cx - MASTER_W / 2, master_y,
                 master_cx + MASTER_W / 2, master_y + MASTER_H)
+
+# The two page buttons, directly under MASTER and sharing its width so they read as a stack:
+# MASTER, then SAMPLER, then WAVETABLE. They open full-width pages that slide in over the
+# panels; see KeithPageButton and the page overlay in the editor.
+#
+# Sized from MASTER rather than from a fixed number so that if MASTER is ever resized these
+# follow it, and the column stays aligned.
+BUTTON_H = TAB_H
+place_overlay("sampler_button", master_cx - MASTER_W / 2, master_y + MASTER_H + _r(18),
+              master_cx + MASTER_W / 2, master_y + MASTER_H + _r(18) + BUTTON_H)
+place_overlay("wavetable_button", master_cx - MASTER_W / 2,
+              master_y + MASTER_H + _r(18) + BUTTON_H + _r(12),
+              master_cx + MASTER_W / 2,
+              master_y + MASTER_H + _r(18) + BUTTON_H * 2 + _r(12))
 
 place_overlay("midi_hint1", lr_l + PAD, _r(944), lr_r - PAD, _r(962))
 place_overlay("midi_hint2", lr_l + PAD, _r(962), lr_r - PAD, _r(980))

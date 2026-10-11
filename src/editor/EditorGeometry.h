@@ -7,7 +7,7 @@ namespace keith { namespace ui {
 
 struct Box { float l,t,r,b; constexpr float W() const { return r-l; } constexpr float H() const { return b-t; } constexpr bool Contains(Box o) const { return o.l>=l&&o.t>=t&&o.r<=r&&o.b<=b; } constexpr bool Overlaps(Box o) const { return l<o.r&&o.l<r&&t<o.b&&o.t<b; } };
 
-constexpr float kCanvasW = 1152.0f;
+constexpr float kCanvasW = 1400.0f;
 constexpr float kCanvasH = 768.0f;
 constexpr float kLeftRailW = 184.0f;
 constexpr float kPanelPadding = 13.5f;
@@ -178,6 +178,8 @@ inline constexpr OverlayRect kOverlayRects[] = {
   {"pad_midi_switch", {948.9f, 496.8f, 1108.5f, 507.2f}},
   {"preset_menu", {458.5f, 362.7f, 665.5f, 389.7f}},
   {"sample_waveform", {458.5f, 349.6f, 665.5f, 356.2f}},
+  {"sampler_button", {62.3f, 336.2f, 121.7f, 357.2f}},
+  {"wavetable_button", {62.3f, 366.2f, 121.7f, 387.2f}},
 };
 constexpr int kNumOverlayRects = static_cast<int>(sizeof(kOverlayRects) / sizeof(OverlayRect));
 inline const OverlayRect* OverlayFor(const char* id) {

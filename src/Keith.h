@@ -210,6 +210,10 @@ enum EParams
 
 #include "sampler/SamplerEngine.h"
 
+#if IPLUG_EDITOR
+#include "editor/KeithPage.h"
+#endif
+
 #if IPLUG_DSP
 #include "Keith_DSP.h"
 #endif
@@ -277,6 +281,17 @@ public:
   /** The sampler, for the editor's drop zone and for the DSP to render. */
   keith::sampler::SamplerEngine& Sampler() { return mSampler; }
   const keith::sampler::SamplerEngine& Sampler() const { return mSampler; }
+
+#if IPLUG_EDITOR
+  /**
+   * Which page the editor is showing.
+   *
+   * Lives on the plugin rather than in the editor because the editor can be destroyed and
+   * rebuilt (a host reopening the window), and the page should survive that. Deliberately NOT a
+   * parameter and never serialised: which page you were looking at is not part of a patch.
+   */
+  keith::ui::KeithPage* PageState() { return &mPage; }
+#endif
   bool DrumSlotMuted(int slot) const
   {
     return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
@@ -332,6 +347,9 @@ private:
    * thread reads it through KeithDSP, which holds a pointer -- see SetSamplerEngine.
    */
   keith::sampler::SamplerEngine mSampler;
+#if IPLUG_EDITOR
+  keith::ui::KeithPage mPage = keith::ui::KeithPage::None;
+#endif
   /** PAD MIDI. Not serialised -- see PadMidiEnabled(). */
   std::atomic<bool> mPadMidiEnabled {true};
   /** A pad fired from the editor, handed to the DSP on the next block. -1 = nothing. */

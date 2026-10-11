@@ -32,13 +32,43 @@ FONT_OLDE = ROOT / "resources" / "fonts" / "PirataOne-Regular.ttf"
 # edges run wider than the lettering, and the fill colour is sampled from its own corner.
 PLAQUE = (33, 15, 183, 166)
 
-DESIGN = (1152, 768)
+DESIGN = (1400, 768)
 SCALE = 2
 CANVAS_BG = (10, 11, 13)
 TITLE_INK = (236, 228, 208)
 TITLE_PX = 11
 TITLE_PAD_X = 14
 TITLE_PAD_Y = 6
+
+
+def extend_frame(img, target_width):
+    """Stretch a wood frame to a wider canvas by extending only its uniform middle.
+
+    The frames ship at exactly the old canvas width. Their ends carry the wood highlights and
+    shading, and the middle is flat grain -- brightness 24..30 across 1030 of the 1152 px. So
+    the correct widening is to keep both ends pixel-identical and stretch the middle, which
+    extends the wood rather than inventing detail or tiling a visible seam.
+
+    Both ends are the same size, taken from the artwork rather than assumed.
+    """
+    w, h = img.size
+    if w == target_width:
+        return img
+    end = min(60, w // 4)          # the structured end caps
+    middle_w = w - end * 2
+    grown = target_width - end * 2
+    if grown < 1 or middle_w < 1:
+        return img.resize((target_width, h), Image.LANCZOS)
+    left = img.crop((0, 0, end, h))
+    middle = img.crop((end, 0, w - end, h))
+    right = img.crop((w - end, 0, w, h))
+    middle = middle.resize((grown, h), Image.LANCZOS)
+    out = Image.new("RGB", (target_width, h))
+    out.paste(left, (0, 0))
+    out.paste(middle, (end, 0))
+    out.paste(right, (end + grown, 0))
+    return out
+
 
 PANELS = {
     "kPanelOsc": ("OSCILLATORS", (16, 29, 34)),
@@ -182,11 +212,15 @@ def main():
     # up -- that interpolation is what made the letters look soft and pixelated.
 
     top = Image.open(ASSETS / "wood-frame-top.png").convert("RGB")
+    # Extended to the new width: the frames ship at the old canvas size, and only their uniform
+    # middle is stretched so the ends stay pixel-identical.
+    top = extend_frame(top, DESIGN[0])
     canvas.paste(top, (0, 0))
     right = Image.open(ASSETS / "wood-frame-right.png").convert("RGB")
     canvas.paste(right, (DESIGN[0] - right.width, 0))
 
     bottom = Image.open(ASSETS / "wood-frame-bottom.png").convert("RGB")
+    bottom = extend_frame(bottom, DESIGN[0])
     keyboard = boxes.get(KEYBOARD_KEY)
     if keyboard:
         left_corner = bottom.crop((0, 0, int(keyboard[0]), bottom.height))

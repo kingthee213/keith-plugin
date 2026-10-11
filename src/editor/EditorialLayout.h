@@ -2,6 +2,7 @@
 #include "EditorialControls.h"
 #include "ControlLayout.h"
 #include "../sampler/SampleDropZone.h"
+#include "KeithPage.h"
 #include <cassert>
 
 // KeithPadMidiButton is declared in KeithControls.h (inside keith::ui) with only a forward
@@ -73,6 +74,16 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   // keeps the mouse for clicks -- iPlug2 routes the drop to the control under the cursor that
   // accepts it, and a control that never overrides OnDrop ignores it.
   g->AttachControl(new keith::ui::KeithSampleDropZone(g->GetBounds(), plugin.Sampler()));
+
+  // The rail page buttons. They share one page state, which lives on the plugin so it survives
+  // while the editor rebuilds and so both buttons agree on which page is open. Deliberately not
+  // a parameter: a page switch is not part of a patch and must not be saved.
+  g->AttachControl(new keith::ui::KeithPageButton(OverlayIRECT("sampler_button"),
+                                                  keith::ui::KeithPage::Sampler,
+                                                  plugin.PageState()));
+  g->AttachControl(new keith::ui::KeithPageButton(OverlayIRECT("wavetable_button"),
+                                                  keith::ui::KeithPage::Wavetable,
+                                                  plugin.PageState()));
 
   auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
                   bool native = true) {
