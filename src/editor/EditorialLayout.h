@@ -1,6 +1,7 @@
 #pragma once
 #include "EditorialControls.h"
 #include "ControlLayout.h"
+#include "../sampler/SampleDropZone.h"
 #include <cassert>
 
 // KeithPadMidiButton is declared in KeithControls.h (inside keith::ui) with only a forward
@@ -66,6 +67,12 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   g->LoadFont(kFontMono, SPACEMONO_FN);
   g->LoadFont(kFontMonoBold, SPACEMONO_BOLD_FN);
   g->AttachControl(new KeithArtwork(g->GetBounds()));
+
+  // The whole editor accepts a dropped audio file. Attached last of the background layers and
+  // before the controls, so a drop on top of a knob still reaches the zone while the knob
+  // keeps the mouse for clicks -- iPlug2 routes the drop to the control under the cursor that
+  // accepts it, and a control that never overrides OnDrop ignores it.
+  g->AttachControl(new keith::ui::KeithSampleDropZone(g->GetBounds(), plugin.Sampler()));
 
   auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
                   bool native = true) {

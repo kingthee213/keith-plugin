@@ -208,6 +208,8 @@ enum EParams
   kNumParams
 };
 
+#include "sampler/SamplerEngine.h"
+
 #if IPLUG_DSP
 #include "Keith_DSP.h"
 #endif
@@ -271,6 +273,10 @@ public:
    * needs no lock, and the pad does not have to be the selected slot to light up.
    */
   uint64_t DrumPadHitCount(int slot) const { return mDSP.PadHitCount(slot); }
+
+  /** The sampler, for the editor's drop zone and for the DSP to render. */
+  keith::sampler::SamplerEngine& Sampler() { return mSampler; }
+  const keith::sampler::SamplerEngine& Sampler() const { return mSampler; }
   bool DrumSlotMuted(int slot) const
   {
     return slot >= 0 && slot < keith::drums::kNumSlots && mDrumKit.slot[slot].mute;
@@ -319,6 +325,13 @@ private:
 
   keith::drums::KitParams mDrumKit = keith::drums::DefaultKitParams();
   std::atomic<int> mSelectedDrumSlot {0};
+
+  /**
+   * The sampler. Lives on the plugin rather than inside the DSP because the editor loads files
+   * into it: the drop zone needs to reach it, and the DSP has no view of the plugin. The audio
+   * thread reads it through KeithDSP, which holds a pointer -- see SetSamplerEngine.
+   */
+  keith::sampler::SamplerEngine mSampler;
   /** PAD MIDI. Not serialised -- see PadMidiEnabled(). */
   std::atomic<bool> mPadMidiEnabled {true};
   /** A pad fired from the editor, handed to the DSP on the next block. -1 = nothing. */

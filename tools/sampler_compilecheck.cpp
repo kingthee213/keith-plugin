@@ -8,6 +8,7 @@
 // compiled at all. A header no translation unit includes is never type-checked.
 
 #include "../src/sampler/SampleLoader.h"
+#include "../src/sampler/SamplerEngine.h"
 #include "../src/sampler/SamplerVoice.h"
 
 namespace {
@@ -33,6 +34,19 @@ void InstantiateForTypeChecking()
   (void) voice.Process();
 
   (void) keith::sampler::kMaxDecodedBytes;
+
+  // The engine that owns the voices, which the plugin holds and the DSP reads.
+  keith::sampler::SamplerEngine engine;
+  engine.SetSampleRate(44100.0);
+  (void) engine.Load("/nonexistent/probe.wav");
+  (void) engine.HasSample();
+  (void) engine.Sample();
+  (void) engine.LastPath();
+  (void) engine.LastError();
+  engine.Trigger(1.f);
+  (void) engine.Process();
+  (void) engine.AnyActive();
+  engine.StopAll();
 }
 
 } // namespace

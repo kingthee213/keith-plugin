@@ -1934,6 +1934,12 @@ static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 117 && kNumParams ==
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
 {
+#if IPLUG_DSP
+  // Hand the sampler to the DSP before anything renders. The DSP is constructed as a member,
+  // so this is the first point at which both objects exist.
+  mDSP.SetSamplerEngine(&mSampler);
+#endif
+
   // --- U1/U4 preserved IDs ---
   GetParam(kParamGain)->InitDouble("Gain", 100., 0., 100.0, 0.01, "%");
 
@@ -2190,6 +2196,9 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
 void Keith::OnReset()
 {
   mDSP.Reset(GetSampleRate(), GetBlockSize());
+  // The sampler needs the host rate so a file at 48 kHz plays at the right speed in a 44.1 kHz
+  // host. It is set here rather than at construction because the rate is not known until now.
+  mSampler.SetSampleRate(GetSampleRate());
   SyncTapeParams();
   SyncSynthParams();
   SyncFxParams();

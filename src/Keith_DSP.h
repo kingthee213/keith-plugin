@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../sampler/SamplerEngine.h"
+
 #include "MidiSynth.h"
 #include "Smoothers.h"
 #include "drums/DrumSynth.h"
@@ -256,6 +258,14 @@ public:
    *  reach back into the plugin. See Keith::PadMidiEnabled(). */
   void SetPadMidi(bool on) { mPadMidi = on; }
 
+  /**
+   * Point the DSP at the plugin's sampler.
+   *
+   * A pointer rather than a copy: the engine owns the loaded sample and the voices, and the
+   * editor loads files into it. The DSP only reads. Set once at construction.
+   */
+  void SetSamplerEngine(keith::sampler::SamplerEngine* engine) { mSampler = engine; }
+
   /** Fire a pad now, from the editor. Played at the very start of the next block, so a
    *  clicked pad sounds immediately rather than at whatever offset the host happens to be
    *  at. Velocity is 0..1. */
@@ -324,6 +334,18 @@ public:
       outputs[0][s] += static_cast<T>(drumLeft);
       if (nOutputs > 1)
         outputs[1][s] += static_cast<T>(drumRight);
+
+      // The sampler sums in last, alongside the drums and after the synth. It is a plain
+      // additive layer at stage 1 -- how it routes relative to the synth, and whether the
+      // drum pads can point at a sample instead of the synthesized voice, are later decisions.
+      // Guarded on the pointer: the DSP is constructed before the link is made.
+      if (mSampler != nullptr)
+      {
+        const float samplerOut = mSampler->Process();
+        outputs[0][s] += static_cast<T>(samplerOut);
+        if (nOutputs > 1)
+          outputs[1][s] += static_cast<T>(samplerOut);
+      }
     }
     RetainFutureDrumEvents(nFrames, drumEvent);
 
@@ -527,6 +549,8 @@ private:
   bool mPadMidi = true;
   keith::drums::Engine mDrums;
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
+  /** The plugin's sampler. Null until SetSamplerEngine is called; never dereferenced when null. */
+  keith::sampler::SamplerEngine* mSampler = nullptr;
   int mNumDrumEvents = 0;
   /** Hits per pad since load. The editor diffs this to flash a pad; see PadHitCount(). */
   std::atomic<uint64_t> mPadHits[keith::drums::kNumSlots] {};
