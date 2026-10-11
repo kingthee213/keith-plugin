@@ -17,6 +17,7 @@
 #include "../src/sampler/WarpMap.h"
 #include "../src/sampler/WarpStretcher.h"
 #include "../src/sampler/WarpVoice.h"
+#include "../src/sampler/WarpEngine.h"
 
 namespace {
 
@@ -104,6 +105,20 @@ void InstantiateForTypeChecking()
   (void) warpVoice.Active();
   (void) warpVoice.FramesRendered();
   warpVoice.Stop();
+
+  // The engine that decides between plain and warped, and holds the latency compensation.
+  keith::sampler::WarpEngine warpEngine;
+  warpEngine.Prepare(2, 44100);
+  (void) warpEngine.WarpAvailable();
+  (void) warpEngine.LatencyCompensationFrames();
+  warpEngine.SetLatencyCompensationFrames(0);
+  warpEngine.SetSample(&empty);
+  warpEngine.SetWarpMap(&warp);
+  warpEngine.TriggerSlice(0.0);
+  (void) warpEngine.Active();
+  (void) warpEngine.ModeFor(warp);
+  (void) keith::sampler::WarpEngine::BeatInSample(transport, 0.0, 0.0);
+  warpEngine.Stop();
 }
 
 } // namespace

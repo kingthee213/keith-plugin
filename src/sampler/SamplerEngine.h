@@ -18,6 +18,9 @@
 
 #include "SampleLoader.h"
 #include "SamplerVoice.h"
+#include "SampleSlicer.h"
+#include "WarpEngine.h"
+#include "WarpMap.h"
 
 #include <string>
 
@@ -47,6 +50,9 @@ public:
     mSampleRate = sr > 1. ? sr : 44100.;
     for (auto& v : mVoices)
       v.SetSampleRate(mSampleRate);
+    // The stretcher is rebuilt here, on the message thread, because Bungee allocates in its
+    // constructor. This is the one place a sample-rate change can safely reach it.
+    mWarp.Prepare(2, static_cast<int>(mSampleRate));
   }
 
   /**
@@ -74,6 +80,13 @@ public:
     mLastError = LoadError::None;
     for (auto& v : mVoices)
       v.SetSample(std::move(sample));
+
+    // A new sample invalidates the old slices and markers: their frames referred to the previous
+    // file. Reset to one slice covering the whole thing, and let detection or the user fill it in.
+    mSlices = SingleSlice();
+    mWarpMap.Clear();
+    mWarp.SetSample(mSample.get());
+    mWarp.SetWarpMap(&mWarpMap);
     return LoadError::None;
   }
 
@@ -128,9 +141,68 @@ public:
     return false;
   }
 
+  // --- warp and slicing ---------------------------------------------------------------
+  //
+  // Held here rather than in the DSP so the editor can edit them: the marker drags and the
+  // detected slices both arrive from the message thread, and the audio thread only reads.
+
+  WarpEngine& Warp() { return mWarp; }
+  const WarpEngine& Warp() const { return mWarp; }
+
+  WarpMap& Map() { return mWarpMap; }
+  const WarpMap& Map() const { return mWarpMap; }
+
+  const std::vector<Slice>& Slices() const { return mSlices; }
+
+  /**
+   * Run detection on the loaded sample and adopt the result.
+   *
+   * Message thread: detection allocates and reads the whole sample. The markers it produces are
+   * then editable by the user.
+   */
+  SliceResult DetectSlices(const SliceSettings& settings)
+  {
+    mSlices = SingleSlice();
+    if (!HasSample())
+      return SliceResult {};
+    SliceResult found = DetectTransients(*mSample, mSampleRate, settings);
+    mSlices = found.slices;
+    return found;
+  }
+
+  /** Move a slice boundary, as a drag on the waveform view does. */
+  void MoveSliceBoundary(std::size_t index, int frame)
+  {
+    if (!HasSample())
+      return;
+    MoveBoundary(mSlices, index, frame, mSample->frames);
+  }
+
+  void SetSlices(std::vector<Slice> slices) { mSlices = std::move(slices); }
+
+  /** Adopt the slices as an evenly spaced warp map, which is the tempo-sync case. */
+  void TempoSyncFromSlices(double beatsPerSlice)
+  {
+    mWarpMap.enabled = true;
+    mWarpMap.FromSlices(mSlices, beatsPerSlice);
+  }
+
+  /** Patch state that belongs here rather than in the DSP. */
+  void SetTransport(const Transport& t)
+  {
+    mTransport = t;
+    mWarpMap.SetTempo(t.tempo);
+  }
+
+  const Transport& CurrentTransport() const { return mTransport; }
+
 private:
   std::shared_ptr<const SampleData> mSample;
   SamplerVoice mVoices[kSamplerVoices];
+  std::vector<Slice> mSlices = SingleSlice();
+  WarpMap mWarpMap;
+  WarpEngine mWarp;
+  Transport mTransport;
   std::string mLastPath;
   LoadError mLastError = LoadError::None;
   double mSampleRate = 44100.;

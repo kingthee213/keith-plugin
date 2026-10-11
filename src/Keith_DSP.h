@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <vector>
+
 #include "sampler/SamplerEngine.h"
 
 #include "MidiSynth.h"
@@ -204,6 +207,16 @@ public:
   {
     mSampleRate = sampleRate;
     mBlockSize = blockSize;
+
+    // Size the warped-sampler scratch here, once, from the host's maximum block size. Doing it in
+    // the render path would allocate on the audio thread, which is not allowed -- and a host may
+    // hand a larger block than any previous one, so the buffers must be grown somewhere that is
+    // permitted. Reset is that place.
+    const std::size_t scratch = static_cast<std::size_t>(std::max(1, blockSize));
+    mWarpScratch.assign(scratch, 0.f);
+    mWarpScratchR.assign(scratch, 0.f);
+    mWarpBlockActive = false;
+
     mRuntime.modWheel = 0.f;
     mPerf.Clear();
     mDrums.Reset(sampleRate);
@@ -257,6 +270,37 @@ public:
   /** PAD MIDI. Pushed in by Keith before each block so the audio thread does not have to
    *  reach back into the plugin. See Keith::PadMidiEnabled(). */
   void SetPadMidi(bool on) { mPadMidi = on; }
+
+  /**
+   * Render the sampler through the stretcher for one block, if the warp path is active.
+   *
+   * Sets mWarpBlockActive so the sample loop knows to add the scratch buffer rather than call
+   * the plain sampler path. When warp is off or unavailable the buffers are left alone and the
+   * loop falls through to plain playback.
+   */
+  void RenderWarpBlock(int nFrames)
+  {
+    mWarpBlockActive = false;
+    if (mSampler == nullptr || nFrames <= 0)
+      return;
+
+    WarpEngine& warp = mSampler->Warp();
+    if (!warp.WarpAvailable() || !warp.Active())
+      return;
+
+    // No resize here: the buffers are sized in Reset() from the host's maximum block size, so
+    // this path never allocates. If a block somehow arrives larger than that, the warp path
+    // declines rather than growing a buffer on the audio thread.
+    if (static_cast<int>(mWarpScratch.size()) < nFrames)
+      return;
+
+    std::fill_n(mWarpScratch.begin(), nFrames, 0.f);
+    std::fill_n(mWarpScratchR.begin(), nFrames, 0.f);
+
+    float* channels[2] = {mWarpScratch.data(), mWarpScratchR.data()};
+    warp.ProcessWarped(channels, nFrames);
+    mWarpBlockActive = true;
+  }
 
   /**
    * Point the DSP at the plugin's sampler.
@@ -314,6 +358,10 @@ public:
 
     mParamSmoother.ProcessBlock(mParamsToSmooth, mModulations.GetList(), nFrames);
     mSynth.ProcessBlock(mModulations.GetList(), outputs, 0, nOutputs, nFrames);
+
+    // The warped sampler renders a whole block at a time, because Bungee works in grains rather
+    // than per sample. Doing it here, before the sample loop, keeps the loop free of it.
+    RenderWarpBlock(nFrames);
 
     int drumEvent = 0;
     for (int s = 0; s < nFrames; ++s)
@@ -551,6 +599,10 @@ private:
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   /** The plugin's sampler. Null until SetSamplerEngine is called; never dereferenced when null. */
   keith::sampler::SamplerEngine* mSampler = nullptr;
+  /** Block-rate scratch for the warped sampler, and whether it was filled this block. */
+  std::vector<float> mWarpScratch;
+  std::vector<float> mWarpScratchR;
+  bool mWarpBlockActive = false;
   int mNumDrumEvents = 0;
   /** Hits per pad since load. The editor diffs this to flash a pad; see PadHitCount(). */
   std::atomic<uint64_t> mPadHits[keith::drums::kNumSlots] {};

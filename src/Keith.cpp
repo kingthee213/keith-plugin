@@ -2186,6 +2186,23 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   // PAD MIDI is editor-only state rather than a parameter, so it is handed to the DSP each
   // block instead of being read from the parameter list.
   mDSP.SetPadMidi(mPadMidiEnabled.load());
+
+  // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
+  // the musical position. GetTimeInfo is cheap and must be called on the audio thread here --
+  // the object it returns is only valid for the duration of this call, so nothing may be stored
+  // except copies of the fields.
+  {
+    const ITimeInfo& timeInfo = GetTimeInfo();
+    keith::sampler::Transport transport;
+    transport.tempo = timeInfo.mTempo;
+    transport.ppqPosition = timeInfo.mPPQPos;
+    transport.running = timeInfo.mTransportIsRunning;
+    transport.beatsPerBar = (timeInfo.mDenominator > 0)
+                              ? static_cast<int>(4.0 * timeInfo.mNumerator / timeInfo.mDenominator)
+                              : 4;
+    mSampler.SetTransport(transport);
+  }
+
   // A pad clicked in the editor is played at the start of this block.
   float padVelocity = 1.f;
   const int padSlot = TakePendingDrumPad(padVelocity);
