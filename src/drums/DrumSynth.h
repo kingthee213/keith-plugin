@@ -117,3 +117,6 @@ inline KitParams DefaultKitParams()
     params.slot[i] = DefaultSlotParams(i);
   return params;
 }
+
+} // namespace drums
+} // namespace keith
