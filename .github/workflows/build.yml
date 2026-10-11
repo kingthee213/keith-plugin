@@ -37,16 +37,18 @@ jobs:
 
       - name: Measure preset levels
         run: |
-          # numpy, for the ITU-R BS.1770-4 K-weighting filter in measure_preset_levels.py.
+          # numpy and scipy, the measurement's only third-party dependencies:
+          #   numpy  -- array maths for the K-weighting filter
+          #   scipy  -- scipy.signal for the biquad
+          # Checked against the imports in tools/measure_preset_levels.py rather than guessed at one
+          # package at a time; numpy alone was installed first and the run then failed on scipy.
           #
           # This is the macOS runner's system Python, which is externally managed: a plain
-          # `pip install numpy` is REFUSED and prints a "use pipx / --break-system-packages" notice
-          # instead of installing. --break-system-packages is the right flag here because this is a
-          # throwaway CI runner, not a user's machine, and it is scoped to this one step.
-          #
-          # A venv would be cleaner, but the measurement then has to use that venv's python
-          # explicitly, and the point is to get the numbers out of this runner.
-          python3 -m pip install --quiet --disable-pip-version-check --break-system-packages numpy
+          # `pip install` is REFUSED with a "use pipx or --break-system-packages" notice instead of
+          # installing. --break-system-packages is right here because this is a throwaway CI
+          # runner, not a user's machine, and it is scoped to this one step.
+          python3 -m pip install --quiet --disable-pip-version-check --break-system-packages \
+            numpy scipy
 
           # continue-on-error is deliberately NOT set on this step. It was, and it hid both
           # failures this step has had: a missing numpy and, before that, no renderer binary. A
