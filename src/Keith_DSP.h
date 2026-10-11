@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../sampler/SamplerEngine.h"
+#include "sampler/SamplerEngine.h"
 
 #include "MidiSynth.h"
 #include "Smoothers.h"

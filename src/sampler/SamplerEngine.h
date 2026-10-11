@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "../sampler/SampleLoader.h"
-#include "../sampler/SamplerVoice.h"
+#include "SampleLoader.h"
+#include "SamplerVoice.h"
 
 #include <string>
 
