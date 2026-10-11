@@ -118,20 +118,30 @@ jobs:
         shell: bash
         run: ./tools/bootstrap-deps
 
-      # "could not find any instance of Visual Studio" is what the Configure step said, and it is
-      # not a missing install: windows-latest has VS 2022, but the CMake VS generator needs the
-      # developer environment in the shell. ilammy/msvc-dev-cmd does exactly that.
+      # Two separate faults produced "could not find any instance of Visual Studio".
+      #
+      # First, the CMake VS generator needs the developer environment sourced in the shell.
+      # ilammy/msvc-dev-cmd does that, and it worked -- vcvarsall.bat resolved afterwards.
+      #
+      # Second, the generator name was HARDCODED to "Visual Studio 17 2022" while the runner image
+      # now ships VS 18. So the generator was looking for a version that is not installed. The
+      # generator is discovered instead of named: cmake -G with no value lists what is available,
+      # and the highest VS entry is used. That way a runner image change does not silently break
+      # this again, which is exactly what happened here.
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
       - name: Configure
-        run: >
-          cmake -S . -B build
-          -G "Visual Studio 17 2022"
-          -A x64
-          -DIPLUG_DEPLOY_PLUGINS=OFF
+        shell: bash
+        run: |
+          GEN=$(cmake --help | grep -oE "Visual Studio 1[0-9]+ [0-9]+" | head -1)
+          if [ -z "$GEN" ]; then
+            echo "::error::no Visual Studio generator available"; exit 1
+          fi
+          echo "using generator: $GEN"
+          cmake -S . -B build -G "$GEN" -A x64 -DIPLUG_DEPLOY_PLUGINS=OFF
 
       - name: Build VST3
         run: cmake --build build --config Release --target MagsSynth-vst3
