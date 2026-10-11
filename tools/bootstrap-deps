@@ -16,7 +16,25 @@ if [[ -d "${DEST}/.git" ]]; then
   git -C "${DEST}" submodule update --init --recursive
 else
   echo "Cloning iPlug2 ${IPLUG2_REV} into ${DEST}"
-  git clone --recursive "${IPLUG2_REPO}" "${DEST}"
+  # Retried, because iPlug2 is hosted on GitLab and GitLab returns
+  # "unable to handle this request due to load" often enough to have failed a build on its own.
+  # A transient remote outage should cost a retry, not a red run and a wasted look at the code.
+  cloned=0
+  for attempt in 1 2 3 4; do
+    if git clone --recursive "${IPLUG2_REPO}" "${DEST}"; then
+      cloned=1
+      break
+    fi
+    echo "  clone attempt ${attempt} failed; retrying in $((attempt * 10))s"
+    rm -rf "${DEST}"
+    sleep $((attempt * 10))
+  done
+  if [ "${cloned}" -ne 1 ]; then
+    echo "ERROR: could not clone iPlug2 after 4 attempts. If the message above says" >&2
+    echo "       'GitLab is currently unable to handle this request due to load', that is an" >&2
+    echo "       outage on their side and re-running the job is the fix." >&2
+    exit 1
+  fi
   git -C "${DEST}" checkout --detach "${IPLUG2_REV}"
   git -C "${DEST}" submodule update --init --recursive
 fi
