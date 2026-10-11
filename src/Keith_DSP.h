@@ -483,7 +483,7 @@ public:
       // after the transport stopped. So it falls through to the handling below. That is the
       // general rule for this block: swallow what a one-shot genuinely cannot use, and let
       // everything else through to the code that owns it.
-      if (status == IMidiMsg::kPitchBend)
+      if (status == IMidiMsg::kPitchWheel)
         return;
 
       if (status == IMidiMsg::kControlChange)

@@ -10,6 +10,10 @@
 // every dr_libs symbol in both this unit and Keith.o and the link failed with hundreds of
 // duplicate symbols.
 
+// Tell SamplerEngine.h not to pull in iPlug2; this unit type-checks the sampler headers
+// on their own and does not link iPlug. See the note in SamplerEngine.h.
+#define KEITH_SAMPLER_NO_IPLUG 1
+
 #include "../src/sampler/SampleLoader.h"
 #include <memory>
 #include <vector>

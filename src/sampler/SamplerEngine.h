@@ -25,7 +25,25 @@
 #include <cmath>
 #include <string>
 
+// IByteChunk comes from iPlug2 and lives inside its own namespace, so it cannot be forward
+// declared here: `class IByteChunk;` at global scope declares a DIFFERENT type, and the compiler
+// then reports every use as ambiguous. (That is exactly what the first build did.)
+//
+// The two translation units that need this header differ:
+//
+//   * Keith.cpp has iPlug2 already, so IPlugStructs.h is the real definition.
+//   * tools/sampler_compilecheck.cpp deliberately does NOT link iPlug2 -- its whole job is to
+//     type-check these headers on their own -- so it defines KEITH_SAMPLER_NO_IPLUG and gets a
+//     placeholder with the same name in the same namespace. The declarations below only ever name
+//     the type in a reference parameter, so an incomplete type is all they need.
+#if defined(KEITH_SAMPLER_NO_IPLUG)
+namespace iplug {
 class IByteChunk;
+}
+using iplug::IByteChunk;
+#else
+#include "IPlug/IPlugStructs.h"
+#endif
 
 namespace keith {
 namespace sampler {
