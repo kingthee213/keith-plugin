@@ -219,8 +219,13 @@ public:
 
     mRuntime.modWheel = 0.f;
     mPerf.Clear();
-    mDrums.Reset(sampleRate);
-    mDrums.SetParams(mDrumParams);
+    mDrums.SetSampleRate(sampleRate);
+    mDrums.Reset();
+    mPercussion.SetSampleRate(sampleRate);
+    mPercussion.Reset();
+    mInstrument.SetSampleRate(sampleRate);
+    mInstrument.Reset();
+    ApplyDrumSlotParams();
     mNumDrumEvents = 0;
     mSynth.SetSampleRateAndBlockSize(sampleRate, blockSize);
     mSynth.Reset();
@@ -330,11 +335,114 @@ public:
     return (slot >= 0 && slot < keith::drums::kNumSlots) ? mPadHits[slot].load() : 0;
   }
 
+  /**
+   * Per-slot level and tune, applied against whatever kit is loaded.
+   *
+   * The old engine built its hit from these numbers, so they fed the synthesis. They now scale the
+   * sampled kit instead: level is gain, tune is playback rate. Mute and solo are read by the
+   * editor and by the trigger path, not here.
+   */
   void SetDrumParams(const keith::drums::KitParams& p)
   {
     mDrumParams = p;
-    mDrums.SetParams(p);
+    mDrumGainsDirty = true;
   }
+
+  /** Push level and tune for every slot onto the loaded kit. Called when either changes. */
+  void ApplyDrumSlotParams()
+  {
+    for (int slot = 0; slot < keith::drums::kKitSlots; ++slot)
+    {
+      const keith::drums::SlotParams& sp = mDrumParams.slot[slot];
+      // A muted or silent slot is turned down to zero rather than skipped, so the trigger path
+      // stays one shape and a mute takes effect on the next hit.
+      const bool audible = SlotAudible(static_cast<int>(slot));
+      const float level = audible ? keith::drums::DbToLinear(sp.levelDb) : 0.f;
+      mDrums.SetSlotParams(static_cast<int>(slot), level, sp.tuneSemitones);
+    }
+    mDrumGainsDirty = false;
+  }
+
+  /**
+   * Point the drum engine at a loaded kit.
+   *
+   * Called from the message thread when the kit parameter changes or the plugin is set up. The
+   * engine takes a shared_ptr, so a kit swap cannot free audio the audio thread is still reading.
+   */
+  void SetDrumKit(std::shared_ptr<const keith::drums::KitData> kit)
+  {
+    mDrums.Publish(std::move(kit));
+    ApplyDrumSlotParams();
+  }
+
+  /** The loaded kit, so the editor and the serialiser can see it. */
+  const std::shared_ptr<const keith::drums::KitData>& DrumKit() const { return mDrums.Kit(); }
+
+  /**
+   * Point the multisample instrument layer at a loaded guitar bank.
+   *
+   * Separate from the drums entirely. This plays across the MIDI range through the sampler path
+   * and never touches the drum engine or the pads -- the owner was explicit that guitars belong in
+   * the piano roll, not on the drum machine.
+   */
+  void SetInstrumentBank(std::shared_ptr<const keith::instruments::BankData> bank)
+  {
+    mInstrument.Publish(std::move(bank));
+  }
+
+  const std::shared_ptr<const keith::instruments::BankData>& InstrumentBank() const
+  {
+    return mInstrument.Bank();
+  }
+
+  /** Linear gain for the guitar layer, applied on trigger. */
+  void SetInstrumentGain(float gain) { mInstrumentGain = gain; }
+
+  bool InstrumentHandlesNotes() const { return mInstrument.HandlesNotes(); }
+
+  /** Audio thread. */
+  bool TriggerInstrument(int note, float velocity)
+  {
+    return mInstrument.Trigger(note, velocity, mInstrumentGain);
+  }
+
+  void ReleaseInstrument(int note) { mInstrument.Release(note); }
+  float ProcessInstrument() { return mInstrument.Process(); }
+
+  /**
+   * The percussion kit.
+   *
+   * A SECOND engine rather than more slots on the first, and it is triggered from notes in its own
+   * range -- so a percussion kit can be swapped without disturbing the drum kit, and neither
+   * engine needs to know the other exists. Offsetting slots inside one engine would put that
+   * knowledge in the slot arithmetic, which is where it would be easy to get wrong.
+   */
+  void SetPercussionKit(std::shared_ptr<const keith::drums::KitData> kit, int firstSlot)
+  {
+    mPercussionFirstSlot = firstSlot;
+    mPercussion.Publish(std::move(kit));
+  }
+
+  const std::shared_ptr<const keith::drums::KitData>& PercussionKit() const
+  {
+    return mPercussion.Kit();
+  }
+
+  /** True when a note lands in the percussion kit's range and that slot holds audio. */
+  bool HandlesPercussionNote(int note) const
+  {
+    return mPercussionFirstSlot >= 0 && mPercussion.Kit()
+           && mPercussion.Kit()->LoadedSlots() > 0
+           && note >= (keith::drums::kFirstMidiNote + mPercussionFirstSlot);
+  }
+
+  /** Audio thread. Triggers the percussion engine. */
+  bool TriggerPercussion(int note, float velocity)
+  {
+    return mPercussion.Trigger(note, velocity);
+  }
+
+  float ProcessPercussion() { return mPercussion.Process(); }
 
   void SetSynthParams(const keith::synth::Params& p)
   {
@@ -369,7 +477,8 @@ public:
       while (drumEvent < mNumDrumEvents && mDrumEvents[drumEvent].offset <= s)
       {
         const int slot = mDrumEvents[drumEvent].slot;
-        mDrums.Trigger(slot, mDrumEvents[drumEvent].velocity);
+        // The drum engine is keyed by MIDI note, like the sampler, so slot N is note 36+N.
+        mDrums.Trigger(keith::drums::kFirstMidiNote + slot, mDrumEvents[drumEvent].velocity);
         // Record the hit so the editor can flash the pad. The pad lights for every trigger,
         // whether it came from MIDI or from a click in the editor.
         RecordPadHit(slot);
@@ -378,7 +487,15 @@ public:
 
       float drumLeft = 0.f;
       float drumRight = 0.f;
-      mDrums.ProcessFrame(drumLeft, drumRight);
+      // The sampled kit is mono, summed into both outputs. A recorded hit is mono more often
+      // than not, and panning it would put the kit off-centre for no reason the player asked for.
+      if (mDrumGainsDirty)
+        ApplyDrumSlotParams();
+      // The guitar layer sums with the drums -- both are sample sources added on top of the synth
+      // bus, and both go through the same insert chain afterwards.
+      const float drumMono = mDrums.Process() + mPercussion.Process() + mInstrument.Process();
+      drumLeft += drumMono;
+      drumRight += drumMono;
       outputs[0][s] += static_cast<T>(drumLeft);
       if (nOutputs > 1)
         outputs[1][s] += static_cast<T>(drumRight);
@@ -428,7 +545,7 @@ public:
     // the point of the switch -- with it on, only what lines up with a pad makes a sound.
     if (mPadMidi)
     {
-      if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
+      if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && (mDrums.Kit() && mDrums.Kit()->LoadedSlots() > 0))
       {
         if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
           QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
@@ -436,6 +553,32 @@ public:
       }
       if (noteMessage)
         return;
+    }
+
+    // --- the multisampled instrument layer (guitars) --------------------------------------------
+    //
+    // Ahead of the synth and behind the sampler, and entirely separate from the drums: this is the
+    // piano-roll path the owner asked for. When no bank is loaded this does nothing, so the synth
+    // behaves exactly as before.
+    if (noteMessage && mInstrument.HandlesNotes())
+    {
+      const int note = msg.NoteNumber();
+      const bool on = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
+      if (on)
+      {
+        // Triggered directly rather than queued. The drum path queues because a drum event has a
+        // sample offset within the block; a played instrument note starts at the block boundary
+        // like a synth or sampler note, and queueing it would add offset machinery for nothing.
+        if (mInstrument.Trigger(note, static_cast<float>(msg.Velocity()) / 127.f, mInstrumentGain))
+          return;
+        // A bank is loaded but this note found no zone: fall through rather than swallow, because
+        // a silently dead key is a worse failure than an unexpected synth note.
+      }
+      else if (status == IMidiMsg::kNoteOff || (status == IMidiMsg::kNoteOn && msg.Velocity() == 0))
+      {
+        mInstrument.Release(note);
+        return;
+      }
     }
 
     // --- the sampler takes the whole keyboard -------------------------------------------------
@@ -502,10 +645,33 @@ public:
       }
     }
 
-    if (noteMessage && keith::drums::IsDrumNote(msg.NoteNumber()) && mDrums.Audible())
+    // --- the percussion kit, which owns the notes above the drum range -------------------------
+    //
+    // Checked BEFORE the drum branch and before the synth. The percussion range starts above the
+    // drums, so the two cannot both match a note -- but ordering it first makes that explicit
+    // rather than something the reader has to verify from the ranges.
+    if (noteMessage && HandlesPercussionNote(msg.NoteNumber()))
     {
-      // PAD MIDI OFF, audible kit: the drum range still plays the pads, as it always has.
-      // Existing presets rely on this -- an audible kit owns 36-51.
+      if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
+        TriggerPercussion(msg.NoteNumber(), static_cast<float>(msg.Velocity()) / 127.f);
+      else if (status == IMidiMsg::kNoteOff || (status == IMidiMsg::kNoteOn && msg.Velocity() == 0))
+        mPercussion.Release(msg.NoteNumber());
+      return;
+    }
+
+    // --- the drum range ------------------------------------------------------------------------
+    //
+    // The drums claim notes 36-51 ONLY when PAD MIDI is on. That switch is the owner's way of
+    // saying "the pads are what I am playing right now".
+    //
+    // This used to claim the range whenever ANY kit was loaded -- and a kit is always loaded,
+    // because OnReset loads one. So on the default startup the drum range was taken over and a
+    // drum kit was "in the drum pad" before the player had asked for anything, which is exactly
+    // what the owner reported. Gating it on PAD MIDI is the fix: with the switch off, 36-51 fall
+    // through to the instrument layer and then the synth like any other note.
+    if (noteMessage && mPadMidi && keith::drums::IsDrumNote(msg.NoteNumber())
+        && (mDrums.Kit() && mDrums.Kit()->LoadedSlots() > 0))
+    {
       if (status == IMidiMsg::kNoteOn && msg.Velocity() > 0)
         QueueDrumEvent(msg.mOffset, keith::drums::SlotForMidiNote(msg.NoteNumber()),
                        static_cast<float>(msg.Velocity()) / 127.f);
@@ -517,7 +683,7 @@ public:
       const int cc = msg.ControlChangeIdx();
       if (cc == IMidiMsg::kAllNotesOff || cc == 120)
       {
-        mDrums.AllNotesOff();
+        mDrums.Reset();
         mNumDrumEvents = 0;
       }
     }
@@ -658,9 +824,36 @@ private:
   keith::synth::RuntimeMod mRuntime {};
   KeithPerformance mPerf {};
   keith::drums::KitParams mDrumParams = keith::drums::DefaultKitParams();
+  bool mDrumGainsDirty = false;
+
+  /**
+   * Whether a slot should sound, given mute and solo.
+   *
+   * The rule is the usual one and worth stating because it is the thing that is easy to get
+   * backwards: if ANY slot is soloed, only the soloed slots sound. Otherwise a muted slot is
+   * silent and everything else sounds.
+   */
+  bool SlotAudible(int slot) const
+  {
+    if (slot < 0 || slot >= keith::drums::kNumSlots)
+      return false;
+    bool anySolo = false;
+    for (int i = 0; i < keith::drums::kNumSlots; ++i)
+      if (mDrumParams.slot[i].solo)
+        anySolo = true;
+    if (anySolo)
+      return mDrumParams.slot[slot].solo;
+    return !mDrumParams.slot[slot].mute;
+  }
   /** Set from Keith::ProcessBlock; see SetPadMidi. */
   bool mPadMidi = true;
-  keith::drums::Engine mDrums;
+  keith::drums::DrumKitEngine mDrums;
+  /** Percussion, on notes above the drum kit's own range. -1 until a kit is loaded. */
+  keith::drums::DrumKitEngine mPercussion;
+  int mPercussionFirstSlot = -1;
+  /** The multisampled guitar layer, played across the keyboard. */
+  keith::instruments::InstrumentEngine mInstrument;
+  float mInstrumentGain = 1.f;
   DrumEvent mDrumEvents[kMaxDrumEvents] {};
   /** The plugin's sampler. Null until SetSamplerEngine is called; never dereferenced when null. */
   keith::sampler::SamplerEngine* mSampler = nullptr;

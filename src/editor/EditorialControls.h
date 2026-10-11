@@ -353,8 +353,9 @@ public:
     // Anything unlisted lands under its own heading rather than being dropped, so a new category
     // cannot silently vanish from the menu.
     static const char* kKindOrder[] = {
-      "polysynth", "lead", "keys", "bass", "guitars", "drums", "reeds/horn", "pad",
-      "strings/fx",
+      // The owner's eight, in the order the menu lists them. Drums is deliberately absent: a drum
+      // kit is chosen with the Drum Kit parameter, not from the preset list.
+      "mono synths", "poly synths", "guitars", "winds", "sfx", "vocal", "bass", "strings",
     };
 
     // The category IS the group now.

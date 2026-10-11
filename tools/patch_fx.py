@@ -48,17 +48,20 @@ same reasoning `verify_patch_fx_chains.py` encodes in its "dry roles carry no lo
 # Each entry is (algo, A, B, C, mix): algo is 0 Off, 1 Drive, 2 Chorus, 3 Delay, 4 Crush.
 INS1 = {
     #                                  algo   A    B    C   mix
-    "polysynth":  [(2, 20, 28, 36, 20), (2, 14, 38, 44, 26), (4, 22, 32, 14, 14)],
-    "lead":       [(3, 34, 30, 54, 18), (3, 44, 36, 60, 24), (4, 26, 36, 16, 16)],
-    "keys":       [(2, 14, 22, 26, 14), (2, 20, 26, 34, 18), (1, 22, 38, 28, 14)],
-    "bass":       [(1, 24, 40, 28, 16), (1, 32, 46, 34, 22), (4, 18, 28, 10, 12)],
-    "drums":      [(1, 28, 44, 26, 20), (4, 30, 36, 18, 16)],
-    "reeds/horn": [(2, 16, 20, 28, 12), (2, 22, 24, 34, 18), (1, 18, 34, 26, 12)],
+    "poly synths": [(2, 20, 28, 36, 20), (2, 14, 38, 44, 26), (4, 22, 32, 14, 14)],
+    "mono synths": [(3, 34, 30, 54, 18), (3, 44, 36, 60, 24), (4, 26, 36, 16, 16)],
+    "bass":        [(1, 24, 40, 28, 16), (1, 32, 46, 34, 22), (4, 18, 28, 10, 12)],
+    "winds":       [(2, 16, 20, 28, 12), (2, 22, 24, 34, 18), (1, 18, 34, 26, 12)],
+    "strings":     [(2, 12, 36, 44, 28), (2, 18, 44, 52, 34), (3, 58, 42, 48, 20)],
     # Guitars get a light chorus and no heavy delay: a pluck with a long tail smears the
     # articulation that makes it read as a string.
-    "guitars":    [(2, 14, 24, 30, 16), (2, 20, 30, 38, 20), (3, 26, 22, 44, 12)],
-    "pad":        [(2, 12, 36, 44, 28), (2, 18, 44, 52, 34), (3, 58, 42, 48, 20)],
-    "strings/fx": [(3, 48, 38, 58, 26), (4, 34, 42, 22, 22), (2, 24, 46, 56, 30)],
+    "guitars":     [(2, 14, 24, 30, 16), (2, 20, 30, 38, 20), (3, 26, 22, 44, 12)],
+    # FX want the heavy treatments -- that is what they are for.
+    "sfx":         [(3, 48, 38, 58, 26), (4, 34, 42, 22, 22), (2, 24, 46, 56, 30)],
+    # A choir wants space and nothing else. Any modulation on a sampled voice reads as a fault.
+    "vocal":       [(2, 30, 20, 40, 34), (3, 42, 26, 34, 30), (1, 20, 30, 24, 28)],
+    # Drums are not presets any more, but the group stays for kits that arrive as presets later.
+    "drums":       [(1, 28, 44, 26, 20), (4, 30, 36, 18, 16)],
 }
 
 # Insert 2 is only set where a second stage earns its place, so a group absent from this table

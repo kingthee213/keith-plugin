@@ -218,6 +218,24 @@ enum EParams
   /** Play the sample backwards. Part of the sound, so it lives in the patch. */
   kParamSampleReverse = 119,
 
+  // U18 appends. IDs 0-119 stay put.
+  //
+  // The drum kits are samples now, not synthesised voices, so the kit itself has to be selectable
+  // -- the old engine had nothing to select. kParamPercKit picks between the two percussion kits
+  // and kParamVocalEnable turns the sampled choir on, which is a layer like the drums rather than
+  // a preset, because it is meant to be played alongside anything.
+  kParamDrumKit = 120,
+  kParamPercKit = 121,
+  kParamVocalEnable = 122,
+
+  // U19 appends. IDs 0-122 stay put.
+  //
+  // kParamGuitarBank picks which sampled guitar bank plays across the keyboard. It loads into the
+  // MIDI range via the multisample instrument engine, NOT into the drum machine -- the owner was
+  // explicit about that. Defaults to Off, so nothing is claimed on startup.
+  kParamGuitarBank = 123,
+  kParamGuitarLevel = 124,
+
   kNumParams
 };
 
@@ -323,6 +341,17 @@ private:
   void StoreSelectedDrumSlotParam(int paramIdx);
   void ResetDrumKitToDefaults();
   void UpdateDrumUi();
+  /** Load the selected drum kit from disk and hand it to the DSP. Message thread. */
+  void LoadDrumKit();
+  /** Load the selected percussion kit, which sits above the drum slots. Message thread. */
+  void LoadPercussionKit();
+  /** Load the selected guitar bank for the multisample instrument layer. Message thread. */
+  void LoadGuitarBank();
+  /** Push the guitar layer's level onto the DSP. */
+  void SyncGuitarLevel();
+  /** The directory the sample kits were copied into by the build. */
+  std::string DrumKitDir() const;
+
   static void SerializeDrumKit(IByteChunk& chunk, const keith::drums::KitParams& kit);
   static int UnserializeDrumKit(const IByteChunk& chunk, int startPos,
                                keith::drums::KitParams& kit);
@@ -354,6 +383,12 @@ private:
 #endif
 
   keith::drums::KitParams mDrumKit = keith::drums::DefaultKitParams();
+  /** The loaded kit, kept so the editor can draw slot waveforms without touching the DSP. */
+  std::shared_ptr<const keith::drums::KitData> mLoadedKit;
+  /** Which kit index is loaded, so a redundant reload is skipped on every parameter change. */
+  int mLoadedKitIndex = -1;
+  /** Which guitar bank index is loaded, so a redundant reload is skipped. */
+  int mLoadedGuitarBankIndex = -1;
   std::atomic<int> mSelectedDrumSlot {0};
 
   /**

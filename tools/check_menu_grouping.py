@@ -41,6 +41,9 @@ GENERATORS = [
 ]
 
 
+# The 7 original synthesised kit presets: in the table, hidden from the menu. See apply_preset_tables.
+RETIRED = "retired drums"
+
 def read_kind_order(text):
     """kKindOrder from the menu code, so this cannot drift from it."""
     m = re.search(r"kKindOrder\[\]\s*=\s*\{(.*?)\};", text, re.S)
@@ -132,7 +135,12 @@ def main():
         print("  ok    every category maps to a heading")
 
     # 2. every kind that appears must be in the menu order, or it gets appended unlisted
-    kinds = {kind_of(c, order, prefix, prefix_kind, fallbacks) for c in all_cats}
+    #
+    # `retired drums` is the deliberate exception: the 7 original synthesised kit presets stay in
+    # the table at their indices so kPresetDeltas and the level trims do not shift onto other
+    # patches, and their category keeps them out of the dropdown. So the menu never sees the name
+    # and must not be asked to place it.
+    kinds = {kind_of(c, order, prefix, prefix_kind, fallbacks) for c in all_cats if c != RETIRED}
     unlisted = sorted(kinds - set(order))
     if unlisted:
         print(f"  FAIL  kinds with no place in kKindOrder (they would be appended): {unlisted}")
@@ -144,7 +152,7 @@ def main():
     #    "key " prefix not collapsing into one heading; that can no longer happen, because the
     #    table stores the final group name. What can happen now is a category the menu does not
     #    know, which would show as its own unexpected heading.
-    unlisted_cats = sorted(set(all_cats) - set(order))
+    unlisted_cats = sorted(set(all_cats) - set(order) - {RETIRED})
     if unlisted_cats:
         print(f"  FAIL  categories that are not one of the eight groups: {unlisted_cats}")
         failures += 1

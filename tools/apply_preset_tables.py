@@ -54,32 +54,51 @@ BEGIN_NEW = "// --- BEGIN the MAGS library"
 END_NEW = "// --- END the MAGS library"
 
 # The owner's eight groups, in menu order.
-GROUP_ORDER = ["polysynth", "lead", "keys", "bass", "guitars", "drums", "reeds/horn", "pad",
-               "strings/fx"]
+GROUP_ORDER = ["mono synths", "poly synths", "guitars", "winds", "sfx", "vocal", "bass",
+               "strings"]
 
 # Every category that exists, mapped onto those eight. Anything not listed is an error: a silent
 # fall-through would put a preset in a group of its own and nobody would notice.
 CATEGORY_MAP = {
-    # the 190, by their generated prefixes
-    "poly keys": "polysynth", "poly lead keys": "polysynth", "poly pad": "polysynth",
-    "poly pluck": "polysynth", "poly saw": "polysynth", "poly synth": "polysynth",
-    "poly warm keys": "polysynth",
-    "lead fm": "lead", "lead keys": "lead", "lead pulse": "lead", "lead saw": "lead",
-    "lead sync": "lead", "lead table": "lead",
-    "key tine": "keys", "key organ": "keys", "key combo": "keys", "key tape": "keys",
-    "reeds": "reeds/horn", "brass": "reeds/horn",
+    # --- mono synths -----------------------------------------------------------------------
+    "lead": "mono synths", "lead saw": "mono synths", "lead pulse": "mono synths",
+    "lead sync": "mono synths", "lead fm": "mono synths", "lead table": "mono synths",
+    "mono": "mono synths", "bass lead": "mono synths",
+    # --- poly synths -----------------------------------------------------------------------
+    "poly": "poly synths", "polysynth": "poly synths", "keys": "poly synths",
+    "poly keys": "poly synths", "clav": "poly synths", "organ": "poly synths",
+    "key tine": "poly synths", "key organ": "poly synths", "key combo": "poly synths",
+    "key tape": "poly synths", "bells": "poly synths", "stab": "poly synths",
+    "pluck": "poly synths", "arp": "poly synths",
+    "poly synth": "poly synths", "poly saw": "poly synths", "poly pluck": "poly synths",
+    "poly pad": "strings", "poly warm keys": "poly synths",
+    "lead keys": "mono synths", "poly lead keys": "poly synths",
+    # --- guitars ---------------------------------------------------------------------------
     "guitars": "guitars",
-    "strings": "strings/fx", "fx": "strings/fx",
-    # the existing 109
-    "keys": "keys", "electric piano": "keys", "piano": "keys", "clav": "keys",
-    "organ": "keys", "bells": "keys",
-    "pad": "pad", "motion": "pad", "drone": "pad", "choir": "pad",
-    "texture": "strings/fx",
-    "arp": "lead", "lead": "lead",
-    "stab": "polysynth", "pluck": "polysynth",
-    "kit": "drums",
-    "bass": "bass",
+    # --- winds -----------------------------------------------------------------------------
+    "reeds": "winds", "brass": "winds", "reed": "winds", "horn": "winds",
+    "winds": "winds",
+    # --- sfx -------------------------------------------------------------------------------
+    "fx": "sfx", "sfx": "sfx", "texture": "sfx", "motion": "sfx", "noise": "sfx",
+    "drone": "sfx", "riser": "sfx",
+    # --- vocal -----------------------------------------------------------------------------
+    "choir": "vocal", "vocal": "vocal", "voice": "vocal",
+    # --- bass -------------------------------------------------------------------------------
+    "bass": "bass", "sub": "bass",
+    # --- names already written into the table by the previous grouping pass -----------------
+    # A re-apply reads the table as it stands, so it meets these. Without them the build stops on
+    # 'unknown category', which is how this was found.
+    "polysynth": "poly synths", "lead": "mono synths", "keys": "poly synths",
+    "pad": "strings", "strings/fx": "strings", "reeds/horn": "winds",
+    # The 7 ORIGINAL synthesised drum presets. They stay in the table at their existing indices
+    # because kPresetDeltas and the level trims are keyed by index -- dropping them would shift
+    # 205 presets' data onto the wrong patches. They are retagged to a category the menu does not
+    # list, so they leave the dropdown while their rows stay exactly where they are.
+    "drums": "retired drums",
+    # --- strings ---------------------------------------------------------------------------
+    "strings": "strings", "pad": "strings", "string": "strings",
 }
+
 
 
 def build_patches():
@@ -156,8 +175,34 @@ def main():
     print(f"  existing presets: {n_existing}")
 
     # --- regroup the existing 109's categories ----------------------------------------------
+    #
+    # Preset names that are textures and effects rather than strings. The original library put both
+    # under one "strings/fx" category, and once the groups separated the textures must follow the
+    # FX side: a crushed texture is not a sustaining string, and the arrangement palette expects an
+    # sfx entry it was not getting.
+    FX_NAME_TOKENS = ("texture", "crush", "riser", "sweep", "noise", "drone", "motion", "swell")
+
+    def is_fx_preset(preset_name):
+        """True when a preset's name says it is a texture or effect rather than an instrument."""
+        low = preset_name.lower()
+        return any(tok in low for tok in FX_NAME_TOKENS)
+
     def regroup_spec(match):
         name, family, source, category = match.group(1), match.group(2), match.group(3), match.group(4)
+        if category == "retired drums":
+            return f'{{"{name}", {family}, "{source}", "retired drums"}}'
+        # The FX test comes FIRST, and it has to.
+        #
+        # It was below the already-grouped return, which made it dead code: the original
+        # "strings/fx" category held strings AND textures under one name, the first run mapped the
+        # whole thing to "strings", and every later run then matched "strings" in GROUP_ORDER and
+        # returned before reaching this test. So "Skew Texture" and "Heavy Crush" sat in strings
+        # while two gates correctly said a crushed texture is not a sustaining string.
+        #
+        # Asking the NAME rather than the current category is also what makes the pass idempotent:
+        # a texture is a texture whatever the row currently says.
+        if category in ("strings/fx", "strings") and is_fx_preset(name):
+            return f'{{"{name}", {family}, "{source}", "sfx"}}'
         # An already-grouped category maps to itself, so re-running after an interrupted apply is
         # safe. Without this, a second run fails on 'polysynth' because the first run already
         # renamed the row -- which is exactly what happened once.
@@ -220,7 +265,13 @@ def main():
     for name, family, source, category in existing:
         # Already-grouped rows map to themselves, so a re-apply does not fail here. Same rule as
         # regroup_spec above -- this is the second place that needed it.
-        total[category if category in GROUP_ORDER else CATEGORY_MAP[category]] += 1
+        # Third place in this file that has to accept an already-final group name, and the second
+        # time it was missed. The rule is the same everywhere: a name the table already carries is
+        # legal and maps to itself.
+        if category in GROUP_ORDER or category in ("retired drums",):
+            total[category] += 1
+        else:
+            total[CATEGORY_MAP[category]] += 1
     for p in patches:
         total[CATEGORY_MAP[p.category]] += 1
     for g in GROUP_ORDER:

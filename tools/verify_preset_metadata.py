@@ -12,23 +12,26 @@ LEDGER = (ROOT / "banks" / "SOURCES.md").read_text(encoding="utf-8")
 # The owner's eight groups, in menu order. The fine-grained roles this list used to hold ("clav",
 # "texture", "motion", "drone", ...) are no longer stored in the table -- the generators still emit
 # them, and tools/apply_preset_tables.py maps them onto these eight when it writes.
+# "retired drums" is the 7 original synthesised kit presets: kept in the table so indices do not
+# shift, hidden from the menu. It is a legal category and deliberately absent from ROLE_ORDER.
 ROLE_ORDER = [
-    "polysynth",
-    "lead",
-    "keys",
-    "bass",
+    "mono synths",
+    "poly synths",
     "guitars",
-    "drums",
-    "reeds/horn",
-    "pad",
-    "strings/fx",
+    "winds",
+    "sfx",
+    "vocal",
+    "bass",
+    "strings",
 ]
 ROLE_INDEX = {name: index for index, name in enumerate(ROLE_ORDER)}
 EXPECTED_REFS = ["Triton", "Triton Extreme", "Korg M1", "Korg Wavestation", "Korg TR"]
 # The old fine-grained roles. The table now stores the eight groups, so these no longer appear as
 # categories -- the palette must instead span a spread of GROUPS, which is what the check below
 # verifies. Kept as a name so the intent is legible.
-PALETTE_CATEGORIES = {"keys", "polysynth", "drums", "strings/fx"}
+# The "Glass Keys" arrangement palette is the owner's named demo set, so its categories follow the
+# current grouping. `retired drums` is excluded on purpose: those 7 presets are hidden.
+PALETTE_CATEGORIES = {"poly synths", "mono synths", "strings", "sfx"}
 FORBIDDEN = (
     "korg", "triton", "wavestation", "m1", "splice", "surge", "neptune",
     "pharrell", "hugo", "gorillaz",
@@ -121,7 +124,9 @@ def main():
         for word in FORBIDDEN:
             if re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", lowered):
                 fail(f"reference name in shipped preset: {name}")
-        if category not in ROLE_INDEX:
+        # "retired drums" is legal but not menu-listed: the 7 original synthesised kit presets,
+        # kept at their indices so the deltas and level trims do not shift onto other patches.
+        if category != "retired drums" and category not in ROLE_INDEX:
             fail(f"unknown sound role {category!r} on {name}")
         if not reference:
             fail(f"missing emulated family on {name}")

@@ -232,6 +232,30 @@ function(keith_stage_files target destination)
   endforeach()
 endfunction()
 
+
+# The sampled drum kits, the percussion kits and the vocal choir.
+#
+# These are the instrument content the plugin plays from, not decoration. Without them the drum
+# pads are silent, so unlike the fonts their absence is a functional failure rather than a cosmetic
+# one.
+#
+# keith_stage_files cannot do this: it copies FILES and composes its source path as
+# resources/${name}, so handing it a directory copies nothing and fails without a word. This is a
+# recursive copy of a directory tree instead.
+function(keith_stage_samples target destination)
+  if(NOT TARGET ${target})
+    return()
+  endif()
+  set(_src "${CMAKE_CURRENT_SOURCE_DIR}/resources/samples")
+  if(NOT IS_DIRECTORY "${_src}")
+    message(WARNING "keith: resources/samples is missing -- drum kits and vocals will not ship")
+    return()
+  endif()
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${_src}" "${destination}/samples"
+    COMMENT "Staging samples for ${target}")
+endfunction()
+
 # iPlug2's CMake does not copy the RESOURCES list next to the Windows binaries.
 # The .rc embeds the faces. These copies keep them on disk as well.
 if(WIN32 AND TARGET MagsSynth-vst3)
@@ -392,6 +416,7 @@ if(APPLE)
     if(TARGET ${_target})
       keith_stage_files(${_target} "$<TARGET_BUNDLE_DIR:${_target}>/Contents/Resources"
         ${KEITH_FONT_RESOURCES} ${KEITH_IMAGE_RESOURCES} fonts/OFL.txt)
+      keith_stage_samples(${_target} "$<TARGET_BUNDLE_DIR:${_target}>/Contents/Resources")
     endif()
   endforeach()
   if(TARGET MagsSynth-app)

@@ -228,6 +228,23 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
   freeKnob(kParamDrumKitLevel, "KIT", kPaper, true);
   g->AttachControl(new KeithPadGridControl(CRect(kParamDrumSlotSelect), kParamDrumSlotSelect));
 
+  // The kit selectors, and the vocal layer toggle.
+  //
+  // These are laid out with the same helper the other parameter-backed menus use, so they sit on
+  // the panel grid rather than at a hand-picked spot. Their absence was caught by
+  // editor_surface_check: with the kits now sampled, a parameter that picks the kit is the only
+  // way to reach nine of the ten of them.
+  menu(kParamDrumKit, "KIT", {"Smoke", "Velvet", "Stone", "Dust", "Paper",
+                              "Late", "Corner", "Crate", "Swing", "Clinic"});
+  menu(kParamPercKit, "PERC", {"Hands", "Metal"});
+  tabs(kParamVocalEnable, {"VOCAL OFF", "VOCAL ON"});
+
+  // The guitar bank. This is the piano-roll path, deliberately NOT the pad grid: the owner was
+  // explicit that guitars load through the MIDI range rather than onto the drum machine.
+  menu(kParamGuitarBank, "GUITAR",
+       {"Off", "Clean Electric", "Jazz Clean", "Distorted 1", "Distorted 2", "Nylon"});
+  freeKnob(kParamGuitarLevel, "GT LVL", kGreen, true);
+
   // VINTAGE ANALOG MODELING
   tabs(kParamEngine, {"HYBRID", "ANALOG"});
   freeKnob(kParamTapeBump, "TONE", kMagenta);

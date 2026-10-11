@@ -167,6 +167,15 @@ public:
    * hit or a backwards slice is a different sound, not a different way of looking at one -- so it
    * belongs in the patch.
    */
+  /**
+   * The sampled vocal layer.
+   *
+   * The choir is 14 recorded notes and is a layer like the drums rather than a preset: it is meant
+   * to be played alongside any sound, so it gets a toggle instead of an entry in the list.
+   */
+  void SetVocalEnabled(bool on) { mVocalEnabled = on; }
+  bool VocalEnabled() const { return mVocalEnabled; }
+
   bool Reversed() const { return mReversed; }
   void SetReversed(bool reversed) { mReversed = reversed; }
 
@@ -400,6 +409,7 @@ private:
       std::make_shared<const std::vector<Slice>>(SingleSlice());
   SampleMode mMode = SampleMode::Play;
   bool mReversed = false;
+  bool mVocalEnabled = false;
   WarpMap mWarpMap;
   WarpEngine mWarp;
   Transport mTransport;
