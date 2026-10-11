@@ -57,6 +57,10 @@ endif()
 iplug_add_plugin(${PROJECT_NAME}
   SOURCES
     src/Keith.cpp
+    # Header-only additions that nothing includes yet still need type-checking. A header no
+    # translation unit includes is never compiled, so a build would pass while proving nothing
+    # about it. This pulls in src/synth/WavetableOsc.h for real.
+    tools/wavetable_compilecheck.cpp
     src/Keith.h
     src/Keith_DSP.h
     src/editor/KeithControls.h

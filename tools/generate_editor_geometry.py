@@ -72,11 +72,16 @@ VISIBLE_ROW_GAP = _rf(14)
 CANVAS = (0, 0, _r(1536), _r(1024))
 
 _PANELS_REF = {
-    "kPanelOsc": (250, 24, 552, 416),
-    "kPanelFilter": (562, 24, 724, 416),
-    "kPanelAmp": (728, 24, 928, 416),
-    "kPanelLfo": (938, 24, 1240, 416),
-    "kPanelMod": (1250, 24, 1500, 416),
+    # Top band, left to right. The LFO is narrow and stacked (knobs above their menus), which
+    # frees the width the third oscillator needs in OSC. Every other panel keeps the exact
+    # width it had -- FILTER 121 and AMP 150 are unchanged, so no knob is resized to make
+    # room. The freed width moves as a block: OSC grows into the space, and FILTER, AMP and
+    # MOD slide rather than being squeezed.
+    "kPanelOsc": (251, 24, 692, 416),
+    "kPanelFilter": (700, 24, 861, 416),
+    "kPanelAmp": (869, 24, 1069, 416),
+    "kPanelLfo": (1077, 24, 1239, 416),
+    "kPanelMod": (1247, 24, 1496, 416),
     # The middle band. Vertical extent 322..533 design units: 312 is the top band's bottom
     # edge and 543 the bottom band's top edge, with clearance on both sides.
     # Sized so the three panels stop short of the right-hand wood frame.
@@ -342,46 +347,46 @@ for i, p in enumerate(amp_mods):
     x = aml + PAD + col * (mod_w + ROW_GAP)
     rects[p] = box(x, y, x + mod_w, y + KNOB_H)
 
-# LFO — one row per block: two knobs and two compact dropdowns, all four sharing the width
-# evenly so the row fills the panel. It used to size the dropdowns by their label minimum and
-# the knobs from the remainder, which left 109 px of dead space on the right.
+# LFO — each block is two knobs side by side with their two menus directly UNDERNEATH.
 #
-# Each block is label / gap / controls, with the same generous gap the FILTER panel uses under
-# its title. The label used to sit a single ROW_GAP above the controls, which made the thin
-# full-width label strip merge into the row beneath it.
+# The panel is deliberately narrow (see the panel table): stacking the menus under the knobs
+# makes each block taller but only two columns wide, and that width is what pays for the third
+# oscillator in OSC. Width is the currency here, not height -- there is vertical room to stack,
+# there was not horizontal room to keep everything on one row.
+#
+# Each block is label / gap / knob row / menu row. The label keeps its clearance from the panel
+# title, which is the owner's original ask -- "LFO 1" sitting flush under "LFO" read as two
+# titles crowding.
 ll, lt, lr, lb = PANELS["kPanelLfo"]
 LFO_LABEL_H = _rf(14)
-LFO_LABEL_GAP = 16.0
+LFO_LABEL_GAP = 12.0
+LFO_ROW_GAP = 8.0
 
-# The vertical slack is split so the pair sits balanced, with a little more air under the
-# panel title than between the blocks. "LFO 1" sat directly beneath the "LFO" title with only
-# a normal row gap, which read as the two titles crowding each other.
-lfo_block_h = LFO_LABEL_H + LFO_LABEL_GAP + KNOB_H
-# Three gaps: under the title, between the two blocks, and above the base. All equal, so the
-# pair sits centred rather than low. The title gap carries extra weight so "LFO 1" clears the
-# "LFO" heading -- that is the owner's original ask -- and the other two take the rest.
+# Block height: label, gap, a knob row, then a menu row under it.
+lfo_block_h = LFO_LABEL_H + LFO_LABEL_GAP + KNOB_H + LFO_ROW_GAP + DROPDOWN_H_COMPACT
+# Three gaps: under the title, between the two blocks, and above the base. The title gap
+# carries extra weight so the pair sits low enough to clear the heading.
 lfo_slack = (lb - PAD) - content_top(lt) - 2 * lfo_block_h
-LFO_TITLE_EXTRA = _r(16)
+LFO_TITLE_EXTRA = _r(14)
 lfo_title_gap = (lfo_slack + 2 * LFO_TITLE_EXTRA) / 3
 lfo_gap = (lfo_slack - lfo_title_gap) / 2
 
 
 def lfo_block(y_top, rate, shape, dest, amount, label_id):
     place_overlay(label_id, ll + PAD, y_top, lr - PAD, y_top + LFO_LABEL_H)
-    cy = y_top + LFO_LABEL_H + LFO_LABEL_GAP
     inner = (lr - ll) - 2 * PAD
-    # Four equal columns: rate, amount, shape, dest. The dropdowns sit in their own column
-    # rather than taking space from the knobs.
-    col = (inner - 3 * ROW_GAP) / 4
-    x = ll + PAD
-    rects[rate] = box(x, cy, x + col, cy + KNOB_H)
-    x += col + ROW_GAP
-    rects[amount] = box(x, cy, x + col, cy + KNOB_H)
-    x += col + ROW_GAP
-    dd_y = cy + (KNOB_H - DROPDOWN_H_COMPACT) / 2
-    rects[shape] = box(x, dd_y, x + col, dd_y + DROPDOWN_H_COMPACT)
-    x += col + ROW_GAP
-    rects[dest] = box(x, dd_y, x + col, dd_y + DROPDOWN_H_COMPACT)
+    # Two equal columns, used twice: knobs on the first row, menus on the second.
+    col = (inner - ROW_GAP) / 2
+    ax = ll + PAD
+    bx = ll + PAD + col + ROW_GAP
+
+    knob_y = y_top + LFO_LABEL_H + LFO_LABEL_GAP
+    rects[rate] = box(ax, knob_y, ax + col, knob_y + KNOB_H)
+    rects[amount] = box(bx, knob_y, bx + col, knob_y + KNOB_H)
+
+    menu_y = knob_y + KNOB_H + LFO_ROW_GAP
+    rects[shape] = box(ax, menu_y, ax + col, menu_y + DROPDOWN_H_COMPACT)
+    rects[dest] = box(bx, menu_y, bx + col, menu_y + DROPDOWN_H_COMPACT)
 
 
 y1 = content_top(lt) + lfo_title_gap
