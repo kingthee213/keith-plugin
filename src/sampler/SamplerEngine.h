@@ -81,12 +81,6 @@ enum class SampleMode
 /** The note that plays a sample at its recorded pitch in Play mode. */
 constexpr int kSampleRootNote = 60;   // middle C
 
-/** The lowest key that maps to a slice. Slices are laid out upward from here. */
-constexpr int kSliceLowNote = 36;     // matches the drum range, so the pads line up
-
-/** How many slices the keyboard can reach. 36..96 is five octaves, far more than slicing makes. */
-constexpr int kMaxSliceKeys = 60;
-
 /**
  * The plugin's sampler state.
  *

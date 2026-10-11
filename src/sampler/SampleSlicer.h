@@ -35,6 +35,20 @@
 namespace keith {
 namespace sampler {
 
+/**
+ * Slice key layout.
+ *
+ * These live HERE, not in SamplerEngine.h. SamplerEngine.h includes this file, so the slicer cannot
+ * see anything declared in the engine -- putting them there produced
+ * "use of undeclared identifier 'kMaxSliceKeys'" from every use below. They describe how slices map
+ * onto the keyboard, which is this file's business rather than the engine's.
+ */
+/** The lowest key that maps to a slice. Slices are laid out upward from here. */
+constexpr int kSliceLowNote = 36;     // matches the drum range, so the pads line up
+
+/** How many slices the keyboard can reach. 36..96 is five octaves, far more than slicing makes. */
+constexpr int kMaxSliceKeys = 60;
+
 /** A slice: a start frame, and where on the keyboard it is triggered from. */
 struct Slice
 {
