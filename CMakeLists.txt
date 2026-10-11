@@ -172,10 +172,19 @@ endif()
 
 # The offline test binaries include the sampler headers, and WarpVoice.h constructs a Bungee
 # stretcher. Without this they fail to link on the Bungee symbols.
-foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests keith-warp-latency)
+#
+# keith-recreation-render is on this list because it also includes src/Keith.cpp, which pulls in
+# WarpStretcher.h and so needs bungee/Bungee.h on the include path. It was missing, and CI failed
+# on the renderer while the plugin targets -- which are linked above -- built fine.
+foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests keith-warp-latency
+                     keith-recreation-render)
   if(TARGET ${_t} AND TARGET keith-bungee)
     target_link_libraries(${_t} PRIVATE keith-bungee)
-    add_test(NAME ${_t} COMMAND ${_t})
+    # A test, not just a dependency: run it. keith-recreation-render is deliberately excluded
+    # because it is a tool the measurement step drives with arguments, not a self-checking test.
+    if(NOT _t STREQUAL "keith-recreation-render")
+      add_test(NAME ${_t} COMMAND ${_t})
+    endif()
   endif()
 endforeach()
 

@@ -37,7 +37,6 @@ jobs:
 
       - name: Measure preset levels
         run: |
-          ./build/Release/keith-recreation-render --help >/dev/null 2>&1 || true
           python3 tools/measure_preset_levels.py measure \
             --render build/Release/keith-recreation-render \
             --out docs/level-measurements.tsv
