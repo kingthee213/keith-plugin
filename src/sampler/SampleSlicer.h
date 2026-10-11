@@ -41,6 +41,25 @@ struct Slice
   int startFrame = 0;
   /** MIDI note that triggers this slice. Assigned from the root key upward. */
   int midiNote = 36;
+
+  /**
+   * The last frame this slice sounds, given the whole slice list.
+   *
+   * A slice has no stored end: it ends one frame before the next slice starts, and the final
+   * slice ends with the sample. Storing an end would let the two disagree after a marker drag,
+   * so it is derived instead -- and derived in one place, rather than at each caller.
+   *
+   * @param slices     the full list this slice belongs to
+   * @param index      this slice's position in that list
+   * @param totalFrames the sample length, for the last slice
+   */
+  int EndFrame(const std::vector<Slice>& slices, std::size_t index, int totalFrames) const
+  {
+    const std::size_t next = index + 1;
+    const int end = (next < slices.size()) ? slices[next].startFrame - 1 : totalFrames - 1;
+    // Never before the start: a corrupt or mid-drag pair must not invert the range.
+    return std::max(startFrame, end);
+  }
 };
 
 /** Detection settings. Defaults are tuned for drum breaks and vocal chops, not for drones. */

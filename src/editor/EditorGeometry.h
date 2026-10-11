@@ -177,6 +177,8 @@ inline constexpr OverlayRect kOverlayRects[] = {
   {"osc3_waveform", {411.2f, 62.2f, 505.5f, 73.0f}},
   {"pad_midi_switch", {948.9f, 496.8f, 1108.5f, 507.2f}},
   {"preset_menu", {458.5f, 362.7f, 665.5f, 389.7f}},
+  {"sample_play_button", {62.3f, 397.2f, 88.0f, 418.2f}},
+  {"sample_slice_button", {96.0f, 397.2f, 121.7f, 418.2f}},
   {"sample_waveform", {458.5f, 349.6f, 665.5f, 356.2f}},
   {"sampler_button", {62.3f, 336.2f, 121.7f, 357.2f}},
   {"wavetable_button", {62.3f, 366.2f, 121.7f, 387.2f}},

@@ -123,8 +123,8 @@ public:
   {
     if (!mSample || mSample->Empty())
       return;
-    mPosition = 0.;
     mVelocity = std::clamp(velocity, 0.f, 1.f);
+    mPosition = static_cast<double>(mStartFrame);
     mActive = true;
   }
 
@@ -151,8 +151,14 @@ public:
     if (!mActive || !mSample || mSample->Empty())
       return 0.f;
 
-    const int lastFrame = mSample->frames - 1;
-    if (mPosition >= static_cast<double>(lastFrame))
+    // The playable range. For a whole-sample voice this is the entire file; for a slice it is
+    // just that slice. mEndFrame is inclusive, so a slice from frame 1000 to 5000 stops at 5000
+    // rather than running on to the end of the sample -- which is the difference between playing
+    // a slice and playing the rest of the file from that point.
+    const int fileLast = mSample->frames - 1;
+    const int lastFrame = std::min(mEndFrame < 0 ? fileLast : mEndFrame, fileLast);
+
+    if (mPosition >= static_cast<double>(lastFrame) + 1.0)
     {
       mActive = false;
       return 0.f;
@@ -162,7 +168,9 @@ public:
     // pitch-shifted sample has audible quantisation, and the aliasing gets worse the further
     // the ratio is from 1.
     const double x = mPosition;
-    const int i0 = static_cast<int>(x);
+    const int i0 = std::min(static_cast<int>(x), lastFrame);
+    // Clamped to lastFrame, not the file end: interpolating past a slice's end would read the
+    // first frame of the next slice and bleed it in.
     const int i1 = std::min(i0 + 1, lastFrame);
     const float frac = static_cast<float>(x - static_cast<double>(i0));
 
@@ -178,8 +186,22 @@ public:
     return value * mVelocity;
   }
 
+  /** Restrict playback to [startFrame, endFrame], inclusive. endFrame < 0 means to the end. */
+  void SetRange(int startFrame, int endFrame)
+  {
+    mStartFrame = std::max(0, startFrame);
+    mEndFrame = endFrame;
+    mPosition = static_cast<double>(mStartFrame);
+  }
+
+  /** The frames this voice will play, for a caller that wants to know its reach. */
+  int StartFrame() const { return mStartFrame; }
+  int EndFrame() const { return mEndFrame; }
+
 private:
   std::shared_ptr<const SampleData> mSample;
+  int mStartFrame = 0;
+  int mEndFrame = -1;   // -1: play to the end of the sample
   double mSampleRate = 44100.;
   double mPosition = 0.;
   double mPitchRatio = 1.0;

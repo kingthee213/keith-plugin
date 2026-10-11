@@ -640,6 +640,19 @@ place_overlay("wavetable_button", master_cx - MASTER_W / 2,
               master_cx + MASTER_W / 2,
               master_y + MASTER_H + _r(18) + BUTTON_H * 2 + _r(12))
 
+# PLAY and SLICE, under the two page buttons. These are the sampler's mode, and they are two
+# buttons rather than one toggle because they are two instruments rather than a setting: PLAY
+# transposes the whole sample across the keyboard, SLICE plays one slice per key. Side by side,
+# half the width each, so they read as a pair of alternatives and not as a sequence.
+SAMPLE_BTN_GAP = _r(10)
+SAMPLE_BTN_W = (MASTER_W - _r(10)) / 2
+sample_btn_y = master_y + MASTER_H + _r(18) + BUTTON_H * 2 + _r(12) + _r(14)
+
+place_overlay("sample_play_button", master_cx - MASTER_W / 2, sample_btn_y,
+              master_cx - MASTER_W / 2 + SAMPLE_BTN_W, sample_btn_y + BUTTON_H)
+place_overlay("sample_slice_button", master_cx - MASTER_W / 2 + SAMPLE_BTN_W + _r(10), sample_btn_y,
+              master_cx + MASTER_W / 2, sample_btn_y + BUTTON_H)
+
 place_overlay("midi_hint1", lr_l + PAD, _r(944), lr_r - PAD, _r(962))
 place_overlay("midi_hint2", lr_l + PAD, _r(962), lr_r - PAD, _r(980))
 

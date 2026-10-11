@@ -205,8 +205,20 @@ enum EParams
   /** Which source osc 3 draws from: the built-in shapes, or the wavetable bank. */
   kParamOsc3Source = 117,
 
+  /**
+   * What the keyboard does to a loaded sample.
+   *
+   * Two buttons rather than one switch, because they are two instruments: PLAY transposes the
+   * whole sample across the keyboard, SLICE plays one slice per key. An enum parameter rather
+   * than a pair of bools, so the two states are mutually exclusive by construction and cannot
+   * both be on.
+   */
+  kParamSampleMode = 118,
+
   kNumParams
 };
+
+/** The number of the last parameter, for the static_asserts in Keith.cpp. */
 
 #include "sampler/SamplerEngine.h"
 // The page enum, in its own header because it has no iPlug2 dependency. Keith.h is parsed

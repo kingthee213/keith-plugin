@@ -85,6 +85,15 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
                                                   keith::ui::KeithPage::Wavetable,
                                                   plugin.PageState()));
 
+  // PLAY and SLICE: what the keyboard does to a loaded sample. These ARE parameters, unlike the
+  // page buttons above them -- the mode is part of the sound, so a patch saved in SLICE mode
+  // should reload in SLICE mode. Both are attached to kParamSampleMode and pass the value they
+  // set, so they read as a pair of alternatives with no state of their own to keep in sync.
+  g->AttachControl(new keith::ui::KeithSampleModeButton(OverlayIRECT("sample_play_button"),
+                                                        kParamSampleMode, 0));
+  g->AttachControl(new keith::ui::KeithSampleModeButton(OverlayIRECT("sample_slice_button"),
+                                                        kParamSampleMode, 1));
+
   auto knob = [&](int param, const char* label, IColor color = kGreen, bool bipolar = false,
                   bool native = true) {
     const auto& pos = PlacementFor(param);

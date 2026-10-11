@@ -457,6 +457,36 @@ public:
       }
     }
 
+    // --- the sampler ---------------------------------------------------------------------
+    //
+    // Reached only when a sample is loaded. With no sample the sampler consumes nothing and the
+    // synth and drums behave exactly as they did before, so no existing preset changes.
+    //
+    // The drum range is the awkward part. An audible kit owns 36-51, and in Slice mode the
+    // sampler wants 36 upward. Rather than silently reinterpreting those keys, the sampler only
+    // takes a note the drums did not already take, and in Slice mode it starts at kSliceLowNote
+    // (36) which means a loaded sample DOES shadow an audible kit across 36-51. That is the
+    // intended behaviour -- you pressed SLICE, so the keyboard is the slicer -- but it is worth
+    // knowing that loading a sample and pressing SLICE takes those keys from the kit.
+    if (noteMessage && mSampler && mSampler->HasSample())
+    {
+      const int note = msg.NoteNumber();
+      const bool on = status == IMidiMsg::kNoteOn && msg.Velocity() > 0;
+      const float velocity = static_cast<float>(msg.Velocity()) / 127.f;
+
+      if (on)
+      {
+        // The ratio and range are decided by the sampler's mode, not here.
+        if (mSampler->TriggerNote(note, velocity))
+          return;   // consumed: the note made a sampler voice, so the synth should not also take it
+      }
+      else if (status == IMidiMsg::kNoteOff || (status == IMidiMsg::kNoteOn && msg.Velocity() == 0))
+      {
+        // A one-shot sampler ignores note-off: the slice plays to its end, which is what makes a
+        // chopped break keep its rhythm instead of stuttering when keys are released.
+      }
+    }
+
     TrackPerformanceMidi(msg);
     mSynth.AddMidiMsgToQueue(msg);
   }

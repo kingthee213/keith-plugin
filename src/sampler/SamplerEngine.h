@@ -22,6 +22,7 @@
 #include "WarpEngine.h"
 #include "WarpMap.h"
 
+#include <cmath>
 #include <string>
 
 namespace keith {
@@ -29,6 +30,35 @@ namespace sampler {
 
 /** How many sampler voices the engine runs. */
 constexpr int kSamplerVoices = 8;
+
+/**
+ * What the keyboard does to the loaded sample. Two plain buttons in the editor pick between them.
+ *
+ *   Play  -- the whole sample, chromatically. Middle C plays it at its recorded pitch and every
+ *            other note transposes it, so the sample becomes an instrument across the keyboard.
+ *            This is the sampler-as-synth behaviour.
+ *
+ *   Slice -- each key plays one slice, at its recorded pitch, and stops at that slice's end.
+ *            This is the slicer behaviour: the keyboard becomes the pads.
+ *
+ * The two are genuinely different instruments rather than a setting, which is why the owner asked
+ * for a button each instead of a toggle -- "a normal button (allows whole sample to play in
+ * different pitch across keyboard) and a slice button to choose".
+ */
+enum class SampleMode
+{
+  Play = 0,   // whole sample, transposed across the keyboard
+  Slice = 1   // one slice per key, recorded pitch, stops at the slice end
+};
+
+/** The note that plays a sample at its recorded pitch in Play mode. */
+constexpr int kSampleRootNote = 60;   // middle C
+
+/** The lowest key that maps to a slice. Slices are laid out upward from here. */
+constexpr int kSliceLowNote = 36;     // matches the drum range, so the pads line up
+
+/** How many slices the keyboard can reach. 36..96 is five octaves, far more than slicing makes. */
+constexpr int kMaxSliceKeys = 60;
 
 /**
  * The plugin's sampler state.
@@ -102,18 +132,68 @@ public:
   /** Why the last load failed, if it did. */
   LoadError LastError() const { return mLastError; }
 
+  SampleMode Mode() const { return mMode; }
+  void SetMode(SampleMode m) { mMode = m; }
+
+  /** In Slice mode, which slice a key plays. -1 when the key is outside the slice range. */
+  int SliceForNote(int note) const
+  {
+    const int index = note - kSliceLowNote;
+    if (index < 0 || index >= static_cast<int>(mSlices.size()) || index >= kMaxSliceKeys)
+      return -1;
+    return index;
+  }
+
+  /**
+   * A key was pressed. What it does depends on the mode, which is the whole point of the switch.
+   *
+   *   Play  -- transposes the whole sample. The ratio is the interval from middle C, so middle C
+   *            plays at the recorded pitch and the sample behaves like an instrument.
+   *   Slice -- plays the mapped slice at its RECORDED pitch (ratio 1) and stops at its end.
+   *            Transposing it would defeat the purpose: a slice is played because of where it is,
+   *            not to be re-pitched.
+   *
+   * @return true if a voice was started, so the caller knows the note was consumed.
+   */
+  bool TriggerNote(int note, float velocity)
+  {
+    if (!HasSample())
+      return false;
+
+    if (mMode == SampleMode::Play)
+    {
+      const double ratio = std::pow(2.0, (note - kSampleRootNote) / 12.0);
+      Trigger(velocity, ratio, 0, -1);
+      return true;
+    }
+
+    const int sliceIndex = SliceForNote(note);
+    if (sliceIndex < 0)
+      return false;
+
+    const Slice& slice = mSlices[static_cast<std::size_t>(sliceIndex)];
+    Trigger(velocity, 1.0, slice.startFrame,
+            slice.EndFrame(mSlices, static_cast<std::size_t>(sliceIndex), mSample->frames));
+    return true;
+  }
+
   /**
    * Start the next free voice on the loaded sample.
    *
    * Round-robin over the voice pool rather than a free-list: at eight voices and with a
    * one-shot sample, stealing the oldest is indistinguishable from finding a free one, and it
    * avoids a scan on the audio thread.
+   *
+   * `endFrame` of -1 plays to the end of the sample, which is whole-sample playback.
    */
-  void Trigger(float velocity)
+  void Trigger(float velocity, double pitchRatio = 1.0, int startFrame = 0, int endFrame = -1)
   {
     if (!HasSample())
       return;
-    mVoices[static_cast<std::size_t>(mNextVoice % kSamplerVoices)].Trigger(velocity);
+    SamplerVoice& voice = mVoices[static_cast<std::size_t>(mNextVoice % kSamplerVoices)];
+    voice.SetPitchRatio(pitchRatio);
+    voice.SetRange(startFrame, endFrame);
+    voice.Trigger(velocity);
     ++mNextVoice;
   }
 
@@ -200,6 +280,7 @@ private:
   std::shared_ptr<const SampleData> mSample;
   SamplerVoice mVoices[kSamplerVoices];
   std::vector<Slice> mSlices = SingleSlice();
+  SampleMode mMode = SampleMode::Play;
   WarpMap mWarpMap;
   WarpEngine mWarp;
   Transport mTransport;

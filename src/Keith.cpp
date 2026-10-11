@@ -1929,8 +1929,8 @@ static_assert(kParamMod1Source == 89 && kParamMod4Amount == 100,
               "U15 appends 89..100");
 static_assert(kParamNoiseKey == 101 && kParamFilterKeyCurve == 110,
               "U17 appends 101..110");
-static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 117 && kNumParams == 118,
-              "the third oscillator appends 111..117");
+static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 118 && kNumParams == 119,
+              "the third oscillator appends 111..117, the sampler mode 118");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -1978,6 +1978,11 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamOsc3Level)->InitDouble("Synth Osc3 Level", 0., 0., 100., 0.1, "%");
   GetParam(kParamOsc3PW)->InitDouble("Synth Osc3 PW", 50., 5., 95., 0.1, "%");
   GetParam(kParamOsc3Source)->InitDouble("Synth Osc3 Source", 0., 0., 1., 1., "");
+
+  // What the keyboard does to a loaded sample. Enumerated so the two states are mutually
+  // exclusive: PLAY transposes the whole sample, SLICE plays one slice per key. Stepped
+  // parameter, so the editor can draw a button per value rather than a continuous control.
+  GetParam(kParamSampleMode)->InitEnum("Sample Mode", 0, {"Play", "Slice"});
   GetParam(kParamOsc3Morph)->InitDouble("Synth Osc3 Morph", 0., 0., 100., 0.1, "%");
   GetParam(kParamOsc3Enable)->InitBool("Synth Osc3 Enable", false);
 
@@ -2186,6 +2191,12 @@ void Keith::ProcessBlock(sample** inputs, sample** outputs, int nFrames)
   // PAD MIDI is editor-only state rather than a parameter, so it is handed to the DSP each
   // block instead of being read from the parameter list.
   mDSP.SetPadMidi(mPadMidiEnabled.load());
+
+  // Which of the two sampler behaviours the keyboard drives. Read once per block and pushed to
+  // the engine, rather than the engine polling a parameter from the audio thread.
+  mSampler.SetMode(GetParam(kParamSampleMode)->Int() == 1
+                     ? keith::sampler::SampleMode::Slice
+                     : keith::sampler::SampleMode::Play);
 
   // The host transport, read once per block. The warp map needs the tempo, and tempo sync needs
   // the musical position.

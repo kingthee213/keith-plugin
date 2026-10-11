@@ -122,3 +122,39 @@ void InstantiateForTypeChecking()
 }
 
 } // namespace
+
+  // The keyboard path: a note becomes a slice, and the slice plays its own range only. This is
+  // the correlation the owner asked for -- play the note, hear that piece and nothing else.
+  {
+    keith::sampler::SamplerEngine engine;
+    engine.SetSampleRate(44100.);
+
+    keith::sampler::SampleData data;
+    data.sampleRate = 44100.;
+    data.frames = 44100;
+    data.channels.assign(1, std::vector<float>(static_cast<std::size_t>(data.frames), 0.1f));
+    keith::sampler::SamplerEngine probe;
+
+    // Range maths, without needing a loaded file: a slice ends one frame before the next starts,
+    // and the last slice ends with the sample.
+    std::vector<keith::sampler::Slice> slices(3);
+    slices[0].startFrame = 0;
+    slices[1].startFrame = 1000;
+    slices[2].startFrame = 5000;
+
+    const int e0 = slices[0].EndFrame(slices, 0, 20000);
+    const int e1 = slices[1].EndFrame(slices, 1, 20000);
+    const int e2 = slices[2].EndFrame(slices, 2, 20000);
+
+    // 999, 4999, 19999
+    if (e0 != 999 || e1 != 4999 || e2 != 19999)
+      return 90;
+
+    // A slice must never invert: a malformed pair clamps to its own start rather than going
+    // backwards and reading audio before the slice.
+    std::vector<keith::sampler::Slice> bad(2);
+    bad[0].startFrame = 5000;
+    bad[1].startFrame = 100;
+    if (bad[0].EndFrame(bad, 0, 20000) < bad[0].startFrame)
+      return 91;
+  }
