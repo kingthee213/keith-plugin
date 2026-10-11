@@ -489,6 +489,13 @@ public:
       if (status == IMidiMsg::kControlChange)
       {
         const int cc = msg.ControlChangeIdx();
+        // 123 is All Notes Off; 120 is All Sound Off. Hosts send either when the transport stops,
+        // and both must reach the drum handling below, which is what actually silences ringing
+        // drum events.
+        //
+        // (An earlier version of this comment said 120 was All Notes Off. It is not, and
+        // IMidiMsg::kAllNotesOff is 123 -- so the code was right and the reasoning was wrong,
+        // which is worse than the reverse. Both are named explicitly now.)
         const bool allNotesOff = (cc == IMidiMsg::kAllNotesOff || cc == 120);
         if (!allNotesOff)
           return;   // mod wheel, sustain and the rest: nothing to do to a one-shot sample

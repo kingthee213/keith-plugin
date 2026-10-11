@@ -1739,7 +1739,18 @@ int GetString(const IByteChunk& chunk, int pos, std::string& text)
     text.clear();
     return pos;
   }
-  if (pos + len > chunk.Size())
+  // Bound the length against what is actually left BEFORE using it, and without adding, so the
+  // check cannot itself overflow.
+  //
+  // The earlier form was `pos + len > chunk.Size()`, which adds two 32-bit ints. A hostile len of
+  // 2^31-1 makes that sum wrap negative, and a negative number is comfortably `<= chunk.Size()`,
+  // so the check passed and the following resize() attempted a 2 GB allocation. Same family as the
+  // slice/marker count overflow: the guard was doing the arithmetic it meant to guard.
+  //
+  // Subtracting instead keeps every value in range. `len > remaining` is equivalent to
+  // `pos + len > Size` for non-negative len, and cannot wrap.
+  const int remaining = chunk.Size() - pos;
+  if (remaining < 0 || len > remaining)
     return -1;
   text.resize(static_cast<std::size_t>(len));
   for (int32_t i = 0; i < len; ++i)
@@ -1761,7 +1772,15 @@ int16_t FloatToPcm16(float sample)
 
 bool ChunkHasBytes(const IByteChunk& chunk, int pos, int bytes)
 {
-  return pos >= 0 && bytes >= 0 && pos + bytes <= chunk.Size();
+  // Compare by subtraction, not `pos + bytes <= Size()`. That form adds two 32-bit ints, and a
+  // large enough `bytes` makes the sum wrap negative -- which is <= Size(), so the guard would
+  // pass for a byte count that does not exist. No current caller can reach that (the audio payload
+  // is ceiling-checked first and the header check is a fixed size), but the helper is the wrong
+  // shape for its job and the next caller would not know.
+  if (pos < 0 || bytes < 0)
+    return false;
+  const int remaining = chunk.Size() - pos;
+  return remaining >= 0 && bytes <= remaining;
 }
 
 } // namespace

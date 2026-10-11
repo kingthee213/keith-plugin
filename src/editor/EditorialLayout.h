@@ -215,9 +215,11 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
                                                    kWavetable, "MORPH", 9.f));
 
     // A real knob on kParamOsc3Morph, using the same control type the panels use so it looks and
-    // behaves identically. The signature is (bounds, param, label, accent, showValue, bipolar,
-    // taper, radius, native) -- the radius and taper are the panel knob's values, and the label is
-    // empty because the page draws its own title above the knob.
+    // behaves identically. KeithPageKnob's signature is (bounds, param, label, accent, pageState,
+    // page); it forwards to KeithKnobControl(bounds, paramIdx, label, accent) and takes that
+    // class's defaults for showValue, bipolar, gearing, radius and nativeBody. Do not mistake the
+    // seventh KeithKnobControl parameter for a taper -- it is GEARING, the drag sensitivity, and
+    // the page has no opinion on it, so it takes the default rather than inventing a value.
     {
       IRECT r = OverlayIRECT("page_wt_morph");
       // KeithPageKnob, not KeithKnobControl: the plain control draws whenever it is attached,

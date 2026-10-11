@@ -131,6 +131,15 @@ public:
     // mStartFrame and correcting on the first Process call would emit one frame from the wrong end.
     // The frame counter, from which the read position is DERIVED. See PositionForFrame().
     mFrameIndex = 0;
+    // The step and the frame count are derived ONCE here, at trigger time, and cached.
+    //
+    // Neither can change while the note sounds: pitch ratio, range and direction are all set
+    // before Trigger() and never touched mid-note (Trigger() in SamplerEngine is the only caller
+    // of SetPitchRatio/SetRange/SetReversed, and it sets all three before triggering). Computing
+    // them per output sample instead would put two divisions and a std::ceil() in the audio loop
+    // for no benefit.
+    mCachedStep = StepPerFrame();
+    mCachedFrames = FrameCount();
     mPosition = PositionForFrame(0);
     mActive = true;
   }
@@ -167,7 +176,7 @@ public:
     // The range is exhausted when the frame counter reaches its length. Because the counter is
     // direction-agnostic, this one test stops both forward and reversed playback -- they differ
     // only in how PositionForFrame() maps the counter to a position.
-    if (mFrameIndex >= FrameCount())
+    if (mFrameIndex >= mCachedFrames)
     {
       mActive = false;
       return 0.f;
@@ -257,8 +266,8 @@ private:
    */
   double PositionForFrame(int n) const
   {
-    const int index = mReversed ? (FrameCount() - 1 - n) : n;
-    return static_cast<double>(mStartFrame) + static_cast<double>(index) * StepPerFrame();
+    const int index = mReversed ? (mCachedFrames - 1 - n) : n;
+    return static_cast<double>(mStartFrame) + static_cast<double>(index) * mCachedStep;
   }
 
   /** mEndFrame resolved against the sample, clamped so it can never point past the data. */
@@ -273,6 +282,9 @@ private:
   int mEndFrame = -1;   // -1: play to the end of the sample
   bool mReversed = false;
   int mFrameIndex = 0;
+  // Derived at trigger time from the sample, the pitch ratio and the range; see Trigger().
+  double mCachedStep = 1.0;
+  int mCachedFrames = 0;
   double mSampleRate = 44100.;
   double mPosition = 0.;
   double mPitchRatio = 1.0;

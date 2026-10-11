@@ -54,11 +54,18 @@ def frame_count(start_frame, end_frame, pitch_ratio, file_sr, host_sr, frames):
 
 
 def position_for_frame(n, start_frame, end_frame, pitch_ratio, file_sr, host_sr, frames,
-                       reversed_):
-    """SamplerVoice::PositionForFrame. The one function both directions use."""
-    total = frame_count(start_frame, end_frame, pitch_ratio, file_sr, host_sr, frames)
+                       reversed_, cached_step=None, cached_frames=None):
+    """SamplerVoice::PositionForFrame. The one function both directions use.
+
+    The C++ caches the step and the frame count at trigger time (mCachedStep / mCachedFrames) so
+    the per-sample path has no division or ceil in it. The parameters here let a test supply those
+    cached values the way Trigger() would, so the cache can be checked against the live formula.
+    """
+    total = cached_frames if cached_frames is not None else frame_count(
+        start_frame, end_frame, pitch_ratio, file_sr, host_sr, frames)
+    step = cached_step if cached_step is not None else step_per_frame(pitch_ratio, file_sr, host_sr)
     index = (total - 1 - n) if reversed_ else n
-    return start_frame + index * step_per_frame(pitch_ratio, file_sr, host_sr)
+    return start_frame + index * step
 
 
 def playback(start_frame, end_frame, pitch_ratio=1.0, file_sr=SAMPLE_RATE, host_sr=SAMPLE_RATE,
@@ -160,6 +167,32 @@ def main():
     # towards the same clamped frame. What matters is that it is not out of the sample entirely.
     report(long_fwd[-1] <= 500000, "last position within the sample bounds",
            f"{long_fwd[-1]:.1f}")
+
+    print()
+    print("the cached step and frame count match the live formula")
+    # The voice caches both at trigger time. If a future edit lets the pitch ratio or the range
+    # change mid-note, the cache goes stale and reversed and forward stop covering the same frames.
+    # This is the check that would catch it.
+    drift = []
+    for start, end, ratio, fs, hs in [
+        (0, 1999, 1.0, SAMPLE_RATE, SAMPLE_RATE),
+        (0, 1999, 1.059463, SAMPLE_RATE, SAMPLE_RATE),
+        (0, 1999, 0.5, SAMPLE_RATE, SAMPLE_RATE),
+        (0, 1999, 1.0, 48000, 44100),
+        (1000, 5000, 1.7, SAMPLE_RATE, SAMPLE_RATE),
+        (0, -1, 1.059463, SAMPLE_RATE, SAMPLE_RATE),
+    ]:
+        cached_step = step_per_frame(ratio, fs, hs)
+        cached_frames = frame_count(start, end, ratio, fs, hs, 20000)
+        for n in range(0, min(cached_frames, 50)):
+            for rev in (False, True):
+                live = position_for_frame(n, start, end, ratio, fs, hs, 20000, rev)
+                cached = position_for_frame(n, start, end, ratio, fs, hs, 20000, rev,
+                                            cached_step, cached_frames)
+                if abs(live - cached) > 1e-9:
+                    drift.append((start, end, ratio, rev, n, live, cached))
+    report(not drift, "cached values match the live computation",
+           f"{len(drift)} mismatches" if drift else "all cases agree")
 
     print()
     print("PASS" if failures == 0 else f"FAIL ({failures})")
