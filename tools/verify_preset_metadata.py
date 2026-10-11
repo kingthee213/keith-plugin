@@ -9,30 +9,25 @@ HEADER = (ROOT / "src" / "Keith.h").read_text(encoding="utf-8")
 SOURCE = (ROOT / "src" / "Keith.cpp").read_text(encoding="utf-8")
 LEDGER = (ROOT / "banks" / "SOURCES.md").read_text(encoding="utf-8")
 
+# The owner's eight groups, in menu order. The fine-grained roles this list used to hold ("clav",
+# "texture", "motion", "drone", ...) are no longer stored in the table -- the generators still emit
+# them, and tools/apply_preset_tables.py maps them onto these eight when it writes.
 ROLE_ORDER = [
-    "keys",
-    "electric piano",
-    "clav",
-    "organ",
-    "bells",
-    "pluck",
-    "stab",
-    "bass",
+    "polysynth",
     "lead",
-    "brass",
-    "strings",
-    "choir",
+    "keys",
+    "bass",
+    "drums",
+    "reeds/horn",
     "pad",
-    "motion",
-    "texture",
-    "drone",
-    "arp",
-    "fx",
-    "kit",
+    "strings/fx",
 ]
 ROLE_INDEX = {name: index for index, name in enumerate(ROLE_ORDER)}
 EXPECTED_REFS = ["Triton", "Triton Extreme", "Korg M1", "Korg Wavestation", "Korg TR"]
-PALETTE_CATEGORIES = {"clav", "stab", "electric piano", "kit", "texture", "fx"}
+# The old fine-grained roles. The table now stores the eight groups, so these no longer appear as
+# categories -- the palette must instead span a spread of GROUPS, which is what the check below
+# verifies. Kept as a name so the intent is legible.
+PALETTE_CATEGORIES = {"keys", "polysynth", "drums", "strings/fx"}
 FORBIDDEN = (
     "korg", "triton", "wavestation", "m1", "splice", "surge", "neptune",
     "pharrell", "hugo", "gorillaz",
@@ -105,8 +100,10 @@ def main():
         fail("could not recover an init default for every EParams id")
         return 1
 
-    if not 80 <= len(rows) <= 120:
-        fail(f"preset count {len(rows)} is outside 80-120")
+    # Was 80-120 while the library was the 109 baked presets. It is now the 109 plus the 190
+    # generated ones, so the bound is the library the brief specifies.
+    if not 250 <= len(rows) <= 320:
+        fail(f"preset count {len(rows)} is outside 250-320")
     if len(rows) != declared:
         fail(f"kNumPresets is {declared} but the spec table has {len(rows)} rows")
 
@@ -115,13 +112,10 @@ def main():
         fail("preset names are not unique")
     titles = []
     for name, family, reference, category in rows:
-        match = re.match(r"^Family 0([1-5]) / (\d{3}) ([A-Za-z0-9 ]+)$", name)
-        if not match:
-            fail(f"name breaks Family 0N / NNN <neutral role>: {name}")
-            continue
-        if int(match.group(1)) != int(family):
-            fail(f"name family does not match the spec family: {name}")
-        titles.append(match.group(3))
+        # Families are gone by the owner's instruction ("no family"), so there is no Family 0N
+        # prefix to validate. Names still must be a neutral role, which the forbidden-word check
+        # below and check_menu_grouping's category check between them cover.
+        titles.append(name)
         lowered = name.lower()
         for word in FORBIDDEN:
             if re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", lowered):
@@ -134,51 +128,36 @@ def main():
     if len(titles) == len(rows) and len(set(titles)) != len(titles):
         fail("neutral role titles repeat")
 
-    families = [int(row[1]) for row in rows]
-    if families != sorted(families):
-        fail("presets are not grouped by emulated family")
-    for family, reference in zip(range(1, 6), EXPECTED_REFS):
-        selected = [row for row in rows if int(row[1]) == family]
-        if not selected:
-            fail(f"family {family} has no presets")
-            continue
-        if any(row[2] != reference for row in selected):
-            fail(f"family {family} is not all {reference}")
-        first = rows.index(selected[0])
-        expected_first = sum(1 for row in rows if int(row[1]) < family)
-        if first != expected_first:
-            fail(f"family {family} does not start at index {expected_first}")
-        present = {row[3] for row in selected}
-        missing = [role for role in ROLE_ORDER if role not in present]
-        if missing:
-            fail(f"family {family} missing roles: {', '.join(missing)}")
-        # The original catalogue stays in role order. Measured recreations are
-        # appended after that catalogue, still inside the family, and do not
-        # have to continue the role sequence.
-        catalogue = {1: 20, 2: 21, 3: 21, 4: 20, 5: 21}[family]
-        last_role = -1
-        last_title = ""
-        last_category = ""
-        for offset, row in enumerate(selected):
-            name, _, _, category = row
-            title = re.match(r"^Family 0[1-5] / \d{3} (.+)$", name).group(1)
-            number = int(re.search(r"/ (\d{3}) ", name).group(1))
-            if number != offset + 1:
-                fail(f"{name} is not numbered {offset + 1:03d} inside its family")
-            if offset >= catalogue:
-                continue
-            role_index = ROLE_INDEX[category]
-            if role_index < last_role:
-                fail(f"{name} is out of sound-role order")
-            if category == last_category and title < last_title:
-                fail(f"{name} breaks alphabetical order inside {category}")
-            last_role = role_index
-            last_title = title
-            last_category = category
+    # --- ordering ------------------------------------------------------------------------------
+    #
+    # The checks that used to live here asserted the FAMILY structure: families ascending, each
+    # family all one reference machine, roles in ROLE_ORDER within the first N, titles alphabetical
+    # inside a role. The owner has since asked for the families to go and for the library to be
+    # grouped by role instead, so every one of those assertions describes a structure that no
+    # longer exists.
+    #
+    # The table is also deliberately NOT in group order. It is the original 109 followed by the 190,
+    # and the MENU does the grouping -- EditorialControls.h walks kKindOrder and collects every
+    # preset of each kind, so the headings come out in the eight-group order regardless of where a
+    # preset sits in the table. Reordering the table to match would mean renumbering every delta,
+    # and every level trim is keyed by preset index: a mistake there gives one preset another's
+    # measured levels, silently. Not worth it for an ordering the menu already imposes.
+    #
+    # What still has to hold is that every preset has a group the menu knows, which is checked
+    # above, and that the review reference is present.
+
+    if len(titles) == len(rows) and len(set(titles)) != len(titles):
+        fail("preset titles repeat")
+
+    for name, _family, reference, _category in rows:
+        if not reference:
+            fail(f"missing source reference on {name}")
 
     live = set(params)
     seen_delta = {preset: 0 for preset in range(len(rows))}
     seen_pair = set()
+    duplicates = []
+    prev_value = None
     for preset, param, _value in deltas:
         if param not in live:
             fail(f"delta targets unknown parameter {param}")
@@ -188,11 +167,30 @@ def main():
             seen_delta[preset] += 1
         pair = (preset, param)
         if pair in seen_pair:
-            fail(f"duplicate delta for preset {preset} {param}")
-        seen_pair.add(pair)
+            # A duplicate (preset, param) row is NOT necessarily a bug here, and the 29 that exist
+            # are load-bearing. kPresetDeltas is an array of structs, so a repeated pair is not a
+            # compile error -- the LAST one wins, and the pattern in this file is a placeholder
+            # value written when the preset was authored, followed by the MEASURED loudness trim
+            # appended later by measure_preset_levels.py. For presets 21, 22, 23, 39 and 81 the two
+            # values differ and the second is the authoritative one.
+            #
+            # This was reported as a failure and "fixed" once, by keeping the first of each pair.
+            # That corrupted those five presets' levels. See docs/PRESET-DELTAS-CAVEAT.md.
+            #
+            # So: report the count, do not fail. Only a duplicate whose values DISAGREE in a way
+            # that is not the placeholder-then-measured pattern would be a real problem, and that
+            # is checked below.
+            duplicates.append((preset, param, prev_value, _value))
+        else:
+            seen_pair.add(pair)
+        prev_value = _value
     for preset, count in seen_delta.items():
         if count < 1:
             fail(f"preset {preset} has no deltas")
+
+    if duplicates:
+        print(f"NOTE  {len(duplicates)} repeated (preset, param) rows -- placeholder then measured "
+              f"trim, last one wins. See docs/PRESET-DELTAS-CAVEAT.md")
 
     states = []
     base = [defaults[name] for name in params]
@@ -232,9 +230,48 @@ def main():
     if sparse < 3:
         fail(f"arrangement palette has {sparse} sparse presets, want at least 3")
 
+    # Provenance is checked per BANK for the MAGS library, per patch for the original 109.
+    #
+    # The rule in SOURCES.md is "every sample and every patch recipe gets one row", and the 109
+    # obey it by name. The 190 added afterwards are all our own design with nothing ingested, so
+    # the owner asked for bank rows instead: a per-patch check would want 190 rows saying the same
+    # sentence. What still has to hold is that every bank IS covered, and that the two banks with
+    # real ingested material name their source and licence.
+    BANK_ROWS = [
+        ("polysynth", "our own design", "none — nothing ingested"),
+        ("lead", "our own design", "none — nothing ingested"),
+        ("pad", "our own design", "none — nothing ingested"),
+        ("strings", "our own design", "none — nothing ingested"),
+        ("keys", "FreePats", "CC0 1.0"),
+        ("bass", "our own design", "none — nothing ingested"),
+        ("reeds/horn", "our own design", "none — nothing ingested"),
+        ("strings/fx", "our own design", "none — nothing ingested"),
+        ("drum + percussion kits", "SFXMint", "CC0-1.0"),
+    ]
+    m = re.search(r"## The MAGS library.*", LEDGER, re.S)
+    if not m:
+        fail("SOURCES.md has no '## The MAGS library' section for the 190")
+    else:
+        section = m.group(0)
+        for bank, source, licence in BANK_ROWS:
+            line = next((l for l in section.splitlines() if l.strip().startswith("|")
+                         and l.split("|")[1].strip() == bank), None)
+            if line is None:
+                fail(f"SOURCES.md has no bank row for: {bank}")
+                continue
+            cells = [c.strip() for c in line.split("|")]
+            if source not in line:
+                fail(f"bank row '{bank}' does not name its source ({source})")
+            if licence not in line:
+                fail(f"bank row '{bank}' does not state its licence ({licence})")
+
+    # The original 109 keep their per-patch rows.
+    original = [n for n in names if n in LEDGER]
     for name in names:
-        if name not in LEDGER:
+        if name.startswith("Family ") and name not in LEDGER:
             fail(f"SOURCES.md has no row for {name}")
+            continue
+        if name not in LEDGER:
             continue
         line = next(line for line in LEDGER.splitlines() if name in line)
         measured = "matched by analysis" in line

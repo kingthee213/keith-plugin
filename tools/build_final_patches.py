@@ -69,8 +69,9 @@ def pad(name, cutoff, reso, attack, release, morph=None, drift=0.22, **extra):
         kParamLfoRate=drift, kParamLfoDest=1.0, kParamLfoAmount=20.0,
         kParamStereoSpread=80.0,
         kParamTapeSat=16.0, kParamTapeMix=30.0,
-        kParamIns1Algo=2.0, kParamIns1C=64.0, kParamIns1Mix=26.0,
-    ))
+
+
+))
     d.update(extra)
     return Patch(name, "pad", **d)
 

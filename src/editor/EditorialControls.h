@@ -353,40 +353,31 @@ public:
     // Anything unlisted lands under its own heading rather than being dropped, so a new category
     // cannot silently vanish from the menu.
     static const char* kKindOrder[] = {
-      "poly", "lead", "pad", "strings", "fx", "reeds", "brass", "bass", "kit", "keys",
+      "polysynth", "lead", "keys", "bass", "drums", "reeds/horn", "pad", "strings/fx",
     };
 
-    // A preset's kind, taken from the leading word of its category. The existing 109 use
-    // single-word roles ("keys", "pad"); the new library uses a prefixed form ("poly keys",
-    // "lead saw"). The prefix is the reliable signal, and the fallback maps the old one-word
-    // roles onto the new kinds so both sets sit in the same menu.
+    // The category IS the group now.
+    //
+    // The owner asked for the whole library grouped by role -- polysynth, lead, keys, bass, drums,
+    // reeds/horn, pad, strings/fx -- and for the families to go. So src/Keith.cpp stores those
+    // eight names directly in the category field and this mapping has nothing left to do. It
+    // stays, rather than being deleted, only to catch a category that is not one of the eight:
+    // anything unrecognised keeps its own heading, which is visible in the menu, instead of being
+    // folded into a group it does not belong to.
+    //
+    // An earlier version derived a kind from the leading word ("poly keys" -> "poly", "key organ"
+    // -> "keys"). That was necessary while categories carried a sub-type. It is not any more, and
+    // leaving it in would silently mis-group anything whose first word happened to collide.
     auto kindOf = [](const char* category) -> std::string {
       const std::string cat = category ? category : "";
-      const std::size_t space = cat.find(' ');
-      const std::string first = (space == std::string::npos) ? cat : cat.substr(0, space);
-
-      // "key" is a PREFIX that groups, not a kind of its own. The keyboard patches carry
-      // "key tine", "key organ", "key combo" and "key tape" so the sub-type is recorded, but all
-      // four belong under one KEYS heading -- a user looking for a piano wants one place to look,
-      // not four. Collapsing the prefix here keeps the detail in the category field and the
-      // grouping in the menu.
-      if (first == "key")
-        return "keys";
-
+      if (cat.empty())
+        return "other";
       for (const char* kind : kKindOrder)
-        if (first == kind)
-          return first;
-      if (cat == "electric piano" || cat == "clav" || cat == "organ" || cat == "piano")
-        return "keys";
-      if (cat == "choir" || cat == "motion" || cat == "drone" || cat == "pad mm")
-        return "pad";
-      if (cat == "texture")
-        return "fx";
-      if (cat == "arp" || cat == "lead")
-        return "lead";
-      if (cat == "stab" || cat == "pluck" || cat == "bells" || cat == "performance")
-        return "poly";
-      return cat.empty() ? std::string("other") : cat;
+        if (cat == kind)
+          return cat;
+      // Not one of the eight. Return it as-is so the menu shows the unexpected heading rather
+      // than dropping the preset or hiding it inside a group.
+      return cat;
     };
 
     // Only kinds that actually have presets get a heading, so an empty "Reeds" does not appear

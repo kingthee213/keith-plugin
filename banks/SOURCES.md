@@ -199,3 +199,42 @@ Neutral bank for the BRIEF section 8 production palette. These are shipped prese
 - Family 04 / 016 Tilt Texture
 - Family 05 / 019 Dry Kit
 - Family 05 / 020 Hard Kit
+
+## The MAGS library (the 190 patches added after the families)
+
+**Bank rows, not patch rows.** The owner asked for one row per bank: everything here is our own
+design, so a row per patch would repeat the same sentence 190 times without saying anything more.
+The rows below name the bank, its size, and exactly what was ingested -- which for 170 of the 190
+is nothing at all.
+
+**No sample was ingested for any melodic patch.** Every one is built in the plugin's own engine: FM
+for the struck tines, additive partials for the drawbars, the wavetable bank for the tape choir,
+and oscillator-plus-filter voices for everything else. There is no sample content to license,
+because there is no sample content.
+
+| Bank | Patches | Type | Source of the sound | Licence of ingested asset | Attribution required | Verified |
+|---|---:|---|---|---|---|---|
+| polysynth | 50 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | built and range-checked by `tools/check_patch_ranges.py`; not a recreation, so there is no reference document to verify against |
+| lead | 50 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| keys | 20 | preset bank, synthesised, plus a sampled wear layer | tone is our own design in the engine; the mechanical/key-noise character is from FreePats `electric-organ` | CC0 1.0 for the FreePats material only | N | FreePats provenance recorded in `resources/samples/KEYBOARD-WEAR-PROVENANCE.md`, including that the samples are recordings of the **setBfree** free-software synthesiser, so no hardware ROM is behind them |
+| pad | 20 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| strings | 15 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| strings/fx | 10 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| reeds/horn | 20 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| bass | 5 | preset bank, synthesised | our own design, built in the plugin's engine | none — nothing ingested | N | as above |
+| drum + percussion kits | 10 | drum kit, sampled | SFXMint `acoustic-drum-kit`, described by its publisher as AI-generated or procedurally synthesised; hits derived by `tools/build_drum_kits.py` and `tools/build_percussion_kits.py` | CC0-1.0 | N | every source file's SHA256 matched the publisher's; recorded in `resources/samples/PERCUSSION-PROVENANCE.md` |
+
+### Why the vibration references are not sources
+
+The brief names Neptunes/Pharrell, Daft Punk, Timbaland, Justice, Rod Temperton and J Dilla as
+*vibe* references, and Juno/Jupiter/Prophet/Moog as *hardware* references. **None of those are
+sources.** No recording was sampled, no factory program was copied, and no ROM content was touched.
+They describe what the patches aim at. Rule 7 applies: those names appear in internal notes like
+this one and in **no shipped name or metadata**, which `tools/check_menu_grouping.py` and
+`tools/verify_preset_metadata.py` between them enforce.
+
+### Levels are not yet measured
+
+The 190 carry no `kParamSynthMasterLevel` trim yet. Measuring needs
+`keith-recreation-render`, which CI did not build until now; the workflow builds it and runs
+`tools/measure_preset_levels.py` after these were added.

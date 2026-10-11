@@ -61,7 +61,10 @@ def parse_presets(text):
     body = re.search(r"kPresetSpecs\[kNumPresets\]\s*=\s*\{(.*?)\n\};", text, re.S)
     if not body:
         return None
-    return re.findall(r'\{\s*"([^"]*)"\s*,\s*(\d+)(?:\s*,\s*"[^"]*"\s*,\s*"[^"]*")?\s*\}', body.group(1))
+    # The source and category fields are required, not optional. With `?` the pattern could match
+    # a name-and-family pair and stop, so rows were parsed with their family but the later family
+    # census saw a truncated list.
+    return re.findall(r'\{\s*"([^"]*)"\s*,\s*(\d+)\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*\}', body.group(1))
 
 
 def parse_deltas(text):
@@ -140,16 +143,30 @@ def main():
         check("baked preset table parsed", False, "kPresetSpecs")
         return 1
 
-    check("baked preset count is 80-120", 80 <= len(names) <= 120, f"{len(names)} presets")
+    # The library is now the 109 baked presets plus the 190 from the MAGS generators, so the
+    # bound moved with it. It set 80-120 while only the baked 109 existed.
+    check("preset count is 250-320", 250 <= len(names) <= 320, f"{len(names)} presets")
     check("preset names unique and non-empty",
           len({n for n, _ in names}) == len(names) and all(n.strip() for n, _ in names))
 
-    bad_names = [n for n, _ in names if not re.match(r"^Family 0[1-5] / \d{3} [A-Za-z0-9 ]+$", n)]
-    check("preset names follow 'Family 0N / NNN <neutral role>'", not bad_names,
-          "; ".join(bad_names))
+    # Families are gone by the owner's instruction ("no family"). The original 109 keep their
+    # 'Family 0N / NNN Name' titles -- those are in the manual and in the measured-level comments --
+    # and the 190 added afterwards have plain names. What still has to hold is that the original
+    # titles keep their form and nothing outside them does.
+    bad_names = [n for n, _ in names
+                 if n.startswith("Family ") and not re.match(r"^Family 0[1-5] / \d{3} [A-Za-z0-9 ]+$", n)]
+    check("'Family 0N / NNN' titles, where used, are well formed", not bad_names,
+          "; ".join(bad_names) or "well formed")
 
-    families = {int(f) for _, f in names}
-    check("families 01-05 all represented", families == {1, 2, 3, 4, 5}, f"families {sorted(families)}")
+    family_rows = {int(f) for n, f in names if n.startswith("Family ")}
+    check("the original families are still represented", family_rows == {1, 2, 3, 4, 5},
+          f"families {sorted(family_rows)}")
+
+    # The new patches carry family 0, which is the marker for "not part of an emulated family".
+    # `f` comes out of the parser as a string, so compare as int. `f == 0` was always False.
+    new_rows = [n for n, f in names if int(f) == 0]
+    check("the MAGS library is present", len(new_rows) >= 190,
+          f"{len(new_rows)} patches outside the emulated families")
 
     haystack = " ".join([n for n, _ in names] + list(referenced)).lower()
     hits = [word for word in FORBIDDEN if re.search(rf"(?<![a-z]){re.escape(word.strip())}(?![a-z0-9])", haystack)]

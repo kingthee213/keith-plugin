@@ -46,7 +46,7 @@ def read_kind_order(text):
     m = re.search(r"kKindOrder\[\]\s*=\s*\{(.*?)\};", text, re.S)
     if not m:
         raise SystemExit("could not find kKindOrder in EditorialControls.h")
-    return re.findall(r'"(\w+)"', m.group(1))
+    return re.findall(r'"([^"]+)"', m.group(1))
 
 
 def read_key_prefix_rule(text):
@@ -86,18 +86,22 @@ def baked_categories():
     return re.findall(r'\{"[^"]+",\s*\d+,\s*"[^"]*",\s*"([^"]*)"\}', c[i:c.find("};", i)])
 
 
-def generated_categories():
-    sys.path.insert(0, str(ROOT / "tools"))
-    seen = []
-    for name in GENERATORS:
-        try:
-            module = importlib.import_module(name)
-        except Exception as exc:                       # noqa: BLE001
-            print(f"  FAIL  could not import {name}: {exc}")
-            continue
-        for patch in module.build():
-            seen.append(patch.category)
-    return seen
+def table_categories():
+    """Every category in kPresetSpecs -- the single source of truth for the menu.
+
+    An earlier version also read the generators, because grouping used to be a property of the
+    generated patches. It is not any more: the generators emit fine-grained roles ("poly keys",
+    "key tine") and tools/apply_preset_tables.py maps them onto the owner's eight when it writes
+    the table. Reading the generators here double-counted every patch and reported the
+    pre-grouping names as unlisted.
+
+    The table is what the plugin loads, so the table is what this checks.
+    """
+    c = KEITH_CPP.read_text()
+    i = c.find("const keith::PresetSpec kPresetSpecs[kNumPresets] = {")
+    if i == -1:
+        return []
+    return re.findall(r'\{"[^"]+",\s*\d+,\s*"[^"]*",\s*"([^"]*)"\}', c[i:c.find("};", i)])
 
 
 def main():
@@ -107,15 +111,16 @@ def main():
     fallbacks = read_fallback_rules(text)
 
     print(f"  kinds, in menu order: {order}")
-    print(f"  prefix rule: \"{prefix}\" -> \"{prefix_kind}\"")
+    if prefix:
+        print("  prefix rule: %r -> %r" % (prefix, prefix_kind))
+    else:
+        print("  prefix rule: none (the categories are already the groups)")
     print(f"  fallback rules: {len(fallbacks)}")
 
     failures = 0
 
-    baked = baked_categories()
-    generated = generated_categories()
-    all_cats = baked + generated
-    print(f"  categories to classify: {len(baked)} baked + {len(generated)} generated")
+    all_cats = table_categories()
+    print(f"  categories in the preset table: {len(all_cats)}")
 
     # 1. nothing may fall through to 'other'
     others = sorted({c for c in all_cats if kind_of(c, order, prefix, prefix_kind, fallbacks)
@@ -135,17 +140,16 @@ def main():
     else:
         print("  ok    every kind is in the menu order")
 
-    # 3. the keyboard patches must NOT each become their own heading. This is the regression
-    #    this file was written for.
-    key_cats = sorted({c for c in all_cats if c.startswith("key ")})
-    key_kinds = {kind_of(c, order, prefix, prefix_kind, fallbacks) for c in key_cats}
-    if key_cats and key_kinds != {prefix_kind}:
-        print(f"  FAIL  keyboard categories {key_cats} did not all group under "
-              f"'{prefix_kind}': {sorted(key_kinds)}")
+    # 3. every category must BE one of the eight. The old version of this check looked for the
+    #    "key " prefix not collapsing into one heading; that can no longer happen, because the
+    #    table stores the final group name. What can happen now is a category the menu does not
+    #    know, which would show as its own unexpected heading.
+    unlisted_cats = sorted(set(all_cats) - set(order))
+    if unlisted_cats:
+        print(f"  FAIL  categories that are not one of the eight groups: {unlisted_cats}")
         failures += 1
     else:
-        print(f"  ok    {len(key_cats)} keyboard categor{'y' if len(key_cats)==1 else 'ies'} "
-              f"group under one '{prefix_kind}' heading")
+        print(f"  ok    all {len(set(all_cats))} categories are one of the eight groups")
 
     # 4. an empty kind must not claim a heading
     used = {kind_of(c, order, prefix, prefix_kind, fallbacks) for c in all_cats}

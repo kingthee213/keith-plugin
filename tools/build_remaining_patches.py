@@ -88,8 +88,9 @@ def pad(name, cat, cutoff, reso, attack, release, morph=None, drift=0.22, **extr
         kParamLfoRate=drift, kParamLfoDest=1.0, kParamLfoAmount=22.0,
         kParamStereoSpread=78.0,
         kParamTapeSat=16.0, kParamTapeMix=30.0,
-        kParamIns1Algo=2.0, kParamIns1C=64.0, kParamIns1Mix=26.0,
-    ))
+
+
+))
     d.update(extra)
     return Patch(name, cat, **d)
 
@@ -132,8 +133,10 @@ def fx(name, cat, cutoff, reso, attack, release, **extra):
         kParamAmpRelease=release,
         kParamLfoRate=0.6, kParamLfoDest=16.0, kParamLfoAmount=72.0,
         kParamStereoSpread=86.0, kParamStereoDelay=40.0,
-        kParamIns2Algo=3.0, kParamIns2B=44.0, kParamIns2C=68.0, kParamIns2Mix=40.0,
-        kParamTapeSat=30.0, kParamTapeMix=40.0,
+
+
+
+kParamTapeSat=30.0, kParamTapeMix=40.0,
     )
     d.update(extra)
     return Patch(name, cat, **d)
@@ -191,8 +194,7 @@ def build():
     patches += [
         pad("Slow Motion Pad", "pad", 5200, 20, 420, 2800),
         pad("Drifting Warm Pad", "pad", 4600, 24, 380, 3000, drift=0.16),
-        pad("Wide Chorus Pad", "pad", 6000, 18, 340, 2600,
-            kParamIns1C=76.0, kParamIns1Mix=34.0),
+        pad("Wide Chorus Pad", "pad", 6000, 18, 340, 2600),
         pad("Voice Bed Pad", "pad", 5000, 22, 460, 3200, morph=3.2),
         pad("Glass Pad", "pad", 7200, 16, 300, 2400, morph=2.4),
         pad("Deep Low Pad", "pad", 3200, 26, 500, 3400, drift=0.12,

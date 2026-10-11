@@ -5,7 +5,7 @@
 
 #include <atomic>
 
-const int kNumPresets = 109;
+const int kNumPresets = 299;
 
 enum EControlTags
 {

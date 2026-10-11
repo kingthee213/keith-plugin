@@ -199,16 +199,14 @@ def build():
     # --- DAFT PUNK  (8) -- filtered disco, chorus, talkbox-adjacent -------------
     patches += [
         saw_lead("Filtered Disco Lead", "lead saw", 5200, 44, 3, 500, 40, 700,
-                 drive=26, glide=12,
-                 kParamIns1Algo=2.0, kParamIns1C=68.0, kParamIns1Mix=34.0),
+                 drive=26, glide=12),
         saw_lead("Talkbox Lead", "lead saw", 6200, 40, 4, 600, 46, 800, drive=30,
-                 kParamIns2Algo=2.0, kParamIns2C=74.0, kParamIns2Mix=32.0,
-                 kParamStereoSpread=46.0),
+
+
+kParamStereoSpread=46.0),
         sync_lead("Sweep Sync Lead", "lead sync", 6800, 42, 2, 700, sync_ratio=19.0),
-        pulse_lead("French Touch Lead", "lead pulse", 5800, 36, 40, 2, 650, drive=24,
-                   kParamIns1Algo=2.0, kParamIns1Mix=30.0),
-        saw_lead("Chorus Solo", "lead saw", 7400, 30, 5, 700, 50, 1000, drive=18,
-                 kParamIns1Algo=2.0, kParamIns1C=72.0, kParamIns1Mix=36.0),
+        pulse_lead("French Touch Lead", "lead pulse", 5800, 36, 40, 2, 650, drive=24),
+        saw_lead("Chorus Solo", "lead saw", 7400, 30, 5, 700, 50, 1000, drive=18),
         table_lead("Robot Voice Lead", "lead table", 8000, 28, 6, 1100, morph=3.6,
                    kParamOsc3Pitch=12.0),
         fm_lead("Disco Bell Lead", "lead fm", 9200, 22, 2, 800, 38, 1100, fm=48),
@@ -236,8 +234,7 @@ def build():
                  drive=64, glide=0, kParamTapeSat=46.0, kParamTapeMix=48.0),
         saw_lead("Overdrive Lead", "lead saw", 6400, 50, 2, 550, 46, 650, drive=70,
                  kParamOsc2Pitch=7.0, kParamTapeSat=44.0),
-        pulse_lead("Grit Pulse Lead", "lead pulse", 7800, 44, 18, 1, 600, drive=60,
-                   kParamIns1Algo=3.0, kParamIns1B=46.0, kParamIns1Mix=36.0),
+        pulse_lead("Grit Pulse Lead", "lead pulse", 7800, 44, 18, 1, 600, drive=60),
         sync_lead("Hard Edge Sync", "lead sync", 8200, 48, 1, 600, sync_ratio=24.0,
                   kParamFilterDrive=56.0),
         saw_lead("Comp Stack Lead", "lead saw", 6000, 52, 2, 500, 48, 600, drive=58,
@@ -250,8 +247,7 @@ def build():
 
     # --- ROD TEMPERTON  (6) -- silky, sweetening, but a lead ---------------------
     patches += [
-        saw_lead("Silk Solo Lead", "lead saw", 6600, 20, 10, 900, 58, 1400, glide=22,
-                 kParamIns1Algo=2.0, kParamIns1C=76.0, kParamIns1Mix=34.0),
+        saw_lead("Silk Solo Lead", "lead saw", 6600, 20, 10, 900, 58, 1400, glide=22),
         saw_lead("Warm Brass Lead", "lead saw", 5000, 28, 40, 800, 56, 1000, glide=16,
                  kParamOsc1Shape=40.0, kParamOsc2Shape=38.0,
                  kParamFiltAttack=60.0, kParamOsc2Pitch=0.0),

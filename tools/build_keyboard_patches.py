@@ -166,9 +166,11 @@ def combo_organ(name, cutoff, reso, attack, release, drive=0.0, **extra):
         kParamAmpRelease=release,
         kParamVelToAmp=16.0,
         kParamStereoSpread=48.0,
-        kParamIns1Algo=2.0, kParamIns1A=26.0, kParamIns1B=34.0, kParamIns1C=72.0,
-        kParamIns1Mix=34.0,
-        kParamTapeSat=24.0, kParamTapeMix=30.0,
+
+
+
+
+kParamTapeSat=24.0, kParamTapeMix=30.0,
     )
     d.update(extra)
     return Patch(name, "key combo", **d)
@@ -228,8 +230,7 @@ def build():
                   kParamOsc1Level=88.0, kParamSubLevel=76.0, kParamOsc3Level=52.0),
         tonewheel("Percussive Organ",   11000, 10, 1, 220, drive=20.0, perc=-16.0),
         tonewheel("Gospel Organ",       12500, 12, 2, 280, drive=34.0,
-                  kParamOsc1Level=90.0, kParamIns1Algo=2.0, kParamIns1A=30.0,
-                  kParamIns1B=40.0, kParamIns1C=78.0, kParamIns1Mix=34.0),
+                  kParamOsc1Level=90.0),
         tonewheel("Dirty Organ",        9600, 14, 2, 240, drive=48.0,
                   kParamTapeSat=40.0, kParamTapeMix=46.0),
     ]
