@@ -1,5 +1,16 @@
 cmake_minimum_required(VERSION 3.14)
 
+# CMP0091 must be NEW before any target exists. MSVC_RUNTIME_LIBRARY is read when a target is
+# CREATED, so setting the policy after add_library() has no effect on it -- which is exactly what
+# happened: the policy was set further down, the property was silently ignored, and the link failed
+# with LNK2038 under a message that looks like a mismatched flag rather than an ignored policy.
+#
+# cmake_policy(SET) rather than raising the minimum to 3.15: raising it would change other
+# behaviour across the whole project to fix one property.
+if(POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif()
+
 # Ignored when the host is not Apple. Set before project() so a fresh Xcode
 # configure picks up the BRIEF §11 floor (macOS 11.7.10) in the toolchain.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "11.7.10" CACHE STRING "Minimum macOS version")
@@ -131,12 +142,6 @@ if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core"
   # defaults to /MD (dynamic), so the two cannot be linked. Tying the vendored targets to the
   # plugin's choice keeps them in step whatever iPlug2 picks.
   #
-  # Setting this property needs CMP0091, which CMake 3.15 introduced -- the project declares
-  # 3.14, where the property is ignored in silence. cmake_policy(SET) rather than raising the
-  # minimum, because raising it would change behaviour beyond this one property.
-  if(POLICY CMP0091)
-    cmake_policy(SET CMP0091 NEW)
-  endif()
   if(MSVC)
     # The plugin target is created further down, so the runtime choice is read from the variable
     # iPlug2 sets when it is present, and defaults to the static runtime it uses otherwise.
