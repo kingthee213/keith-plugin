@@ -9,6 +9,7 @@ Committed into the repository. Bungee's FFT, and its only one.
 | `pffft.c` | 68,201 | `485f2c641b9bc943` |
 | `pffft.h` | 6,848 | `d6ac7f26f7c3f87e` |
 | `fftpack.c` | 88,320 | `d39a4165920c4e9e` |
+| `fftpack.h` | 27,067 | `e06b12c73aeef28d` |
 
 ## Source and licence
 
@@ -50,7 +51,12 @@ without editing Bungee, which we do not do.
   distributions. The files are committed unmodified with their headers intact, which satisfies
   the source case; the binary case is covered by this document shipping with the source tree.
 
-## Why these three files and not a fork
+`fftpack.h` was missed on the first attempt and the build failed on it --
+`fftpack.c:54:10: fatal error: 'fftpack.h' file not found`. Both C files include one local
+header each, and those are the complete set: `fftpack.c` includes `fftpack.h`, `pffft.c`
+includes `pffft.h`, and nothing else is referenced.
+
+## Why these files and not a fork
 
 Later forks (for example `marton78/pffft`) have restructured the tree into `src/` and `include/`
 and added their own CMake. Bungee expects `pffft.c`, `pffft.h` and `fftpack.c` at the include

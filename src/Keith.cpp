@@ -1,3 +1,4 @@
+// Main Keith iPlug2 plugin implementation: factory presets, parameter setup, state I/O, and host callbacks.
 #include "Keith.h"
 #include "IPlug_include_in_plug_src.h"
 
