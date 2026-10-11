@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>   // std::getenv, for the KEITH_SAMPLE_DIR override in SampleDir()
 #include <initializer_list>
 #include <limits>
 
@@ -5607,9 +5608,27 @@ std::string Keith::SampleDir(const char* kind) const
   // The sample content is copied into the bundle's resources by CMake, and the three formats put
   // that in different places. BundleResourcePath is iPlug2's answer for all of them -- there is no
   // GetBundlePath(), which is what this first called and the compiler rejected.
+  //
+  // An environment override comes FIRST, and it is not a convenience. The offline preset renderer
+  // is a plain command-line binary with no bundle, and BundleResourcePath on macOS hands the path
+  // to +[NSString stringWithUTF8String:], which throws NSInvalidArgumentException on a null
+  // cString -- the renderer died on the first preset. KEITH_SAMPLE_DIR lets the test harness and
+  // the render point at the samples directly, with no bundle machinery involved.
+  if (const char* override = std::getenv("KEITH_SAMPLE_DIR"))
+    if (override[0] != 0)
+      return std::string(override) + "/" + kind;
+
   WDL_String path;
   BundleResourcePath(path);
-  return std::string(path.Get()) + "/samples";
+  if (path.GetLength() == 0)
+  {
+    // No bundle to resolve against -- a standalone binary outside a .app, say. Return a path that
+    // simply does not exist rather than one that crashes: a missing kit is a silent pad, which is
+    // recoverable, and the loader reports it.
+    DBGMSG("Keith: no bundle resource path; set KEITH_SAMPLE_DIR to locate the samples\n");
+    return std::string("samples/") + kind;
+  }
+  return std::string(path.Get()) + "/samples/" + kind;
 }
 
 void Keith::LoadDrumKit()

@@ -53,6 +53,11 @@ jobs:
           # continue-on-error is deliberately NOT set on this step. It was, and it hid both
           # failures this step has had: a missing numpy and, before that, no renderer binary. A
           # step that reports success while writing nothing is worse than one that fails.
+          # The renderer is a plain command-line binary with no bundle, so it cannot resolve the
+          # sample kits the way the plugin does. KEITH_SAMPLE_DIR points it at them directly --
+          # without it the renderer crashed on the first preset, because BundleResourcePath on
+          # macOS hands a null path to +[NSString stringWithUTF8String:], which throws.
+          export KEITH_SAMPLE_DIR="$PWD/resources/samples"
           python3 tools/measure_preset_levels.py measure \
             --render build/Release/keith-recreation-render \
             --out docs/level-measurements.tsv
