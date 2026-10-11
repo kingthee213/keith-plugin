@@ -124,6 +124,33 @@ if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core"
   endif()
   set_target_properties(keith-bungee PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+  # MSVC: the vendored static libraries must use the SAME runtime library as the plugin, or the
+  # link fails with LNK2038 "mismatch detected for RuntimeLibrary".
+  #
+  # iPlug2's CMake sets the plugin to /MT (static) while a plain add_library() on a VS generator
+  # defaults to /MD (dynamic), so the two cannot be linked. Tying the vendored targets to the
+  # plugin's choice keeps them in step whatever iPlug2 picks.
+  #
+  # Setting this property needs CMP0091, which CMake 3.15 introduced -- the project declares
+  # 3.14, where the property is ignored in silence. cmake_policy(SET) rather than raising the
+  # minimum, because raising it would change behaviour beyond this one property.
+  if(POLICY CMP0091)
+    cmake_policy(SET CMP0091 NEW)
+  endif()
+  if(MSVC)
+    # The plugin target is created further down, so the runtime choice is read from the variable
+    # iPlug2 sets when it is present, and defaults to the static runtime it uses otherwise.
+    if(DEFINED IPLUG2_MSVC_RUNTIME_LIBRARY)
+      set(_keith_msvc_runtime ${IPLUG2_MSVC_RUNTIME_LIBRARY})
+    else()
+      set(_keith_msvc_runtime "MultiThreaded")
+    endif()
+    foreach(_t IN ITEMS keith-pffft keith-bungee)
+      set_target_properties(${_t} PROPERTIES
+        MSVC_RUNTIME_LIBRARY "${_keith_msvc_runtime}$<$<CONFIG:Debug>:Debug>")
+    endforeach()
+  endif()
+
   # version.cpp is just `const char* versionDescription = BUNGEE_VERSION;` -- Bungee's own CMake
   # sets the macro on that one file from its version variable. Set here on the whole target,
   # which is simpler and equivalent: it uses the pinned commit rather than a release number,
