@@ -311,6 +311,10 @@ add_dependencies(keith-synth-tests keith-preset-restore-tests)
 add_executable(keith-recreation-render
   tools/recreation_render.cpp
   src/Keith.cpp
+  # SampleLoader.cpp defines LoadFile, which the sampler state calls for the path fallback
+  # when a sample is too large to embed. Keith.cpp references it, so the renderer must compile it
+  # too -- without this the link fails on an undefined LoadFile from SamplerEngine::UnserializeState.
+  src/sampler/SampleLoader.cpp
   "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3.cpp"
   "${IPLUG2_DIR}/IPlug/VST3/IPlugVST3_ProcessorBase.cpp"
   "${_keith_vst3_sdk}/base/source/baseiids.cpp"
