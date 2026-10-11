@@ -94,7 +94,15 @@ if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core"
   target_include_directories(keith-pffft PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pffft")
   # Bungee's own CMake uses these two on pffft; -ffast-math is safe for an FFT, and the guard
   # against finite-math-only stops it optimising away NaN checks.
-  target_compile_options(keith-pffft PRIVATE -ffast-math -fno-finite-math-only)
+  #
+  # Guarded on the compiler rather than passed blindly: MSVC rejects -ffast-math outright, and
+  # CMake would otherwise hand these to cl.exe on Windows.
+  if(NOT MSVC)
+    target_compile_options(keith-pffft PRIVATE -ffast-math -fno-finite-math-only)
+  endif()
+  # fftpack.c uses M_PI, which MSVC does not define unless this is set. It is a preprocessor
+  # macro rather than a language feature, so it goes on the target rather than on the standard.
+  target_compile_definitions(keith-pffft PRIVATE _USE_MATH_DEFINES)
 
   file(GLOB BUNGEE_SOURCES "${BUNGEE_DIR}/src/*.cpp")
   add_library(keith-bungee STATIC ${BUNGEE_SOURCES})
@@ -107,7 +115,13 @@ if(EXISTS "${BUNGEE_DIR}/src/Stretcher.cpp" AND EXISTS "${EIGEN_DIR}/Eigen/Core"
     eigen_assert=BUNGEE_ASSERT1
     EIGEN_DONT_PARALLELIZE=1)
   # Bungee sets this on itself: signed overflow is relied upon to wrap in the grain arithmetic.
-  target_compile_options(keith-bungee PRIVATE -fwrapv)
+  # -fwrapv does not exist on MSVC, where the equivalent is /d2AnsiForScope-adjacent undefined
+  # behaviour territory -- but MSVC wraps signed overflow by default in practice, and the flag
+  # would be rejected outright, so it is simply not passed there. Unguarded it would have been
+  # the next Windows build failure after pffft's.
+  if(NOT MSVC)
+    target_compile_options(keith-bungee PRIVATE -fwrapv)
+  endif()
   set_target_properties(keith-bungee PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
   # version.cpp is just `const char* versionDescription = BUNGEE_VERSION;` -- Bungee's own CMake
