@@ -165,6 +165,14 @@ if(TARGET keith-bungee)
   endforeach()
 endif()
 
+# The offline test binaries include the sampler headers, and WarpVoice.h constructs a Bungee
+# stretcher. Without this they fail to link on the Bungee symbols.
+foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests)
+  if(TARGET ${_t} AND TARGET keith-bungee)
+    target_link_libraries(${_t} PRIVATE keith-bungee)
+  endif()
+endforeach()
+
 # Editor faces. Windows embeds them with resources/main.rc. macOS LoadFont looks in
 # the bundle's Contents/Resources (NSBundle resourcePath), so the same files are
 # copied there for VST3, AU and the APP, and also beside the .app.

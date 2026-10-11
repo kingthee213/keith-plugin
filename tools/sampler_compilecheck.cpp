@@ -15,6 +15,8 @@
 #include "../src/sampler/SamplerVoice.h"
 #include "../src/sampler/SampleSlicer.h"
 #include "../src/sampler/WarpMap.h"
+#include "../src/sampler/WarpStretcher.h"
+#include "../src/sampler/WarpVoice.h"
 
 namespace {
 
@@ -89,6 +91,19 @@ void InstantiateForTypeChecking()
   (void) keith::sampler::SliceBeat(warp, slices, 1, 1.0);
   warp.RemoveMarker(0);
   warp.Clear();
+
+  // The Bungee boundary and the voice that drives it. Constructing the voice allocates, which is
+  // exactly why it happens here rather than in a render path.
+  (void) keith::sampler::WarpStretcherAvailable();
+  (void) keith::sampler::WarpStretcherLatency(44100);
+
+  keith::sampler::WarpVoice warpVoice;
+  warpVoice.Prepare(2, 44100, 44100);
+  (void) warpVoice.Prepared();
+  (void) warpVoice.MaxInputFrameCount();
+  (void) warpVoice.Active();
+  (void) warpVoice.FramesRendered();
+  warpVoice.Stop();
 }
 
 } // namespace
