@@ -12,6 +12,9 @@ third_party/iPlug2/
 third_party/Airwindows/
 # Eigen is ~8 MB of headers, fetched by bootstrap-deps instead of committed. Bungee needs it.
 third_party/eigen/
+# The CC0 percussion SOURCES: 5.4 MB of third-party files, fetched and hash-verified by
+# tools/build_percussion_kits.py --fetch. The derived kits are committed; the raw set is not.
+resources/samples/percussion-src/
 tools/pluginval/
 # scratch
 .sam-*
