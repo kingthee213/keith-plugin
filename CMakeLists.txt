@@ -173,18 +173,13 @@ endif()
 # The offline test binaries include the sampler headers, and WarpVoice.h constructs a Bungee
 # stretcher. Without this they fail to link on the Bungee symbols.
 #
-# keith-recreation-render is on this list because it also includes src/Keith.cpp, which pulls in
-# WarpStretcher.h and so needs bungee/Bungee.h on the include path. It was missing, and CI failed
-# on the renderer while the plugin targets -- which are linked above -- built fine.
-foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests keith-warp-latency
-                     keith-recreation-render)
+# keith-recreation-render is NOT in this list, and cannot be: this loop runs at line ~179 and that
+# target is not created until line ~316, so `if(TARGET ...)` is false and the link is silently
+# skipped. It is linked after its add_executable instead. That mistake cost two CI runs.
+foreach(_t IN ITEMS keith-synth-tests keith-render-voice keith-editor-tests keith-warp-latency)
   if(TARGET ${_t} AND TARGET keith-bungee)
     target_link_libraries(${_t} PRIVATE keith-bungee)
-    # A test, not just a dependency: run it. keith-recreation-render is deliberately excluded
-    # because it is a tool the measurement step drives with arguments, not a self-checking test.
-    if(NOT _t STREQUAL "keith-recreation-render")
-      add_test(NAME ${_t} COMMAND ${_t})
-    endif()
+    add_test(NAME ${_t} COMMAND ${_t})
   endif()
 endforeach()
 
@@ -339,6 +334,13 @@ add_executable(keith-recreation-render
   ${_keith_vst3_entry}
 )
 target_compile_features(keith-recreation-render PRIVATE cxx_std_20)
+
+# Bungee, linked HERE rather than in the loop further up: this target does not exist until this
+# point, so an `if(TARGET ...)` test earlier is false and the link is skipped without a word. The
+# renderer includes src/Keith.cpp, which pulls in WarpStretcher.h, which needs bungee/Bungee.h.
+if(TARGET keith-bungee)
+  target_link_libraries(keith-recreation-render PRIVATE keith-bungee)
+endif()
 target_include_directories(keith-recreation-render PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
