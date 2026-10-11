@@ -269,15 +269,6 @@ struct Params
 class Envelope
 {
 public:
-  /**
-   * The wavetable bank.
-   *
-   * Exposed so the editor can DRAW the frames. The bank is built once per sample-rate change and
-   * never mutated afterwards, so a pointer to it is stable for as long as it is asked for -- which
-   * is what lets the page hold one and rebuild its picture only when it changes.
-   */
-  const WavetableBank* Wavetable() const { return &mWavetableBank; }
-
   enum class Stage
   {
     Idle = 0,
@@ -768,6 +759,15 @@ inline bool LegatoAttack(const Params& p, int otherKeysHeld, bool voiceBusy)
 class Voice
 {
 public:
+  /**
+   * The wavetable bank.
+   *
+   * Exposed so the editor can DRAW the frames. The bank is built once per sample-rate change and
+   * never mutated afterwards, so a pointer to it is stable for as long as it is asked for -- which
+   * is what lets the page hold one and rebuild its picture only when it changes.
+   */
+  const WavetableBank* Wavetable() const { return &mWavetableBank; }
+
   /**
    * The built-in wavetable bank, available without loading anything from disk.
    *

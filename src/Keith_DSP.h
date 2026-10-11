@@ -748,10 +748,24 @@ public:
   /**
    * The synth's wavetable bank, for the wavetable page to draw.
    *
-   * The DSP owns the synth, so the page cannot reach the bank without this. Returns a pointer to a
-   * bank that is rebuilt only on a sample-rate change.
+   * The bank is owned by the VOICE, not by the MidiSynth wrapper -- MidiSynth has no such member,
+   * which is what a first attempt at this assumed and the compiler rejected. Every voice builds an
+   * identical bank in SetSampleRate, so the first one is the right one to hand out.
+   *
+   * Returns null before the first SetSampleRate, when no voice has built a bank yet. The page
+   * checks, because a null there is normal on a cold start rather than a fault.
    */
-  const keith::synth::WavetableBank* Wavetable() const { return mSynth.Wavetable(); }
+  const keith::synth::WavetableBank* Wavetable()
+  {
+    // Non-const, matching every other ForEachVoice call in this file: the iterator hands out a
+    // non-const SynthVoice&, so a const lambda parameter would not bind.
+    const keith::synth::WavetableBank* bank = nullptr;
+    mSynth.ForEachVoice([&bank](SynthVoice& voice) {
+      if (!bank)
+        bank = static_cast<Voice&>(voice).Wavetable();
+    });
+    return bank;
+  }
 
   void SetGain(double gainPercent)
   {

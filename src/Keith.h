@@ -324,7 +324,7 @@ public:
    * Passed through from the DSP, which owns the synth. The bank is rebuilt only on a sample-rate
    * change, so the page can hold the pointer and rebuild its picture only when it differs.
    */
-  const keith::synth::WavetableBank* WavetableBankForEditor() const { return mDSP.Wavetable(); }
+  const keith::synth::WavetableBank* WavetableBankForEditor() { return mDSP.Wavetable(); }
   const keith::sampler::SamplerEngine& Sampler() const { return mSampler; }
 
 #if IPLUG_EDITOR
