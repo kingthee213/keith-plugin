@@ -410,16 +410,6 @@ private:
   std::atomic<bool> mLoadRequested { false };
   /** The bundle resource root, resolved once and cached. */
   std::string mResourceRoot;
-  /**
-   * Set by OnReset, cleared by the first OnIdle.
-   *
-   * The sample content is loaded on that first idle tick rather than during reset, because reset
-   * runs inside plugin initialisation where a Cocoa resource-path call is not safe and where
-   * reading several hundred files can make a host give up and report a load failure.
-   */
-  std::atomic<bool> mLoadRequested {false};
-  /** The bundle resource root, resolved once and cached. Empty until first needed. */
-  std::string mResourceRoot;
   std::atomic<int> mSelectedDrumSlot {0};
 
   /**

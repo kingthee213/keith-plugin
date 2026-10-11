@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>   // std::getenv, for the KEITH_SAMPLE_DIR override in SampleDir()
+#include <exception>  // std::exception, caught by the sample loaders
 #include <initializer_list>
 #include <limits>
 
