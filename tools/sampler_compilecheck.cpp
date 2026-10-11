@@ -13,6 +13,7 @@
 #include "../src/sampler/SampleLoader.h"
 #include "../src/sampler/SamplerEngine.h"
 #include "../src/sampler/SamplerVoice.h"
+#include "../src/sampler/SampleSlicer.h"
 
 namespace {
 
@@ -49,6 +50,21 @@ void InstantiateForTypeChecking()
   (void) engine.Process();
   (void) engine.AnyActive();
   engine.StopAll();
+
+  // Slicing: detection and the boundary edits the UI will drive.
+  keith::sampler::SliceSettings settings;
+  keith::sampler::SampleData empty;
+  keith::sampler::SliceResult found =
+      keith::sampler::DetectTransients(empty, 44100.0, settings);
+  (void) found.ok;
+  (void) found.rawOnsets;
+
+  std::vector<keith::sampler::Slice> slices = keith::sampler::SingleSlice();
+  keith::sampler::MoveBoundary(slices, 0, 100, 1000);
+  keith::sampler::AddBoundary(slices, 500, 1000, 40);
+  (void) keith::sampler::SliceEndFrame(slices, 0, 1000);
+  (void) keith::sampler::SliceAtFrame(slices, 10, 1000);
+  keith::sampler::RemoveBoundary(slices, 0);
 }
 
 } // namespace
