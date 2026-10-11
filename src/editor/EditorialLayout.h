@@ -3,6 +3,10 @@
 #include "ControlLayout.h"
 #include "../sampler/SampleDropZone.h"
 #include "KeithPage.h"
+#include "KeithWaveView.h"
+#include "KeithWaveView.cpp.h"
+#include "KeithSampleBrowser.h"
+#include "KeithSampleBrowser.cpp.h"
 #include <cassert>
 #include <algorithm>
 
@@ -355,10 +359,44 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
         "SLICE", "one slice per key, each at its recorded pitch"));
 
     // The browser, the waveform and the slice row.
-    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_browser"), pageState,
-                                                   kSampler));
-    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_wave"), pageState,
-                                                   kSampler));
+    //
+    // The browser and the waveform used to be KeithPagePanel -- a filled rectangle and a border,
+    // with no content at all. That is what the owner saw: "theres literally no buttons, no graph
+    // for the sample to be seen and edited". They are real controls now.
+    {
+      const IRECT r = OverlayIRECT("page_sample_browser");
+      // Inset below the SAMPLES caption, which is drawn over this panel's top edge.
+      const IRECT list(r.L + 4.f, r.T + 22.f, r.R - 4.f, r.B - 4.f);
+      auto* browse = new keith::ui::KeithSampleBrowser(list, pageState, kSampler);
+      // SampleDir() is the same resolver the drum, guitar and vocal loaders use, so the browser
+      // lists exactly what those loaders can actually open -- not a second, separate notion of
+      // where the samples live.
+      browse->SetEntries(keith::ui::BuildBrowserEntries(plugin.SampleDir("")));
+      browse->SetOnPick([&plugin, g](const keith::ui::BrowserEntry& e) {
+        // The real loader. It reads from disk, so this is message-thread only -- which a click
+        // handler is -- and it publishes the new sample to the voices without freeing the one a
+        // render in flight is still reading.
+        plugin.Sampler().Load(e.path);
+        // The waveform shows the sample that was just published, and it does not know a load
+        // happened, so the redraw is asked for here rather than left to the next repaint.
+        g->SetAllControlsDirty();
+      });
+      g->AttachControl(browse);
+    }
+
+    {
+      const IRECT r = OverlayIRECT("page_sample_wave");
+      auto* wave = new keith::ui::KeithWaveView(r, pageState, kSampler);
+      // The engine's current sample, so the view opens showing whatever is loaded rather than
+      // waiting for the next load to notice.
+      wave->SetSample(plugin.Sampler().Sample(), plugin.Sampler().EngineSampleRate());
+      wave->SetSlices(plugin.Sampler().Slices());
+      wave->SetSliceEdit([&plugin](int idx, int frame) {
+        plugin.Sampler().MoveSliceBoundary(static_cast<std::size_t>(idx), frame);
+      });
+      g->AttachControl(wave);
+    }
+
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_slices"), pageState,
                                                    kSampler));
 

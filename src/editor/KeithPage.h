@@ -164,6 +164,17 @@ public:
   {
     // Swallows clicks so they cannot reach the panels behind the page. Without this, clicking a
     // page's empty area would operate a control the user cannot see.
+    //
+    // This MUST be guarded on the page being open, and it was not. The surface spans essentially
+    // the whole plugin -- page_sampler is {141,14,1028,300} and page_wavetable {141,310,1028,562}
+    // -- so an unguarded swallow ate every click in that area whether or not a page was showing:
+    // the bank dropdowns would not open, the drum pads would not fire, the knobs would not turn.
+    // Reported as "most of the knobs and buttons aren't allowing me to select them".
+    //
+    // The sibling controls already had this guard, which is why only SOME things were dead. A
+    // closed page must not intercept anything at all.
+    if (!PageIsOpen())
+      return;
   }
 };
 

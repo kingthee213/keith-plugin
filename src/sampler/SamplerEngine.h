@@ -153,6 +153,15 @@ public:
   /** The loaded sample, for the editor to draw. Null when nothing is loaded. */
   const std::shared_ptr<const SampleData>& Sample() const { return mSample; }
 
+  /**
+   * The rate the sampler is running at, for the waveform view to map frames to seconds.
+   *
+   * The VOICES' rate, not the sample's: the sample's own rate is inside SampleData. This is the
+   * host's, and the difference is the point -- a 48 kHz file in a 44.1 kHz host is the case the
+   * waveform's time axis has to get right.
+   */
+  double EngineSampleRate() const { return mSampleRate; }
+
   /** The last path asked for, whether or not it loaded. */
   const std::string& LastPath() const { return mLastPath; }
 
