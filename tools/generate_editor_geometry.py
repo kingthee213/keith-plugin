@@ -712,6 +712,35 @@ if WAVETABLE_TOP >= WAVETABLE_BOTTOM:
 place_overlay("page_sampler", PAGE_L, SAMPLER_TOP, PAGE_R, SAMPLER_BOTTOM)
 place_overlay("page_wavetable", PAGE_L, WAVETABLE_TOP, PAGE_R, WAVETABLE_BOTTOM)
 
+# --- the page band must not sit on top of the main view's controls ----------------------------
+#
+# The pages are drawn LAST, so anything they overlap is painted over. page_wt_frames was placed at
+# y 332..392 while preset_menu sits at y 362..390 -- the page covered the sound-bank dropdown
+# completely, and the owner reported that dropdown as unclickable. Nothing compared the page band
+# against the controls already living in that region, so the generator emitted the collision.
+#
+# The main view's controls are placed from y0 down to a known row. Rather than guess that extent,
+# check the page's top against the lowest control the main view places, named explicitly so the
+# failure says which control is buried.
+MAIN_VIEW_CONTROLS = ("preset_menu", "pad_midi_switch", "osc1_waveform", "osc2_waveform",
+                      "osc3_waveform", "lfo1_label", "lfo2_label")
+
+for name in MAIN_VIEW_CONTROLS:
+    rect = OVERLAYS.get(name)
+    if rect is None:
+        continue
+    l, t, r, b = rect
+    for page in ("page_sampler", "page_wavetable"):
+        pr = OVERLAYS[page]
+        # A page fully covering a control is the bug. Partial x-overlap alone is fine; it is the
+        # vertical band that matters, because the page spans the full content width.
+        if pr[0] <= l and pr[2] >= r and pr[1] <= t and pr[3] >= b:
+            raise SystemExit(
+                f"{page} ({pr[0]:.0f},{pr[1]:.0f},{pr[2]:.0f},{pr[3]:.0f}) completely covers "
+                f"{name} ({l:.0f},{t:.0f},{r:.0f},{b:.0f}). The pages are painted last, so "
+                f"{name} would be invisible and unclickable. Move the page's top below "
+                f"{b:.0f}, or move {name} out of the page band.")
+
 # --- inside the sampler half -----------------------------------------------------------------
 SL_TITLE_H = _r(SL_TITLE_H_D)
 # PLAY and SLICE: directly under the SAMPLER title, full width, stacked. The owner asked for

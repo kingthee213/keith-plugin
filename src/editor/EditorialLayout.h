@@ -216,10 +216,8 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     freeKnob(matrixAmounts[slot], "AMT", kGreen, true);
   }
 
-  // Middle row: artwork plate (painted in chassis), sampler + drums.
-  g->AttachControl(new KeithPresetMenu(OverlayIRECT("preset_menu")));
-  // PAD MIDI sits under the drum pad slot knobs. Editor-only: see KeithPadMidiButton.
-  g->AttachControl(new KeithPadMidiButton(OverlayIRECT("pad_midi_switch"), plugin));
+  // NOTE: the preset menu and the PAD MIDI switch are attached LATER, after the page
+  // surfaces. See the block that follows the page attachements -- they must paint on top.
   constexpr int pitchParams[] = {kParamPitchAttack, kParamPitchDecay, kParamPitchSustain,
                                  kParamPitchRelease, kParamPitchAmount};
   for (int p : pitchParams)
@@ -341,6 +339,16 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     g->AttachControl(new keith::ui::KeithPageSurface(OverlayIRECT("page_wavetable"), pageState,
                                                      keith::ui::KeithPage::Wavetable));
 
+  // The preset menu and the PAD MIDI switch are attached HERE, after the page surfaces, so
+  // they paint on top of every page and stay usable on all of them.
+  //
+  // Both were attached earlier -- the menu before the pages -- and the wavetable page's
+  // band covers preset_menu {458,363,665,390} completely. So the sound-bank dropdown was
+  // painted over and could not be clicked on that page, which is what the owner reported.
+  // Attachment order is paint order in iPlug2: the last one attached wins.
+  g->AttachControl(new KeithPresetMenu(OverlayIRECT("preset_menu")));
+  g->AttachControl(new KeithPadMidiButton(OverlayIRECT("pad_midi_switch"), plugin));
+
     // --- SAMPLER ------------------------------------------------------------------------------
     const keith::ui::KeithPage kSampler = keith::ui::KeithPage::Sampler;
 
@@ -452,6 +460,15 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
       g->AttachControl(wave);
     }
 
+    // The panel goes FIRST, so the controls below sit on top of it.
+    //
+    // It was attached AFTER the three controls that share this rect, and iPlug2 paints in
+    // attachment order -- so the panel's fill was drawn over the SLICE BY menu and the SENS and
+    // REGIONS knobs, hiding all three. Same class as the page surface that swallowed clicks: an
+    // element attached later wins, and the loser is invisible.
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_slices"), pageState,
+                                                   kSampler));
+
     {
       const IRECT slices = OverlayIRECT("page_sample_slices");
       const IRECT sliceMenu(slices.L, slices.T, slices.L + 130.f, slices.B);
@@ -466,8 +483,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
                                                     kCyan, pageState, kSampler));
     }
 
-    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_sample_slices"), pageState,
-                                                   kSampler));
 
     {
       IRECT r = OverlayIRECT("page_sample_browser");
@@ -544,6 +559,13 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
       wtFrames = frames;
       g->AttachControl(frames);
     }
+    // The frames panel goes FIRST, so the view switch and the step buttons that live on this
+    // rect are drawn on top of it. It was attached at the END of the page block, after those
+    // controls AND after the preset menu -- and it spans x 341..850, y 332..392, which fully
+    // contains preset_menu {458,363,665,390}. So it painted over the sound-bank dropdown and
+    // hid it, which is the dropdown the owner reported as unclickable.
+    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_frames"), pageState,
+                                                   kWavetable));
     {
       const IRECT fr = OverlayIRECT("page_wt_frames");
       const int frameCount = plugin.WavetableBankForEditor()
@@ -560,8 +582,6 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
     }
     // page_wt_banks keeps its panel: there is one bank, so it holds a caption rather than a list.
     g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_banks"), pageState,
-                                                   kWavetable));
-    g->AttachControl(new keith::ui::KeithPagePanel(OverlayIRECT("page_wt_frames"), pageState,
                                                    kWavetable));
     // The controls column gets a panel too, so it reads as a group the way the mock draws it.
     // Without this the morph knob and the source tabs float on the page background while the mock
