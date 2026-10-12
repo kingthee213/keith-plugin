@@ -5807,23 +5807,29 @@ std::string Keith::SampleDir(const char* kind) const
   if (mResourceRoot.empty())
   {
     WDL_String path;
-    // BUNDLE_ID IS REQUIRED. Without it this call crashes the host.
+    // The second argument is PLATFORM-DEPENDENT, and both forms matter:
     //
-    // The signature is `BundleResourcePath(WDL_String&, PluginIDType pExtra = 0)`, and on macOS
-    // PluginIDType is `const char*`. Leaving the argument off passes NULL. IPlugPaths.mm then does
+    //   macOS/iOS:  PluginIDType is `const char*`, the bundle identifier. Omitting it passes NULL,
+    //               and IPlugPaths.mm then calls
+    //                   [NSBundle bundleWithIdentifier:[NSString stringWithUTF8String:bundleID]]
+    //               which RAISES NSInvalidArgumentException on a null cString. An Objective-C
+    //               exception is not caught by our `catch (std::exception&)` or `catch (...)`
+    //               guards, so it reached std::terminate and aborted the HOST -- the Live crash
+    //               showed terminate() inside Live's own timer with no MagsSynth frame anywhere.
     //
-    //     [NSBundle bundleWithIdentifier:[NSString stringWithUTF8String:bundleID]]
+    //   Windows:    PluginIDType is `HMODULE` -- a module handle, NOT a string. Passing BUNDLE_ID
+    //               there is a compile error (C2664: cannot convert 'const char[1]' to HMODULE),
+    //               which is how the first attempt at this fix failed the Windows build.
     //
-    // and +stringWithUTF8String: RAISES NSInvalidArgumentException on a null cString. That is an
-    // Objective-C exception, so the try/catch guards around our callbacks cannot catch it -- it
-    // reaches std::terminate and aborts the HOST. Live died inside its own timer callback with no
-    // MagsSynth frame on the stack, which is exactly what an NSException escaping into the run loop
-    // looks like.
-    //
-    // iPlug2 derives BUNDLE_ID in IPlug_include_in_plug_hdr.h from BUNDLE_DOMAIN, BUNDLE_MFR and
-    // BUNDLE_NAME, all of which config.h defines. iPlug2's own worked example passes it:
-    // Tests/IGraphicsTest/IGraphicsTest.cpp:112 -> BundleResourcePath(resourcePath, BUNDLE_ID).
+    // So macOS passes the identifier and Windows passes nullptr, which its own implementation
+    // accepts. BUNDLE_ID is derived by iPlug2 from BUNDLE_DOMAIN/BUNDLE_MFR/BUNDLE_NAME in
+    // config.h and expands per format -- audio.Mags.audiounit.MagsSynth for the AU, which is
+    // exactly the CFBundleIdentifier named in the crash report.
+#if defined OS_MAC || defined OS_IOS
     BundleResourcePath(path, BUNDLE_ID);
+#else
+    BundleResourcePath(path, nullptr);
+#endif
     if (path.GetLength() > 0)
       mResourceRoot = path.Get();
   }
