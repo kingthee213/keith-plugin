@@ -141,8 +141,71 @@ public:
     mWarpMap.Clear();
     mWarp.SetSample(mSample.get());
     mWarp.SetWarpMap(&mWarpMap);
+
+    // Now apply the slicing the current mode asks for, here rather than in each caller.
+    //
+    // Before this, slices were only computed when the editor's page controls were touched
+    // (ApplySliceBy), or when a control was dragged. So dropping a file, or loading one from the
+    // browser, left the sampler in Slice mode with a SINGLE slice covering the whole sample: keys
+    // mapped through SliceForNote and every one of them either played the entire file or returned
+    // -1. That is the reported "no slice triggered" -- the slice engine was fine, nothing had
+    // filled it in.
+    //
+    // Doing it here means every path that loads a sample gets the same behaviour, and there is no
+    // caller left to forget.
+    ApplyCurrentSliceMode();
     return LoadError::None;
   }
+
+  /**
+   * Build slices for the stored slice mode.
+   *
+   * The mode and its settings are pushed in from the plugin's parameters by
+   * SetSliceMode/SetSliceSettings, so the engine can act on a load without reaching into the
+   * plugin. Defaults are the whole sample, which is what a single slice already is.
+   */
+  void ApplyCurrentSliceMode()
+  {
+    const auto sample = mSample;
+    if (!sample || sample->Empty())
+      return;
+
+    const int frames = sample->frames;
+
+    if (mSliceBy == SliceBy::Transient)
+    {
+      SliceSettings settings;
+      settings.sensitivity = mSliceSensitivity;
+      DetectSlices(settings, mPreserveManualOnDetect);
+      return;
+    }
+
+    if (mSliceBy == SliceBy::Region)
+    {
+      int r0 = static_cast<int>(std::lround(mSliceRegionStart / 100.0 * frames));
+      int r1 = static_cast<int>(std::lround(mSliceRegionEnd / 100.0 * frames));
+      r0 = std::clamp(r0, 0, std::max(0, frames - 1));
+      r1 = std::clamp(r1, r0 + 1, frames);
+      SetSlices(RegionSlices(r0, r1, mSliceRegions, frames));
+      return;
+    }
+
+    // Manual: leave whatever the user has drawn. A load resets to a single slice above, so manual
+    // mode after a load is one slice until the user adds more, which is what "manual" means.
+  }
+
+  /** How a newly loaded sample should be sliced. Pushed in from the plugin's parameters. */
+  enum class SliceBy { Transient = 0, Region = 1, Manual = 2 };
+
+  void SetSliceMode(SliceBy by) { mSliceBy = by; }
+  void SetSliceRegions(int regions) { mSliceRegions = std::clamp(regions, 2, 64); }
+  void SetSliceSensitivity(float normalised) { mSliceSensitivity = std::clamp(normalised, 0.f, 1.f); }
+  void SetSliceRegionNormalised(double startPercent, double endPercent)
+  {
+    mSliceRegionStart = std::clamp(startPercent, 0.0, 100.0);
+    mSliceRegionEnd = std::clamp(endPercent, 0.0, 100.0);
+  }
+  void SetPreserveManualOnDetect(bool preserve) { mPreserveManualOnDetect = preserve; }
 
   /** True when a sample is loaded and ready to play. */
   bool HasSample() const { return mSample && !mSample->Empty(); }
@@ -432,6 +495,35 @@ public:
     mWarpMap.FromSlices(slices ? *slices : SingleSlice(), beatsPerSlice);
   }
 
+  /**
+   * Tempo sync on/off, and the beat spacing it uses.
+   *
+   * Turning it ON adopts the current slices as the warp map, so each slice lands on its own beat
+   * and the sample follows the host tempo instead of its recorded rate. Turning it OFF clears the
+   * map, which puts the sample back to playing at its own speed.
+   *
+   * This is the connection that was missing. `TempoSyncFromSlices` and the whole WarpMap existed
+   * and were correct, but nothing ever called them: there was no parameter to drive it, so tempo
+   * sync could not be switched on from anywhere, and no warp was ever audible.
+   *
+   * `beatsPerSlice` defaults to one beat. A detected break usually has more slices than bars, so
+   * the caller can pass less than a beat once there is a control for it; the parameter is here so
+   * that decision has somewhere to live rather than being hardcoded at the call site.
+   */
+  void SetTempoSyncEnabled(bool enabled, double beatsPerSlice = 1.0)
+  {
+    if (!enabled)
+    {
+      mWarpMap.Clear();
+      mWarpMap.enabled = false;
+      return;
+    }
+    mTempoSyncBeatsPerSlice = beatsPerSlice > 0.0 ? beatsPerSlice : 1.0;
+    TempoSyncFromSlices(mTempoSyncBeatsPerSlice);
+  }
+
+  bool TempoSyncEnabled() const { return mWarpMap.enabled; }
+
   /** Patch state that belongs here rather than in the DSP. */
   void SetTransport(const Transport& t)
   {
@@ -493,6 +585,18 @@ private:
   // freed under it, and every edit builds a new vector rather than writing over the published one.
   std::shared_ptr<const std::vector<Slice>> mSlices =
       std::make_shared<const std::vector<Slice>>(SingleSlice());
+
+  // The slicing to apply when a sample loads. Pushed in from the plugin's parameters so the engine
+  // can act on a load without reaching back into the plugin. Defaults match the parameter defaults
+  // in Keith.cpp: Transient detection at 50%, eight regions, region start/end 0..100.
+  SliceBy mSliceBy = SliceBy::Transient;
+  int mSliceRegions = 8;
+  float mSliceSensitivity = 0.5f;
+  double mSliceRegionStart = 0.0;
+  double mSliceRegionEnd = 100.0;
+  bool mPreserveManualOnDetect = true;
+  /** Beat spacing tempo sync uses. One beat per slice; see SetTempoSyncEnabled. */
+  double mTempoSyncBeatsPerSlice = 1.0;
   SampleMode mMode = SampleMode::Play;
   bool mReversed = false;
   bool mVocalEnabled = false;

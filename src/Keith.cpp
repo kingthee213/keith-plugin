@@ -5075,9 +5075,65 @@ int SamplerEngine::UnserializeState(const IByteChunk& chunk, int startPos)
 // closed at line ~5121 while the member functions calling them are at ~5665 and ~5978 -- outside
 // it, so the calls failed to compile with "no matching function". They take `Keith&` as a
 // parameter, so they do not need internal linkage to stay out of the way.
+/**
+ * Push the TEMPO SYNC switch into the engine.
+ *
+ * The engine cannot read the parameter itself, and the switch has to reach it before any audio is
+ * rendered. Called from the same places as PushSliceSettings so the two cannot drift.
+ *
+ * Turning it on adopts the current slices as the warp map; turning it off clears the map and the
+ * sample plays at its recorded rate again. Both directions are driven from the one parameter, so
+ * there is no separate state to keep in step.
+ */
+void PushTempoSync(Keith& plugin)
+{
+  keith::sampler::SamplerEngine& sampler = plugin.Sampler();
+  const bool on = plugin.GetParam(kParamSampleTempoSync)->Int() != 0;
+  // Guarded so this does not rebuild the warp map on every unrelated parameter change: adopting
+  // the slices allocates, and re-adopting them while the user drags a knob would churn.
+  if (on == sampler.TempoSyncEnabled())
+    return;
+  sampler.SetTempoSyncEnabled(on);
+}
+
+/**
+ * Push the sampler page's slice settings into the engine.
+ *
+ * The engine needs these BEFORE a sample loads, because Load() now applies the current slice mode
+ * itself. Without this push the engine would always detect at its own defaults, so the SENS,
+ * REGIONS and SLICE BY controls would change what the editor shows but not what a load produces.
+ *
+ * Cheap enough to call on every sampler parameter change: it writes six scalars and allocates
+ * nothing. It deliberately does NOT re-slice, so moving a knob does not discard a manual edit --
+ * ApplySliceBy does that when the user asks for it.
+ */
+void PushSliceSettings(Keith& plugin)
+{
+  keith::sampler::SamplerEngine& sampler = plugin.Sampler();
+  const int by = plugin.GetParam(kParamSliceBy)->Int();
+  sampler.SetSliceMode(by == 0   ? keith::sampler::SamplerEngine::SliceBy::Transient
+                       : by == 1 ? keith::sampler::SamplerEngine::SliceBy::Region
+                                 : keith::sampler::SamplerEngine::SliceBy::Manual);
+  sampler.SetSliceSensitivity(
+      static_cast<float>(plugin.GetParam(kParamSliceSensitivity)->Value() / 100.0));
+  sampler.SetSliceRegions(plugin.GetParam(kParamSliceRegions)->Int());
+  sampler.SetSliceRegionNormalised(plugin.GetParam(kParamSampleRegionStart)->Value(),
+                                  plugin.GetParam(kParamSampleRegionEnd)->Value());
+}
+
 void SyncSamplerPageParams(Keith& plugin)
 {
   keith::sampler::SamplerEngine& sampler = plugin.Sampler();
+
+  // Slice settings go in FIRST, before the no-sample early return below.
+  //
+  // They have to be in the engine before the first sample arrives: Load() applies the current
+  // slice mode as it loads, so if the engine has not been told what mode is wanted it detects at
+  // its own defaults and the SLICE BY / SENS / REGIONS controls do nothing on a fresh load. This
+  // early return used to skip them along with the frame work, which needs a sample to exist.
+  PushSliceSettings(plugin);
+  PushTempoSync(plugin);
+
   if (!sampler.HasSample())
     return;
   const int frames = sampler.Sample()->frames;
@@ -5102,6 +5158,10 @@ void ApplySliceBy(Keith& plugin)
   keith::sampler::SamplerEngine& sampler = plugin.Sampler();
   if (!sampler.HasSample())
     return;
+  // The engine acts on the same settings Load() would use, so what a knob change produces and
+  // what a fresh load produces cannot diverge.
+  PushSliceSettings(plugin);
+  PushTempoSync(plugin);
   const int frames = sampler.Sample()->frames;
   int r0 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionStart)->Value() / 100.0 * frames));
   int r1 = static_cast<int>(std::lround(plugin.GetParam(kParamSampleRegionEnd)->Value() / 100.0 * frames));
@@ -5362,8 +5422,8 @@ static_assert(kParamOsc3Shape == 111 && kParamOsc3Source == 117 && kParamSampleM
                 && kParamSampleReverse == 119 && kParamDrumKit == 120 && kParamPercKit == 121
                 && kParamVocalEnable == 122 && kParamGuitarBank == 123 && kParamGuitarLevel == 124
                 && kParamSampleRegionStart == 125 && kParamSliceRegions == 134
-                && kNumParams == 135,
-              "U18-U20 appends through sampler page controls");
+                && kParamSampleTempoSync == 135 && kNumParams == 136,
+              "U18-U21 appends through sampler page controls");
 
 Keith::Keith(const InstanceInfo& info)
 : Plugin(info, MakeConfig(kNumParams, kNumPresets))
@@ -5444,6 +5504,9 @@ Keith::Keith(const InstanceInfo& info)
   GetParam(kParamSliceBy)->InitEnum("Slice By", 0, {"Transient", "Region", "Manual"});
   GetParam(kParamSliceSensitivity)->InitDouble("Slice Sensitivity", 50., 0., 100., 0.1, "%");
   GetParam(kParamSliceRegions)->InitInt("Slice Regions", 8, 2, 64);
+  // Off by default: tempo sync changes how the sample PLAYS, so it should be an explicit choice
+  // rather than the state a fresh patch lands in.
+  GetParam(kParamSampleTempoSync)->InitEnum("Sample Tempo Sync", 0, {"Off", "On"});
 
   GetParam(kParamOsc3Morph)->InitDouble("Synth Osc3 Morph", 0., 0., 100., 0.1, "%");
   GetParam(kParamOsc3Enable)->InitBool("Synth Osc3 Enable", false);
@@ -6037,6 +6100,15 @@ void Keith::OnParamChange(int paramIdx)
         || paramIdx == kParamSliceRegions)
     {
       ApplySliceBy(*this);
+      return;
+    }
+
+    // TEMPO SYNC is its own branch: switching it does not re-slice, it adopts the slices that
+    // already exist as a warp map (or clears the map). Going through ApplySliceBy would redetect
+    // and discard a manual edit as a side effect of pressing a tempo button.
+    if (paramIdx == kParamSampleTempoSync)
+    {
+      PushTempoSync(*this);
       return;
     }
 

@@ -18,14 +18,45 @@ class KeithArtwork : public IControl
 {
 public:
   explicit KeithArtwork(const IRECT& r) : IControl(r) { mIgnoreMouse = true; }
+
   void OnInit() override { mChassis = GetUI()->LoadBitmap(CHASSIS_FN); }
+
   void Draw(IGraphics& g) override
   {
+    // The load is checked, because an unchecked draw here blanks the ENTIRE editor.
+    //
+    // IGraphics::LoadBitmap returns a default-constructed IBitmap -- mW=0, mH=0 -- when the
+    // resource is not found, and it returns it WITHOUT throwing. DrawFittedBitmap then works out
+    // its scale as bounds.W() / bitmap.W(), which is a division by zero. The resulting inf/NaN
+    // path transform is not confined to this draw: it feeds every primitive drawn after it, so
+    // one missing PNG takes the whole window with it. The window opens, nothing appears, and
+    // there is no exception and no crash -- which is the exact symptom that was reported.
+    // IsValid() is the accessor iPlug2 provides for exactly this; it is `mAPIBitmap != nullptr`.
+    // W()/H() are checked as well because LoadBitmap can in principle hand back a bitmap whose
+    // dimensions came out zero, and zero is the value that does the damage.
+    if (!mChassis.IsValid() || mChassis.W() <= 0 || mChassis.H() <= 0)
+    {
+      // Draw something rather than nothing, so a failed load is diagnosable by eye: a filled
+      // panel with the reason on it. Silently drawing nothing is what made this take so long to
+      // find -- the editor looked like it had not been built at all.
+      g.FillRect(kPanelAlt, mRECT);
+      if (!mWarned)
+      {
+        mWarned = true;
+        std::fprintf(stderr,
+                     "Keith: chassis bitmap '%s' did not load; the editor background is missing. "
+                     "Check that the file is in the bundle's Resources.\n",
+                     CHASSIS_FN);
+        DBGMSG("Keith: chassis bitmap '%s' failed to load\n", CHASSIS_FN);
+      }
+      return;
+    }
     g.DrawFittedBitmap(mChassis, mRECT);
   }
 
 private:
   IBitmap mChassis;
+  bool mWarned = false;
 };
 
 class KeithParamMenu : public IControl

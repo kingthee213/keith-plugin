@@ -795,8 +795,21 @@ place_overlay("page_sample_reverse", mode_l + SL_BROWSER_W + PAGE_PAD + _r(286),
               mode_l + SL_BROWSER_W + PAGE_PAD + _r(402), mode_row_top + _r(MODE_ROW_H_D))
 
 # --- inside the wavetable half ---------------------------------------------------------------
+#
+# The page body must start BELOW the main view's preset menu, not at a fixed offset from the page
+# top. page_wt_frames was placed at y 332..392 while preset_menu sits at 363..390, so the frames
+# band was drawn straight over the sound-bank dropdown -- the owner reported that dropdown as
+# unclickable, and the page surfaces paint last so the later control wins.
+#
+# The pages cover the main view by design, but the preset menu is the one control that has to stay
+# reachable: you switch sounds while a page is open. So the body is derived from the menu's own
+# rect rather than from a constant, and the relationship holds if the panel layout moves.
 WT_TITLE_H = _r(30)
-WT_BODY_TOP = WAVETABLE_TOP + WT_TITLE_H
+WT_BODY_TOP = max(WAVETABLE_TOP + WT_TITLE_H, OVERLAYS["preset_menu"][3] + PAGE_PAD)
+if WT_BODY_TOP < WAVETABLE_TOP + WT_TITLE_H:
+    raise SystemExit(
+        f"wavetable body top {WT_BODY_TOP:.0f} is above the page title band; the preset menu "
+        f"(bottom {OVERLAYS['preset_menu'][3]:.0f}) no longer fits above the page body")
 WT_BANKS_W = _r(240)
 
 place_overlay("page_wt_banks", PAGE_L + PAGE_PAD, WT_BODY_TOP,

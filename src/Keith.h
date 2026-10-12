@@ -258,6 +258,14 @@ enum EParams
   kParamSliceSensitivity = 133,
   /** Even slice count when Slice By = Region. */
   kParamSliceRegions = 134,
+  /**
+   * Tempo sync on/off. On, the slices are adopted as an evenly spaced warp map so the sample
+   * follows the host tempo instead of playing at its recorded rate.
+   *
+   * Appended rather than inserted: every parameter id below this one is stored in saved patches and
+   * in kPresetDeltas by its number, so renumbering any of them would corrupt existing state.
+   */
+  kParamSampleTempoSync = 135,
 
   kNumParams
 };

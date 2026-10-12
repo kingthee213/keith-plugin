@@ -520,12 +520,26 @@ inline void BuildEditorial(Keith& plugin, IGraphics* g)
       // No kParam for loop length: Classic loop playback is not in the engine yet.
     }
 
-    // WARP and TEMPO SYNC are captions only: neither has a parameter behind it yet, so drawing a
-    // tab would show a control that cannot be pressed.
+    // WARP is a caption only: it has no parameter behind it, so drawing a tab would show a control
+    // that cannot be pressed.
     g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_sample_warp"), pageState,
                                                    kSampler, "WARP", 9.f, EAlign::Center));
-    g->AttachControl(new keith::ui::KeithPageLabel(OverlayIRECT("page_sample_temposync"), pageState,
-                                                   kSampler, "TEMPO SYNC", 9.f, EAlign::Center));
+
+    // TEMPO SYNC is real. A tab switch on kParamSampleTempoSync, page-aware so it only appears
+    // while the sampler page is open, and bound to a parameter so it is saved with the patch.
+    //
+    // This replaced a caption that said the control could not exist yet. The engine side was
+    // already written and correct -- TempoSyncFromSlices, the WarpMap, the marker maths -- but
+    // nothing called it and no parameter drove it, so tempo sync could not be switched on from
+    // anywhere and no warp was ever audible. A button needed a parameter, and the parameter
+    // needed the engine call; both are here now.
+    {
+      const IRECT r = OverlayIRECT("page_sample_temposync");
+      auto style = HardButton(kPaper, kInk, 11).WithValueText(MonoBold(10, kInk));
+      style.colorSpec.mColors[kPR] = kCyan;
+      g->AttachControl(new keith::ui::KeithPageTabSwitch(r, kParamSampleTempoSync, {"OFF", "ON"},
+                                                         "", style, pageState, kSampler));
+    }
 
     // REVERSE is real. A tab switch on kParamSampleReverse, page-aware so it only appears while
     // the sampler page is open, and bound to a parameter so it is saved with the patch.
