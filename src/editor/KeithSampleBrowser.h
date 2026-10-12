@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * The sample browser: a scrollable list of the samples that ship with the plugin.
  *

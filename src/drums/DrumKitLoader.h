@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * Load a drum kit from the samples on disk.
  *

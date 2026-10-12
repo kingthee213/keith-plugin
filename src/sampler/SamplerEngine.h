@@ -1,3 +1,5 @@
+#pragma once
+
 // Drop target for sample files, and the engine-side state that holds them.
 //
 // Two things live here:

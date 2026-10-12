@@ -1,3 +1,5 @@
+#pragma once
+
 // Drop target for sample files.
 //
 // Separate from SamplerEngine.h because this needs `IControl`, which only exists in an editor

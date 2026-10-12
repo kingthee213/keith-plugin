@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * KeithSampleBrowser implementation.
  *

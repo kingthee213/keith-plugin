@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * The wavetable page's frame view: every frame in the bank, and where the morph sits.
  */

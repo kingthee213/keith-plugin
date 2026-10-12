@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * A multisampled instrument played across the keyboard.
  *

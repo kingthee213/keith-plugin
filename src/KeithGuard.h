@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * Stop an exception from escaping a plugin callback into the host.
  *

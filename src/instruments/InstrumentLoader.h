@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * Load a multisampled instrument bank from disk.
  *

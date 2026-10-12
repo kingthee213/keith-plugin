@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * The two controls the sampler page was missing: the waveform, and the sample browser.
  *
