@@ -67,6 +67,24 @@ def main():
         raise SystemExit("verify_material_layout: cannot read SCALE from tools/render_faces.py")
     scale = int(m.group(1))
 
+    # THE 4096 CEILING, which is the check that matters and did not exist.
+    #
+    # The face was raised to 3x (4200 wide) and shipped. 4200 exceeds the 4096 maximum texture
+    # dimension on macOS, so the GPU upload in IGraphicsNanoVG::Bitmap::Bitmap failed and returned
+    # image id 0. IBitmap::IsValid() is only `mAPIBitmap != nullptr`, so the bitmap still reported
+    # VALID; DrawFittedBitmap then divided by its zero width, and the resulting inf/NaN took out
+    # every draw after it. The window opened and nothing painted -- five builds, no error anywhere.
+    #
+    # This gate asserted the SIZE matched, which it did. It never checked that the size was
+    # uploadable. Matching a wrong number is not a pass.
+    MAX_TEXTURE_DIM = 4096
+    if max(cw * scale, ch * scale) > MAX_TEXTURE_DIM:
+        raise SystemExit(
+            f"the face would be {cw * scale}x{ch * scale} at {scale}x, and "
+            f"{max(cw * scale, ch * scale)} exceeds the {MAX_TEXTURE_DIM} maximum texture "
+            f"dimension. The GPU upload would fail and the editor would draw NOTHING. "
+            f"Lower SCALE in tools/render_faces.py.")
+
     expected = (cw * scale, ch * scale)
     actual = png_size(IMAGES / 'chassis.png')
     assert actual == expected, (

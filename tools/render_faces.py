@@ -39,7 +39,28 @@ FONT_SPRAY = ROOT / "resources" / "fonts" / "Bangers-Regular.ttf"
 # grotesque -- blackletter for the whole thing is too heavy to read at this size.
 FONT_OLDE = ROOT / "resources" / "fonts" / "PirataOne-Regular.ttf"
 
-SCALE = 3
+# 2, NOT 3. This is the fix for the editor that would not appear.
+#
+# The face was raised to 3x (4200x2304) while chasing a gate that claimed the canvas was
+# 1280x800. That made it WIDER THAN 4096, which is the maximum texture dimension on macOS GPUs.
+# nvgCreateImageRGBA fails above that and returns image id 0; IGraphicsNanoVG::Bitmap stores it
+# anyway; IBitmap::IsValid() is only `mAPIBitmap != nullptr`, so it reports TRUE; and
+# DrawFittedBitmap then computes PathTransformScale(bounds.W()/bitmap.W(), ...) with bitmap.W()
+# of 0. The inf/NaN poisons the transform for everything painted after it, so the window opened
+# and NOTHING PAINTED -- no exception, no crash, and the whole editor gone.
+#
+# 2x of 1400x768 is 2800x1536, which is what the LAST BUILD THAT OPENED bundled (commit
+# ed8fc216, run 100). It was correct all along. verify_material_layout.py was the thing that was
+# wrong: it asserted (cw * 2, ch * 2) and then I changed it to read 3x off the generator, so the
+# gate agreed with the bug. That is the second time in this work a gate was adjusted to match
+# broken output instead of the output being fixed.
+#
+# The ceiling is now enforced rather than asserted, so this cannot recur.
+SCALE = 2
+
+# The maximum texture dimension this face may be uploaded at. Every GPU macOS ships supports at
+# least 4096; going over means the upload fails and the editor goes blank. Checked below.
+MAX_TEXTURE_DIM = 4096
 
 # The design canvas, read from the one place that defines it rather than copied.
 #
@@ -73,6 +94,16 @@ def _design_canvas():
 
 DESIGN_W, DESIGN_H = _design_canvas()
 W, H = DESIGN_W * SCALE, DESIGN_H * SCALE
+
+# Refuse to emit a face too large to upload. This is the check whose absence cost five builds: the
+# bitmap silently failed to upload, and the failure surfaced as an empty editor rather than as an
+# error anywhere.
+if max(W, H) > MAX_TEXTURE_DIM:
+    raise SystemExit(
+        f"the face would be {W}x{H}, and {max(W, H)} exceeds the {MAX_TEXTURE_DIM} maximum "
+        f"texture dimension. The upload would fail and the editor would draw nothing. Lower "
+        f"SCALE (currently {SCALE}) or the canvas.")
+
 
 INK = (10, 9, 11)
 INK_SOFT = (26, 22, 26)
