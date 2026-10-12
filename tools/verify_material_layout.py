@@ -38,19 +38,40 @@ def param_id_to_name(header_text):
 
 def main():
     receipt = json.loads((IMAGES / 'physical-layout.json').read_text())
-    # The canvas at 2x for hi-dpi. Read from the generated geometry rather than hardcoded: this
-    # assertion said (2304, 1536) and refused the 1400 px canvas outright when the sampler page
-    # widened it. A hardcoded size here turns a deliberate change into a gate failure, which is
-    # the opposite of what it is for -- it should catch a face that does not match the geometry.
+    # The face is baked at the scale config.h names, which is the plugin's own MAX size -- so a
+    # raster face is never upscaled. Read both from source rather than assuming:
+    #
+    #   * the canvas from EditorGeometry.h, which the editor is actually laid out at;
+    #   * the scale from config.h's PLUG_MAX_WIDTH against PLUG_WIDTH.
+    #
+    # This assertion has been wrong twice. It was hardcoded to (2304, 1536) and refused the widened
+    # canvas outright; then it was changed to 2x, while render_faces.py bakes at 3x -- so it failed
+    # on a correctly generated face, and that failure was dismissed as cosmetic. A gate that
+    # disagrees with the generator by construction catches nothing and trains people to ignore it.
     geo = (ROOT / 'src/editor/EditorGeometry.h').read_text()
     import re as _re
     cw = int(round(float(_re.search(r'kCanvasW = ([\d.]+)f', geo).group(1))))
     ch = int(round(float(_re.search(r'kCanvasH = ([\d.]+)f', geo).group(1))))
-    expected = (cw * 2, ch * 2)
+
+    cfg = (ROOT / 'config.h').read_text()
+    # The scale comes from THE GENERATOR, which is the only thing that decides it.
+    #
+    # There were three different answers in this project: render_faces.py bakes at 3x,
+    # compose_face.py says 2, and config.h cites a tools/verify_face_scale.py that DOES NOT EXIST.
+    # Deriving the number from PLUG_MAX_WIDTH/PLUG_WIDTH gave 1, which was a third wrong answer.
+    # The generator writes the file, so the generator's constant is the fact; everything else
+    # either agrees with it or is a bug.
+    gen = (ROOT / 'tools' / 'render_faces.py').read_text()
+    m = _re.search(r'^SCALE\s*=\s*(\d+)', gen, _re.M)
+    if not m:
+        raise SystemExit("verify_material_layout: cannot read SCALE from tools/render_faces.py")
+    scale = int(m.group(1))
+
+    expected = (cw * scale, ch * scale)
     actual = png_size(IMAGES / 'chassis.png')
     assert actual == expected, (
-        f"chassis.png is {actual}, but the geometry says the canvas is {cw}x{ch} "
-        f"so the face must be {expected}")
+        f"chassis.png is {actual}, but the canvas is {cw}x{ch} and render_faces.py bakes at "
+        f"{scale}x, so the face must be {expected}. Regenerate with tools/render_faces.py.")
     # Read the placements from the geometry the generator emits, not from ControlLayout.h.
     # ControlLayout.h used to carry `{kParamX, "source", ...}` rows; the current generator
     # writes `{<id>, "single", l, t, r, b, radius}`, so the old regex matched nothing and

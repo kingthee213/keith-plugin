@@ -40,7 +40,39 @@ FONT_SPRAY = ROOT / "resources" / "fonts" / "Bangers-Regular.ttf"
 FONT_OLDE = ROOT / "resources" / "fonts" / "PirataOne-Regular.ttf"
 
 SCALE = 3
-W, H = 1280 * SCALE, 800 * SCALE
+
+# The design canvas, read from the one place that defines it rather than copied.
+#
+# This was hardcoded to 1280x800 while config.h and EditorGeometry.h both say 1400x768, so the
+# face was generated at the wrong size for every panel drawn on top of it. It shipped that way:
+# the bundled chassis.png is 3840x2400 (1280x800 at 3x) against a 1400x768 editor, and
+# tools/verify_material_layout.py had been reporting the mismatch all along.
+#
+# Read from EditorGeometry.h so the face and the controls cannot disagree again. That file is
+# already the source of every panel rectangle this script draws, so the size belongs there too.
+def _design_canvas():
+    text = GEOM.read_text()
+    def value(name):
+        m = re.search(r"constexpr float " + name + r"\s*=\s*([\d.]+)f", text)
+        if not m:
+            raise SystemExit(f"render_faces: could not read {name} from {GEOM}")
+        return int(round(float(m.group(1))))
+    w, h = value("kCanvasW"), value("kCanvasH")
+    # Cross-check against config.h, which is what the editor is actually created at. If these two
+    # ever disagree the face would be drawn at one size and laid out at another, which is the bug
+    # this function exists to prevent.
+    cfg = (ROOT / "config.h").read_text()
+    cw = re.search(r"#define PLUG_WIDTH\s+(\d+)", cfg)
+    ch = re.search(r"#define PLUG_HEIGHT\s+(\d+)", cfg)
+    if cw and ch and (int(cw.group(1)), int(ch.group(1))) != (w, h):
+        raise SystemExit(
+            f"render_faces: EditorGeometry says {w}x{h} but config.h says "
+            f"{cw.group(1)}x{ch.group(1)} -- fix one of them before generating the face")
+    return w, h
+
+
+DESIGN_W, DESIGN_H = _design_canvas()
+W, H = DESIGN_W * SCALE, DESIGN_H * SCALE
 
 INK = (10, 9, 11)
 INK_SOFT = (26, 22, 26)
@@ -506,8 +538,11 @@ def main() -> None:
     paper_grain(canvas, rng)
     torn_frame(canvas, rng)
 
-    if canvas.size != (3840, 2400):
-        raise SystemExit(f"bad size {canvas.size}")
+    # Checked against the canvas this run actually used, not against the number that was hardcoded
+    # here before. The old literal (3840, 2400) was the 1280x800 face and it is what let the wrong
+    # size ship: the assertion agreed with the generator because both were wrong the same way.
+    if canvas.size != (W, H):
+        raise SystemExit(f"bad size {canvas.size}, expected {(W, H)}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(OUT, optimize=True)
     print(f"wrote {OUT} {canvas.size[0]}x{canvas.size[1]} {OUT.stat().st_size / 1e6:.1f} MB")
